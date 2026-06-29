@@ -26,6 +26,16 @@ export default async function AdminDevicesPage() {
     .order('created_at', { ascending: false })
     .limit(50)
 
+  function osLabel(os: string) {
+    if (os === 'Darwin') return 'macOS'
+    if (os === 'Windows') return 'Windows'
+    return os
+  }
+
+  function deviceHostname(deviceId: string) {
+    return devices?.find(d => d.device_id === deviceId)?.hostname ?? deviceId.slice(0, 8) + '...'
+  }
+
   function isOnline(lastSeen: string) {
     const diff = Date.now() - new Date(lastSeen).getTime()
     return diff < 60 * 1000
@@ -63,7 +73,7 @@ export default async function AdminDevicesPage() {
                 {devices && devices.length > 0 ? devices.map((device) => (
                   <tr key={device.id} className="border-b border-gray-800 hover:bg-gray-800">
                     <td className="px-4 py-3 font-medium text-white">{device.hostname}</td>
-                    <td className="px-4 py-3 text-gray-400">{device.os}</td>
+                    <td className="px-4 py-3 text-gray-400">{osLabel(device.os)}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
                         isOnline(device.last_seen)
@@ -132,7 +142,7 @@ export default async function AdminDevicesPage() {
                         {log.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs font-mono">{log.device_id.slice(0, 8)}...</td>
+                    <td className="px-4 py-3 text-gray-400 text-xs">{deviceHostname(log.device_id)}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{new Date(log.created_at).toLocaleString()}</td>
                   </tr>
                 )) : (
