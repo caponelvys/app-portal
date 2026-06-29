@@ -1,7 +1,7 @@
 """
 App Controller Agent
-Runs as a background service on Mac and Windows.
-Polls Supabase every 30 seconds, kills any blocked apps that are running.
+Runs as a background service on Mac, Linux, and Windows.
+Polls Supabase every 5 seconds, kills any blocked apps that are running.
 """
 
 import os
@@ -83,11 +83,12 @@ def get_running_processes():
     try:
         if OS == "Darwin":  # Mac
             out = subprocess.check_output(["ps", "-eo", "comm"], text=True)
-            # ps comm includes full path on some systems, grab just the filename
+            return {os.path.basename(line.strip()).lower() for line in out.splitlines()[1:] if line.strip()}
+        elif OS == "Linux":
+            out = subprocess.check_output(["ps", "-eo", "comm"], text=True)
             return {os.path.basename(line.strip()).lower() for line in out.splitlines()[1:] if line.strip()}
         elif OS == "Windows":
             out = subprocess.check_output(["tasklist", "/fo", "csv", "/nh"], text=True)
-            # tasklist CSV format: "process.exe","PID",...
             return {line.split(",")[0].strip('"').lower() for line in out.splitlines() if line}
     except Exception as e:
         print(f"[error] Could not list processes: {e}")
@@ -96,7 +97,7 @@ def get_running_processes():
 def kill_process(process_name):
     """Kill all instances of a process by name."""
     try:
-        if OS == "Darwin":
+        if OS in ("Darwin", "Linux"):
             subprocess.run(["pkill", "-i", process_name], capture_output=True)
         elif OS == "Windows":
             subprocess.run(["taskkill", "/f", "/im", process_name], capture_output=True)

@@ -111,6 +111,10 @@ export default async function AdminDevicesPage() {
               className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Mac Installer
             </a>
+            <a href="/downloads/install_linux.sh" download
+              className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+              Linux Installer
+            </a>
             <a href="/downloads/install_win.bat" download
               className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Windows Installer
