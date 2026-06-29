@@ -63,7 +63,9 @@ export default async function DashboardPage() {
                 {app.icon_url ? (
                   <img src={app.icon_url} alt={app.name} className="w-12 h-12 rounded-xl object-cover" />
                 ) : (
-                  <span className="text-4xl">{app.icon}</span>
+                  <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-xl font-bold text-gray-400 border border-gray-700">
+                    {app.name.charAt(0).toUpperCase()}
+                  </div>
                 )}
                 <div>
                   <p className="font-semibold text-white">{app.name}</p>

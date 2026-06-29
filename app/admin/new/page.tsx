@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function NewAppPage() {
-  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '🔗', status: 'allowed', process_name: '' })
+  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '' })
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -88,19 +88,14 @@ export default function NewAppPage() {
               {iconPreview ? (
                 <img src={iconPreview} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-gray-700" />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-2xl border border-gray-700">
-                  {form.icon}
+                <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-xl font-bold text-gray-400 border border-gray-700">
+                  {form.name.charAt(0).toUpperCase() || '?'}
                 </div>
               )}
               <input type="file" accept="image/*" onChange={handleFileChange}
                 className="text-sm text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-gray-600 file:text-sm file:bg-gray-800 file:text-gray-300 hover:file:bg-gray-700" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Upload an image, or leave empty to use the emoji below.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Fallback Emoji</label>
-            <input name="icon" value={form.icon} onChange={handleChange} className={inputClass} />
+            <p className="text-xs text-gray-500 mt-1">Optional. Leave empty to show the app's initial letter.</p>
           </div>
 
           <div>

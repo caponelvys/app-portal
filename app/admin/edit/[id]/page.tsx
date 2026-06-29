@@ -108,19 +108,14 @@ export default function EditAppPage() {
               ) : iconUrl ? (
                 <img src={iconUrl} alt="current icon" className="w-12 h-12 rounded-lg object-cover border border-gray-700" />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-2xl border border-gray-700">
-                  {form.icon}
+                <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-xl font-bold text-gray-400 border border-gray-700">
+                  {form.name.charAt(0).toUpperCase() || '?'}
                 </div>
               )}
               <input type="file" accept="image/*" onChange={handleFileChange}
                 className="text-sm text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-gray-600 file:text-sm file:bg-gray-800 file:text-gray-300 hover:file:bg-gray-700" />
             </div>
             <p className="text-xs text-gray-500 mt-1">Upload a new image to replace the current one.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Fallback Emoji</label>
-            <input name="icon" value={form.icon} onChange={handleChange} className={inputClass} />
           </div>
 
           <div>
