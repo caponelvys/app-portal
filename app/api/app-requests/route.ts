@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { expiryFromDuration, isValidDuration } from '@/lib/durations'
+import { sendAccessDecisionEmail } from '@/lib/email'
 
 // Resolve the signed-in user and their role from the request cookies.
 async function getSession() {
@@ -101,16 +102,17 @@ export async function PATCH(req: NextRequest) {
   const admin = createAdminClient()
   const { data: request, error: fetchError } = await admin
     .from('app_requests')
-    .select('id, duration')
+    .select('id, duration, user_id, app_id')
     .eq('id', id)
     .single()
   if (fetchError || !request) return NextResponse.json({ error: 'Request not found' }, { status: 404 })
 
+  const expiresAt = action === 'approve' ? expiryFromDuration(request.duration) : null
   const update =
     action === 'approve'
       ? {
           status: 'approved',
-          expires_at: expiryFromDuration(request.duration),
+          expires_at: expiresAt,
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
         }
@@ -122,6 +124,25 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await admin.from('app_requests').update(update).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Notify the requester. Failure here must not fail the approval itself.
+  try {
+    const [{ data: profile }, { data: app }] = await Promise.all([
+      admin.from('profiles').select('email').eq('id', request.user_id).single(),
+      admin.from('apps').select('name').eq('id', request.app_id).single(),
+    ])
+    if (profile?.email) {
+      await sendAccessDecisionEmail({
+        to: profile.email,
+        appName: app?.name ?? 'an app',
+        approved: action === 'approve',
+        duration: request.duration,
+        expiresAt,
+      })
+    }
+  } catch (e) {
+    console.error('[app-requests] notification failed', e)
+  }
 
   return NextResponse.json({ success: true })
 }
