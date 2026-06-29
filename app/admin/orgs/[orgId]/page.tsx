@@ -42,7 +42,12 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-semibold text-white">Locations</h2>
-          <CreateForm kind="location" orgId={org.id} label="+ Add Location" />
+          <div className="flex items-center gap-2">
+            <a href={`/admin/orgs/${org.id}/policies`} className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+              Policies
+            </a>
+            <CreateForm kind="location" orgId={org.id} label="+ Add Location" />
+          </div>
         </div>
 
         {locations && locations.length > 0 ? (

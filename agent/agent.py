@@ -116,25 +116,58 @@ def setup_pairing(device_id):
     print("=" * 44 + "\n")
 
 # ── App enforcement ────────────────────────────────────────────────────────────
-def get_blocked_apps():
-    """Fetch all blocked apps that have a process_name set."""
+def get_all_apps():
+    """Fetch the app catalog. `status` is the global default policy."""
     resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/apps?status=eq.blocked&process_name=not.is.null&select=id,name,process_name",
+        f"{SUPABASE_URL}/rest/v1/apps?process_name=not.is.null&select=id,name,process_name,status",
         headers=HEADERS,
     )
     if resp.status_code == 200:
         return resp.json()
     return []
 
-def get_device_user(device_id):
-    """Return the user_id that has claimed this device, or None if unclaimed."""
+def get_device_context(device_id):
+    """Return {user_id, org_id, location_id} for this device (values may be None)."""
     resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id",
+        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id,org_id,location_id",
         headers=HEADERS,
     )
     if resp.status_code == 200 and resp.json():
-        return resp.json()[0].get("user_id")
-    return None
+        return resp.json()[0]
+    return {}
+
+def get_policies(scope_ids):
+    """Fetch policy overrides for the given org/location/device scope IDs."""
+    ids = [s for s in scope_ids if s]
+    if not ids:
+        return []
+    resp = requests.get(
+        f"{SUPABASE_URL}/rest/v1/app_policies?scope_id=in.({','.join(ids)})&select=app_id,scope_id,status",
+        headers=HEADERS,
+    )
+    if resp.status_code == 200:
+        return resp.json()
+    return []
+
+def resolve_effective_blocked(apps, policies, ctx, device_id):
+    """Resolve effective status per app and return those effectively blocked.
+    Most specific override wins: device > location > org > global default."""
+    dev, loc, org = {}, {}, {}
+    for p in policies:
+        sid = p.get("scope_id")
+        if sid == device_id:
+            dev[p["app_id"]] = p["status"]
+        elif sid == ctx.get("location_id"):
+            loc[p["app_id"]] = p["status"]
+        elif sid == ctx.get("org_id"):
+            org[p["app_id"]] = p["status"]
+
+    blocked = []
+    for app in apps:
+        status = dev.get(app["id"]) or loc.get(app["id"]) or org.get(app["id"]) or app.get("status")
+        if status == "blocked":
+            blocked.append(app)
+    return blocked
 
 def get_granted_app_ids(user_id):
     """Return the set of app IDs this user has an active approved grant for.
@@ -218,14 +251,20 @@ def main():
     while True:
         try:
             heartbeat(device_id)
-            all_blocked = get_blocked_apps()
+
+            # Resolve the effective blocked set for THIS device using policy
+            # inheritance (device > location > org > global default).
+            ctx = get_device_context(device_id)
+            owner_id = ctx.get("user_id")
+            all_apps = get_all_apps()
+            policies = get_policies([ctx.get("org_id"), ctx.get("location_id"), device_id])
+            effective_blocked = resolve_effective_blocked(all_apps, policies, ctx, device_id)
 
             # Per-user temporary access: if this device has been claimed by a
             # user, don't kill apps that user has an active approved grant for.
-            owner_id = get_device_user(device_id)
             granted_ids = get_granted_app_ids(owner_id)
-            granted_apps = [a for a in all_blocked if a.get("id") in granted_ids]
-            blocked_apps = [a for a in all_blocked if a.get("id") not in granted_ids]
+            granted_apps = [a for a in effective_blocked if a.get("id") in granted_ids]
+            blocked_apps = [a for a in effective_blocked if a.get("id") not in granted_ids]
 
             running = get_running_processes()
 

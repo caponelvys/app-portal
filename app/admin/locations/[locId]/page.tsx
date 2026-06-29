@@ -60,7 +60,12 @@ export default async function LocationDetailPage({
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h2 className="text-2xl font-semibold text-white">Devices</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold text-white">Devices</h2>
+            <a href={`/admin/locations/${locId}/policies`} className="text-sm text-blue-400 hover:text-blue-300 font-medium">
+              Policies
+            </a>
+          </div>
           <div className="flex gap-1 text-sm">
             {(['all', 'online', 'offline'] as const).map(s => (
               <a

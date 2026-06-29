@@ -61,10 +61,15 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-white">{device.hostname || 'Unknown device'}</h1>
-            <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${online ? 'text-green-400' : 'text-gray-500'}`}>
-              <span className={`w-2.5 h-2.5 rounded-full ${online ? 'bg-green-400' : 'bg-gray-600'}`} />
-              {online ? 'Online' : 'Offline'}
-            </span>
+            <div className="flex items-center gap-4">
+              <a href={`/admin/devices/${device.device_id}/policies`} className="text-sm text-blue-400 hover:text-blue-300 font-medium">
+                Policies
+              </a>
+              <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${online ? 'text-green-400' : 'text-gray-500'}`}>
+                <span className={`w-2.5 h-2.5 rounded-full ${online ? 'bg-green-400' : 'bg-gray-600'}`} />
+                {online ? 'Online' : 'Offline'}
+              </span>
+            </div>
           </div>
           <dl className="grid grid-cols-2 gap-3 mt-4 text-sm">
             <Field label="OS" value={device.os} />
