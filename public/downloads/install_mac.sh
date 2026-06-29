@@ -8,10 +8,24 @@ AGENT_DIR="/usr/local/appcontroller"
 VENV_DIR="$AGENT_DIR/venv"
 PLIST="/Library/LaunchDaemons/com.appcontroller.agent.plist"
 
+# Optional: --token <enrollment-token> places this device into a location.
+TOKEN=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --token) TOKEN="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
 echo "[install] Creating agent directory..."
 mkdir -p "$AGENT_DIR"
 cp agent.py "$AGENT_DIR/agent.py"
 cp requirements.txt "$AGENT_DIR/requirements.txt"
+
+if [ -n "$TOKEN" ]; then
+  echo "[install] Saving enrollment token..."
+  echo "$TOKEN" > "$AGENT_DIR/.enrollment_token"
+fi
 
 echo "[install] Creating Python virtual environment..."
 python3 -m venv "$VENV_DIR"

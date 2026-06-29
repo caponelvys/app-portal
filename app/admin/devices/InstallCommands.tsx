@@ -3,12 +3,12 @@
 import { useState } from 'react'
 
 const commands: Record<string, string> = {
-  'Mac Terminal': 'curl -fsSL https://appcontroller.vercel.app/downloads/install_mac.sh -o install_mac.sh && sudo bash install_mac.sh',
-  'Linux Terminal': 'curl -fsSL https://appcontroller.vercel.app/downloads/install_linux.sh -o install_linux.sh && sudo bash install_linux.sh',
-  'Windows PowerShell (64-bit)': 'Invoke-WebRequest -Uri "https://appcontroller.vercel.app/downloads/install_win.bat" -OutFile "install_win.bat"; Start-Process "install_win.bat" -Verb RunAs',
-  'Windows PowerShell (32-bit)': 'Invoke-WebRequest -Uri "https://appcontroller.vercel.app/downloads/install_win.bat" -OutFile "install_win.bat"; & "$env:windir\\SysWOW64\\cmd.exe" /c "install_win.bat"',
-  'Windows CMD (64-bit)': 'curl -o install_win.bat https://appcontroller.vercel.app/downloads/install_win.bat && install_win.bat',
-  'Windows CMD (32-bit)': 'curl -o install_win.bat https://appcontroller.vercel.app/downloads/install_win.bat && %windir%\\SysWOW64\\cmd.exe /c install_win.bat',
+  'Mac Terminal': 'curl -fsSL https://appcontroller.vercel.app/downloads/install_mac.sh | sudo bash',
+  'Linux Terminal': 'curl -fsSL https://appcontroller.vercel.app/downloads/install_linux.sh | sudo bash',
+  'Windows PowerShell (64-bit)': 'Invoke-WebRequest -Uri "https://appcontroller.vercel.app/downloads/install_win.bat" -OutFile "$env:TEMP\\install_win.bat"; Start-Process "$env:TEMP\\install_win.bat" -Verb RunAs -Wait',
+  'Windows PowerShell (32-bit)': 'Invoke-WebRequest -Uri "https://appcontroller.vercel.app/downloads/install_win.bat" -OutFile "$env:TEMP\\install_win.bat"; & "$env:windir\\SysWOW64\\cmd.exe" /c "$env:TEMP\\install_win.bat"',
+  'Windows CMD (64-bit)': 'curl -fsSL https://appcontroller.vercel.app/downloads/install_win.bat -o "%TEMP%\\install_win.bat" && "%TEMP%\\install_win.bat"',
+  'Windows CMD (32-bit)': 'curl -fsSL https://appcontroller.vercel.app/downloads/install_win.bat -o "%TEMP%\\install_win.bat" && %windir%\\SysWOW64\\cmd.exe /c "%TEMP%\\install_win.bat"',
 }
 
 export default function InstallCommands() {
