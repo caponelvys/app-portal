@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 SUPABASE_URL = "https://fdnqjwezvkcpwckyqmbg.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
+ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -212,19 +213,32 @@ def main():
     register_device(device_id)
     setup_pairing(device_id)
 
+    last_access_log = {}  # app_id -> last time we logged an "accessed" event
+
     while True:
         try:
             heartbeat(device_id)
-            blocked_apps = get_blocked_apps()
+            all_blocked = get_blocked_apps()
 
             # Per-user temporary access: if this device has been claimed by a
             # user, don't kill apps that user has an active approved grant for.
             owner_id = get_device_user(device_id)
             granted_ids = get_granted_app_ids(owner_id)
-            if granted_ids:
-                blocked_apps = [a for a in blocked_apps if a.get("id") not in granted_ids]
+            granted_apps = [a for a in all_blocked if a.get("id") in granted_ids]
+            blocked_apps = [a for a in all_blocked if a.get("id") not in granted_ids]
 
             running = get_running_processes()
+
+            # Audit log: record when a granted app is actually in use (throttled
+            # per app so we don't write an event on every 5s poll).
+            now_ts = time.time()
+            for app in granted_apps:
+                pname = app["process_name"].lower()
+                pname_exe = pname if pname.endswith(".exe") else pname + ".exe"
+                if pname in running or (OS == "Windows" and pname_exe in running):
+                    if now_ts - last_access_log.get(app["id"], 0) >= ACCESS_LOG_INTERVAL:
+                        log_action(device_id, app["name"], "accessed")
+                        last_access_log[app["id"]] = now_ts
 
             for app in blocked_apps:
                 process_name = app["process_name"].lower()

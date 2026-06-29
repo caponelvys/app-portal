@@ -59,6 +59,9 @@ export default async function AdminPage() {
                 </span>
               ) : null}
             </a>
+            <a href="/admin/audit" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+              Audit Log
+            </a>
             <a href="/admin/users" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Manage Users
             </a>
