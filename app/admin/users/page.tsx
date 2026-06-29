@@ -34,8 +34,13 @@ export default async function AdminUsersPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <h2 className="text-2xl font-semibold text-white mb-6">All Users</h2>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-white">All Users</h2>
+          <a href="/admin/users/invite" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
+            + Invite User
+          </a>
+        </div>
         <UsersTable users={users ?? []} currentUserId={user.id} />
       </main>
     </div>
