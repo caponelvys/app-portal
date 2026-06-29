@@ -25,23 +25,23 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <a href="/" className="text-gray-400 hover:text-gray-600 text-sm">← Portal</a>
-          <h1 className="text-xl font-bold text-gray-800">Admin — Manage Apps</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800">Admin</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">{user.email}</span>
-          <a href="/auth/signout" className="text-sm text-gray-500 hover:text-gray-800 underline">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500 hidden sm:block truncate max-w-[200px]">{user.email}</span>
+          <a href="/auth/signout" className="text-sm text-gray-500 hover:text-gray-800 underline whitespace-nowrap">
             Sign out
           </a>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">All Apps</h2>
-          <div className="flex gap-3">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">All Apps</h2>
+          <div className="flex flex-wrap gap-2">
             <a
               href="/admin/devices"
               className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"

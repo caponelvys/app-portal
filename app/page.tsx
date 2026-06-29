@@ -24,21 +24,21 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">App Portal</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">{user.email}</span>
-          <a href="/auth/signout" className="text-sm text-gray-500 hover:text-gray-800 underline">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500 hidden sm:block truncate max-w-[200px]">{user.email}</span>
+          <a href="/auth/signout" className="text-sm text-gray-500 hover:text-gray-800 underline whitespace-nowrap">
             Sign out
           </a>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Your Apps</h2>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-6">Your Apps</h2>
 
         {apps && apps.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {apps.map((app: App) => (
               <a
                 key={app.id}
