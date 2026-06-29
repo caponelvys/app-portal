@@ -41,12 +41,20 @@ export default async function AdminPage() {
       <main className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">All Apps</h2>
-          <a
-            href="/admin/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
-          >
-            + Add App
-          </a>
+          <div className="flex gap-3">
+            <a
+              href="/admin/users"
+              className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Manage Users
+            </a>
+            <a
+              href="/admin/new"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+            >
+              + Add App
+            </a>
+          </div>
         </div>
 
         <AdminAppsTable apps={apps ?? []} />
