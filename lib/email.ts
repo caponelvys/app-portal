@@ -86,3 +86,16 @@ export async function sendAccessDecisionEmail(args: {
     ),
   })
 }
+
+// Notify a user that an active grant was revoked early by an admin.
+export async function sendAccessRevokedEmail(args: { to: string; appName: string }): Promise<boolean> {
+  return sendEmail({
+    to: args.to,
+    subject: `Access revoked: ${args.appName}`,
+    html: layout(
+      `Access revoked`,
+      `<p>Your access to <strong>${args.appName}</strong> has been revoked by an administrator and is no longer active.</p>
+       <p>If you still need it, you can submit a new request from the portal.</p>`,
+    ),
+  })
+}

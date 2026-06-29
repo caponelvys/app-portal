@@ -19,6 +19,10 @@ function StatusBadge({ req }: { req: Request }) {
     return <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-400">Pending</span>
   if (req.status === 'denied')
     return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-950 text-red-400">Denied</span>
+  if (req.status === 'revoked')
+    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-950 text-red-400">Revoked</span>
+  if (req.status === 'expired')
+    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-800 text-gray-400">Expired</span>
   // approved
   const active = isGrantActive(req.status, req.expires_at)
   return (
@@ -53,7 +57,7 @@ export default function RequestsTable() {
     return () => { active = false }
   }, [])
 
-  async function review(id: string, action: 'approve' | 'deny') {
+  async function review(id: string, action: 'approve' | 'deny' | 'revoke') {
     setBusy(id)
     setError('')
     try {
@@ -78,7 +82,8 @@ export default function RequestsTable() {
   if (loading) return <p className="text-gray-500 text-sm">Loading...</p>
 
   const pending = requests.filter(r => r.status === 'pending')
-  const history = requests.filter(r => r.status !== 'pending')
+  const active = requests.filter(r => r.status === 'approved' && isGrantActive(r.status, r.expires_at))
+  const history = requests.filter(r => r.status !== 'pending' && !active.includes(r))
 
   return (
     <div className="space-y-8">
@@ -120,6 +125,38 @@ export default function RequestsTable() {
                     </button>
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-white mb-3">
+          Active access
+          {active.length > 0 && (
+            <span className="ml-2 text-xs text-green-400 bg-green-950 px-2 py-0.5 rounded-full">{active.length}</span>
+          )}
+        </h2>
+        {active.length === 0 ? (
+          <p className="text-gray-500 text-sm">No active grants right now.</p>
+        ) : (
+          <div className="space-y-2">
+            {active.map(req => (
+              <div key={req.id} className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-white font-medium">{req.app_name}</p>
+                  <p className="text-xs text-gray-400">
+                    {req.user_email ?? 'Unknown user'} · {req.expires_at ? expiresInLabel(req.expires_at) : 'Permanent'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => review(req.id, 'revoke')}
+                  disabled={busy === req.id}
+                  className="text-xs px-3 py-1.5 rounded-md border border-red-900 text-red-400 hover:bg-red-950 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {busy === req.id ? 'Revoking...' : 'Revoke access'}
+                </button>
               </div>
             ))}
           </div>

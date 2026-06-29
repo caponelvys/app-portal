@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { expiryFromDuration, isValidDuration } from '@/lib/durations'
-import { sendAccessDecisionEmail } from '@/lib/email'
+import { sendAccessDecisionEmail, sendAccessRevokedEmail } from '@/lib/email'
 import { expireGrants } from '@/lib/expireGrants'
 
 // Resolve the signed-in user and their role from the request cookies.
@@ -98,8 +98,8 @@ export async function PATCH(req: NextRequest) {
   if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id, action } = await req.json()
-  if (!id || (action !== 'approve' && action !== 'deny')) {
-    return NextResponse.json({ error: 'id and a valid action (approve|deny) are required' }, { status: 400 })
+  if (!id || (action !== 'approve' && action !== 'deny' && action !== 'revoke')) {
+    return NextResponse.json({ error: 'id and a valid action (approve|deny|revoke) are required' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -110,38 +110,37 @@ export async function PATCH(req: NextRequest) {
     .single()
   if (fetchError || !request) return NextResponse.json({ error: 'Request not found' }, { status: 404 })
 
+  const reviewedAt = new Date().toISOString()
   const expiresAt = action === 'approve' ? expiryFromDuration(request.duration) : null
   const update =
     action === 'approve'
-      ? {
-          status: 'approved',
-          expires_at: expiresAt,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-        }
-      : {
-          status: 'denied',
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-        }
+      ? { status: 'approved', expires_at: expiresAt, reviewed_by: user.id, reviewed_at: reviewedAt }
+      : action === 'deny'
+        ? { status: 'denied', reviewed_by: user.id, reviewed_at: reviewedAt }
+        : { status: 'revoked', reviewed_by: user.id, reviewed_at: reviewedAt }
 
   const { error } = await admin.from('app_requests').update(update).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  // Notify the requester. Failure here must not fail the approval itself.
+  // Notify the requester. Failure here must not fail the decision itself.
   try {
     const [{ data: profile }, { data: app }] = await Promise.all([
       admin.from('profiles').select('email').eq('id', request.user_id).single(),
       admin.from('apps').select('name').eq('id', request.app_id).single(),
     ])
     if (profile?.email) {
-      await sendAccessDecisionEmail({
-        to: profile.email,
-        appName: app?.name ?? 'an app',
-        approved: action === 'approve',
-        duration: request.duration,
-        expiresAt,
-      })
+      const appName = app?.name ?? 'an app'
+      if (action === 'revoke') {
+        await sendAccessRevokedEmail({ to: profile.email, appName })
+      } else {
+        await sendAccessDecisionEmail({
+          to: profile.email,
+          appName,
+          approved: action === 'approve',
+          duration: request.duration,
+          expiresAt,
+        })
+      }
     }
   } catch (e) {
     console.error('[app-requests] notification failed', e)
