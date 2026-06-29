@@ -83,20 +83,24 @@ export default function AdminAppsTable({ apps: initial }: { apps: App[] }) {
                   <button
                     onClick={() => toggleStatus(app)}
                     disabled={loading === app.id}
-                    className="text-xs px-3 py-1 rounded-md border border-gray-200 hover:bg-gray-100 disabled:opacity-50"
+                    className={`text-xs px-3 py-1 rounded-md border font-medium disabled:opacity-50 ${
+                      app.status === 'allowed'
+                        ? 'border-red-200 text-red-600 hover:bg-red-50'
+                        : 'border-green-200 text-green-700 hover:bg-green-50'
+                    }`}
                   >
                     {app.status === 'allowed' ? 'Block' : 'Allow'}
                   </button>
                   <a
                     href={`/admin/edit/${app.id}`}
-                    className="text-xs px-3 py-1 rounded-md border border-gray-200 hover:bg-gray-100"
+                    className="text-xs px-3 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium"
                   >
                     Edit
                   </a>
                   <button
                     onClick={() => deleteApp(app.id)}
                     disabled={loading === app.id}
-                    className="text-xs px-3 py-1 rounded-md border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                    className="text-xs px-3 py-1 rounded-md border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 font-medium"
                   >
                     Delete
                   </button>

@@ -12,11 +12,12 @@ import socket
 import platform
 import subprocess
 import requests
+from datetime import datetime, timezone
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SUPABASE_URL = "https://fdnqjwezvkcpwckyqmbg.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
-POLL_INTERVAL = 30  # seconds between checks
+POLL_INTERVAL = 5  # seconds between checks
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -38,27 +39,32 @@ def get_device_id():
         f.write(device_id)
     return device_id
 
+def now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
 def register_device(device_id):
     """Tell Supabase this device is enrolled."""
     data = {
         "device_id": device_id,
         "hostname": socket.gethostname(),
         "os": OS,
-        "last_seen": "now()",
+        "last_seen": now_iso(),
     }
     # Upsert — insert if new, update last_seen if existing
-    requests.post(
-        f"{SUPABASE_URL}/rest/v1/devices",
+    resp = requests.post(
+        f"{SUPABASE_URL}/rest/v1/devices?on_conflict=device_id",
         headers={**HEADERS, "Prefer": "resolution=merge-duplicates"},
         json=data,
     )
+    if resp.status_code not in (200, 201):
+        print(f"[agent] Register failed: {resp.status_code} {resp.text}")
 
 def heartbeat(device_id):
     """Update last_seen timestamp so the portal knows the agent is alive."""
     requests.patch(
         f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
         headers=HEADERS,
-        json={"last_seen": "now()"},
+        json={"last_seen": now_iso()},
     )
 
 # ── App enforcement ────────────────────────────────────────────────────────────

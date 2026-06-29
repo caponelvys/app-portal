@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 
 export default function EditAppPage() {
   const { id } = useParams()
-  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed' })
+  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '' })
   const [iconUrl, setIconUrl] = useState<string | null>(null)
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
@@ -18,7 +18,7 @@ export default function EditAppPage() {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
-        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status })
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '' })
         setIconUrl(data.icon_url)
       }
       setFetching(false)
@@ -123,6 +123,14 @@ export default function EditAppPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Fallback Emoji</label>
             <input name="icon" value={form.icon} onChange={handleChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Process Name</label>
+            <input name="process_name" value={form.process_name} onChange={handleChange}
+              placeholder="e.g. Figma or Figma.exe"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="text-xs text-gray-400 mt-1">The exact process name the agent will watch for on enrolled devices.</p>
           </div>
 
           <div>
