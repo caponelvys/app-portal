@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function NewAppPage() {
-  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '🔗', status: 'allowed' })
+  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '🔗', status: 'allowed', process_name: '' })
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -103,6 +103,14 @@ export default function NewAppPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Fallback Emoji</label>
             <input name="icon" value={form.icon} onChange={handleChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Process Name</label>
+            <input name="process_name" value={form.process_name} onChange={handleChange}
+              placeholder="e.g. Spotify or Spotify.exe"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="text-xs text-gray-400 mt-1">The exact process name the agent will watch for. Leave empty if you only want this as a portal link.</p>
           </div>
 
           <div>

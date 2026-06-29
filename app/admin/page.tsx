@@ -43,6 +43,12 @@ export default async function AdminPage() {
           <h2 className="text-2xl font-semibold text-gray-800">All Apps</h2>
           <div className="flex gap-3">
             <a
+              href="/admin/devices"
+              className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Devices
+            </a>
+            <a
               href="/admin/users"
               className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
             >
