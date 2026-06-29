@@ -62,12 +62,17 @@ export default async function DashboardPage() {
     if (req && isGrantActive(req.status, req.expires_at)) {
       grantedApps.push({ ...app, grant: { expires_at: req.expires_at } })
     } else {
+      let requestStatus: RequestableApp['requestStatus'] = 'none'
+      if (req?.status === 'pending') requestStatus = 'pending'
+      else if (req?.status === 'denied') requestStatus = 'denied'
+      else if (req?.status === 'expired' || (req?.status === 'approved')) requestStatus = 'expired'
+
       requestable.push({
         id: app.id,
         name: app.name,
         description: app.description,
         icon_url: app.icon_url,
-        requestStatus: req?.status === 'pending' ? 'pending' : req?.status === 'denied' ? 'denied' : 'none',
+        requestStatus,
       })
     }
   }

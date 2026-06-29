@@ -3,6 +3,7 @@ import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { expiryFromDuration, isValidDuration } from '@/lib/durations'
 import { sendAccessDecisionEmail } from '@/lib/email'
+import { expireGrants } from '@/lib/expireGrants'
 
 // Resolve the signed-in user and their role from the request cookies.
 async function getSession() {
@@ -52,6 +53,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
+  await expireGrants(admin)
+
   let query = admin
     .from('app_requests')
     .select('id, app_id, user_id, reason, duration, status, expires_at, reviewed_at, created_at')

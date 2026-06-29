@@ -9,7 +9,7 @@ export type RequestableApp = {
   name: string
   description: string
   icon_url: string | null
-  requestStatus: 'none' | 'pending' | 'denied'
+  requestStatus: 'none' | 'pending' | 'denied' | 'expired'
 }
 
 function AppLogo({ name, iconUrl }: { name: string; iconUrl: string | null }) {
@@ -110,9 +110,10 @@ function RequestCard({ app }: { app: RequestableApp }) {
             onClick={() => setOpen(true)}
             className="text-xs px-3 py-1.5 rounded-md border border-gray-700 text-gray-200 hover:bg-gray-800"
           >
-            Request access
+            {status === 'expired' ? 'Request again' : 'Request access'}
           </button>
           {status === 'denied' && <span className="text-xs text-red-400">Previously denied</span>}
+          {status === 'expired' && <span className="text-xs text-gray-500">Access expired</span>}
         </div>
       )}
     </div>
