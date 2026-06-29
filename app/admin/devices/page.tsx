@@ -107,6 +107,10 @@ export default async function AdminDevicesPage() {
           <p className="text-sm text-gray-500 mb-4">Download the installer or run a command directly in your terminal.</p>
           <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Download</p>
           <div className="flex flex-wrap gap-3 mb-6">
+            <a href="/downloads/install_win.bat" download
+              className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+              Windows Installer
+            </a>
             <a href="/downloads/install_mac.sh" download
               className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Mac Installer
@@ -114,14 +118,6 @@ export default async function AdminDevicesPage() {
             <a href="/downloads/install_linux.sh" download
               className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Linux Installer
-            </a>
-            <a href="/downloads/install_win.bat" download
-              className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Windows Installer
-            </a>
-            <a href="/downloads/agent.py" download
-              className="bg-gray-800 border border-gray-700 text-gray-400 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Python Script (No Installer)
             </a>
           </div>
           <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Install via Command Line</p>
