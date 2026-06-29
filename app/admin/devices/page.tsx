@@ -90,6 +90,35 @@ export default async function AdminDevicesPage() {
           </div>
         </div>
 
+        {/* Download agent */}
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">Install Agent</h2>
+          <p className="text-sm text-gray-500 mb-4">Download and run the agent installer on any device you want to enroll.</p>
+          <div className="flex gap-3">
+            <a
+              href="/downloads/install_mac.sh"
+              download
+              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Mac Installer
+            </a>
+            <a
+              href="/downloads/install_win.bat"
+              download
+              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Windows Installer
+            </a>
+            <a
+              href="/downloads/agent.py"
+              download
+              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-500 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Python Script (No Installer)
+            </a>
+          </div>
+        </div>
+
         {/* Recent enforcement logs */}
         <div>
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">Recent Activity</h2>
