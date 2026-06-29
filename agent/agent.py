@@ -26,7 +26,7 @@ HEADERS = {
 }
 
 OS = platform.system()  # "Darwin" (Mac) or "Windows"
-DEVICE_ID_FILE = "/usr/local/appcontroller/.device_id"
+DEVICE_ID_FILE = "C:\\AppController\\.device_id" if OS == "Windows" else "/usr/local/appcontroller/.device_id"
 
 # ── Device identity ────────────────────────────────────────────────────────────
 def get_device_id():

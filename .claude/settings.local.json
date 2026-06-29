@@ -35,7 +35,8 @@
       "Bash(python3 -c \"import requests; print\\(requests.__file__\\)\")",
       "Bash(curl -s 'https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?select=device_id,last_seen&order=last_seen.desc&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8')",
       "Bash(cp \"/Users/roidzer/App Controllor Project/agent/agent.py\" \"/Users/roidzer/App Controllor Project/public/downloads/agent.py\")",
-      "Bash(cp \"/Users/roidzer/App Controllor Project/agent/install_mac.sh\" \"/Users/roidzer/App Controllor Project/public/downloads/install_mac.sh\")"
+      "Bash(cp \"/Users/roidzer/App Controllor Project/agent/install_mac.sh\" \"/Users/roidzer/App Controllor Project/public/downloads/install_mac.sh\")",
+      "Bash(cp \"/Users/roidzer/App Controllor Project/agent/install_win.bat\" \"/Users/roidzer/App Controllor Project/public/downloads/install_win.bat\")"
     ]
   }
 }
