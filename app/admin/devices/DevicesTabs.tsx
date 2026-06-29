@@ -22,8 +22,7 @@ type Log = {
 function osLabel(os: string) {
   if (os === 'Darwin') return 'macOS'
   if (os === 'Windows') return 'Windows'
-  if (os === 'Linux') return 'Linux'
-  return os
+  return os  // already formatted by new agent (e.g. "macOS 15.2", "Windows 11")
 }
 
 function isOnline(lastSeen: string) {

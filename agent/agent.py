@@ -28,7 +28,27 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-OS = platform.system()  # "Darwin" (Mac) or "Windows"
+OS = platform.system()  # "Darwin" (Mac), "Windows", or "Linux"
+
+def get_os_label():
+    """Return a human-readable OS name with version, e.g. 'macOS 14.5'."""
+    if OS == "Darwin":
+        ver = platform.mac_ver()[0]  # e.g. '14.5'
+        return f"macOS {ver}" if ver else "macOS"
+    if OS == "Windows":
+        ver = platform.win32_ver()  # (release, version, csd, ptype)
+        name = ver[0] or "Windows"  # e.g. '11' or '10'
+        build = ver[1].split(".")[-1] if ver[1] else ""
+        return f"Windows {name}" + (f" (build {build})" if build else "")
+    if OS == "Linux":
+        try:
+            info = platform.freedesktop_os_release()
+            return info.get("PRETTY_NAME") or info.get("NAME", "Linux")
+        except Exception:
+            return f"Linux {platform.release()}"
+    return OS
+
+OS_LABEL = get_os_label()  # e.g. "macOS 14.5"
 DEVICE_ID_FILE = "C:\\AppController\\.device_id" if OS == "Windows" else "/usr/local/appcontroller/.device_id"
 PAIRING_CODE_FILE = "C:\\AppController\\.pairing_code" if OS == "Windows" else "/usr/local/appcontroller/.pairing_code"
 ENROLLMENT_TOKEN_FILE = "C:\\AppController\\.enrollment_token" if OS == "Windows" else "/usr/local/appcontroller/.enrollment_token"
@@ -86,7 +106,7 @@ def register_device(device_id):
     data = {
         "device_id": device_id,
         "hostname": socket.gethostname(),
-        "os": OS,
+        "os": OS_LABEL,
         "last_seen": now_iso(),
     }
 
