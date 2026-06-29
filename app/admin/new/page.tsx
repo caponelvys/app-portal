@@ -3,6 +3,83 @@
 import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const KNOWN_APP_LOGOS: Record<string, string> = {
+  'Discord': 'discord.com',
+  'Notion': 'notion.so',
+  'Figma': 'figma.com',
+  'Spotify': 'spotify.com',
+  'Slack': 'slack.com',
+  'Zoom': 'zoom.us',
+  'WhatsApp': 'whatsapp.com',
+  'Telegram': 'telegram.org',
+  'Signal': 'signal.org',
+  'Skype': 'skype.com',
+  'Microsoft Teams': 'microsoft.com',
+  'Teams': 'microsoft.com',
+  'Outlook': 'microsoft.com',
+  'Word': 'microsoft.com',
+  'Excel': 'microsoft.com',
+  'PowerPoint': 'microsoft.com',
+  'OneNote': 'microsoft.com',
+  'Visual Studio Code': 'code.visualstudio.com',
+  'VS Code': 'code.visualstudio.com',
+  'Xcode': 'developer.apple.com',
+  'Android Studio': 'developer.android.com',
+  'Steam': 'store.steampowered.com',
+  'Epic Games': 'epicgames.com',
+  'Twitch': 'twitch.tv',
+  'OBS': 'obsproject.com',
+  'OBS Studio': 'obsproject.com',
+  'VLC': 'videolan.org',
+  'Plex': 'plex.tv',
+  '1Password': '1password.com',
+  'LastPass': 'lastpass.com',
+  'NordVPN': 'nordvpn.com',
+  'ExpressVPN': 'expressvpn.com',
+  'Dropbox': 'dropbox.com',
+  'OneDrive': 'microsoft.com',
+  'Google Drive': 'drive.google.com',
+  'Webex': 'webex.com',
+  'FaceTime': 'apple.com',
+  'Messages': 'apple.com',
+  'Safari': 'apple.com',
+  'Chrome': 'google.com/chrome',
+  'Firefox': 'mozilla.org',
+  'Opera': 'opera.com',
+  'Brave': 'brave.com',
+  'Arc': 'arc.net',
+  'Photoshop': 'adobe.com',
+  'Illustrator': 'adobe.com',
+  'Premiere': 'adobe.com',
+  'After Effects': 'adobe.com',
+  'Lightroom': 'adobe.com',
+  'Blender': 'blender.org',
+  'Unity': 'unity.com',
+  'Unreal Engine': 'unrealengine.com',
+  'Minecraft': 'minecraft.net',
+  'Roblox': 'roblox.com',
+  'Fortnite': 'epicgames.com',
+  'Valorant': 'playvalorant.com',
+  'League of Legends': 'leagueoflegends.com',
+  'Coinbase': 'coinbase.com',
+  'Binance': 'binance.com',
+  'Robinhood': 'robinhood.com',
+  'CapCut': 'capcut.com',
+  'Loom': 'loom.com',
+  'Grammarly': 'grammarly.com',
+  'Postman': 'postman.com',
+  'Insomnia': 'insomnia.rest',
+  'TablePlus': 'tableplus.com',
+  'Sequel Pro': 'sequelpro.com',
+  'GitHub Desktop': 'github.com',
+  'Sourcetree': 'sourcetreeapp.com',
+  'iTerm': 'iterm2.com',
+  'Terminal': 'apple.com',
+  'Alfred': 'alfredapp.com',
+  'AutoCAD': 'autodesk.com',
+  'Tower': 'git-tower.com',
+}
+
 const KNOWN_APPS: Record<string, string> = {
   'Discord': 'Discord',
   'Notion': 'Notion',
@@ -84,6 +161,7 @@ export default function NewAppPage() {
   const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '' })
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
+  const [autoIconUrl, setAutoIconUrl] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -95,7 +173,13 @@ export default function NewAppPage() {
     const updated = { ...form, name: value }
 
     const exact = KNOWN_APPS[value]
-    if (exact) updated.process_name = exact
+    if (exact) {
+      updated.process_name = exact
+      const domain = KNOWN_APP_LOGOS[value]
+      setAutoIconUrl(domain ? `https://logo.clearbit.com/${domain}` : null)
+    } else {
+      setAutoIconUrl(null)
+    }
 
     const matches = Object.keys(KNOWN_APPS).filter(k =>
       k.toLowerCase().startsWith(value.toLowerCase()) && value.length > 0
@@ -109,6 +193,8 @@ export default function NewAppPage() {
     setForm({ ...form, name, process_name: KNOWN_APPS[name] })
     setSuggestions([])
     setShowSuggestions(false)
+    const domain = KNOWN_APP_LOGOS[name]
+    setAutoIconUrl(domain ? `https://logo.clearbit.com/${domain}` : null)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -127,7 +213,7 @@ export default function NewAppPage() {
     setLoading(true)
     setError('')
 
-    let icon_url = null
+    let icon_url: string | null = autoIconUrl
 
     if (iconFile) {
       const ext = iconFile.name.split('.').pop()
@@ -197,7 +283,7 @@ export default function NewAppPage() {
               </div>
             )}
             {isKnown && (
-              <p className="text-xs text-green-500 mt-1">✓ Known app — process name auto-filled.</p>
+              <p className="text-xs text-green-500 mt-1">App recognized — process name filled in automatically.</p>
             )}
             {isCustom && (
               <p className="text-xs text-blue-400 mt-1">Custom app — enter the process name manually below.</p>
@@ -219,6 +305,8 @@ export default function NewAppPage() {
             <div className="flex items-center gap-4">
               {iconPreview ? (
                 <img src={iconPreview} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-gray-700" />
+              ) : autoIconUrl ? (
+                <img src={autoIconUrl} alt="app logo" className="w-12 h-12 rounded-lg object-contain bg-white p-1 border border-gray-700" />
               ) : (
                 <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-xl font-bold text-gray-400 border border-gray-700">
                   {form.name.charAt(0).toUpperCase() || '?'}
@@ -227,7 +315,7 @@ export default function NewAppPage() {
               <input type="file" accept="image/*" onChange={handleFileChange}
                 className="text-sm text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-gray-600 file:text-sm file:bg-gray-800 file:text-gray-300 hover:file:bg-gray-700" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Optional. Leave empty to show the app's initial letter.</p>
+            <p className="text-xs text-gray-500 mt-1">{autoIconUrl ? 'Logo auto-filled. Upload an image to override it.' : 'Optional. Leave empty to show the app\'s initial letter.'}</p>
           </div>
 
           <div>
