@@ -38,6 +38,7 @@ const KNOWN_APP_LOGOS: Record<string, string> = {
   'FaceTime': 'apple.com',
   'Messages': 'apple.com',
   'Safari': 'apple.com',
+  'Gmail': 'mail.google.com',
   'Chrome': 'google.com',
   'Firefox': 'mozilla.org',
   'Opera': 'opera.com',
