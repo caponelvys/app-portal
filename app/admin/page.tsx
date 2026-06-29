@@ -21,6 +21,11 @@ export default async function AdminPage() {
     .select('*')
     .order('name')
 
+  const { count: pendingRequests } = await supabase
+    .from('app_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+
   return (
     <div className="min-h-screen bg-gray-950">
       <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
@@ -45,6 +50,14 @@ export default async function AdminPage() {
             </a>
             <a href="/admin/devices?tab=activity" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Monitor
+            </a>
+            <a href="/admin/requests" className="relative bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+              Requests
+              {pendingRequests ? (
+                <span className="absolute -top-2 -right-2 bg-yellow-500 text-gray-900 text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                  {pendingRequests}
+                </span>
+              ) : null}
             </a>
             <a href="/admin/users" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Manage Users

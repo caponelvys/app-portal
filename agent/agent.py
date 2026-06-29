@@ -71,12 +71,54 @@ def heartbeat(device_id):
 def get_blocked_apps():
     """Fetch all blocked apps that have a process_name set."""
     resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/apps?status=eq.blocked&process_name=not.is.null&select=name,process_name",
+        f"{SUPABASE_URL}/rest/v1/apps?status=eq.blocked&process_name=not.is.null&select=id,name,process_name",
         headers=HEADERS,
     )
     if resp.status_code == 200:
         return resp.json()
     return []
+
+def get_device_user(device_id):
+    """Return the user_id that has claimed this device, or None if unclaimed."""
+    resp = requests.get(
+        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id",
+        headers=HEADERS,
+    )
+    if resp.status_code == 200 and resp.json():
+        return resp.json()[0].get("user_id")
+    return None
+
+def get_granted_app_ids(user_id):
+    """Return the set of app IDs this user has an active approved grant for.
+
+    A grant is active when status is 'approved' and it either never expires
+    (expires_at is null) or its expiry is still in the future.
+    """
+    if not user_id:
+        return set()
+    resp = requests.get(
+        f"{SUPABASE_URL}/rest/v1/app_requests"
+        f"?user_id=eq.{user_id}&status=eq.approved&select=app_id,expires_at",
+        headers=HEADERS,
+    )
+    if resp.status_code != 200:
+        return set()
+
+    granted = set()
+    now = datetime.now(timezone.utc)
+    for row in resp.json():
+        expires_at = row.get("expires_at")
+        if not expires_at:
+            granted.add(row["app_id"])
+            continue
+        try:
+            expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            if expiry > now:
+                granted.add(row["app_id"])
+        except (ValueError, AttributeError):
+            # Unparseable expiry — fail safe by NOT granting access.
+            pass
+    return granted
 
 def get_running_processes():
     """Return a set of currently running process names (lowercase)."""
@@ -126,6 +168,14 @@ def main():
         try:
             heartbeat(device_id)
             blocked_apps = get_blocked_apps()
+
+            # Per-user temporary access: if this device has been claimed by a
+            # user, don't kill apps that user has an active approved grant for.
+            owner_id = get_device_user(device_id)
+            granted_ids = get_granted_app_ids(owner_id)
+            if granted_ids:
+                blocked_apps = [a for a in blocked_apps if a.get("id") not in granted_ids]
+
             running = get_running_processes()
 
             for app in blocked_apps:
