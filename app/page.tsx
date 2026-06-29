@@ -7,6 +7,7 @@ type App = {
   description: string
   url: string
   icon: string
+  icon_url: string | null
 }
 
 export default async function DashboardPage() {
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
 
   const { data: apps } = await supabase
     .from('apps')
-    .select('id, name, description, url, icon')
+    .select('id, name, description, url, icon, icon_url')
     .eq('status', 'allowed')
     .order('name')
 
@@ -46,7 +47,11 @@ export default async function DashboardPage() {
                 rel="noopener noreferrer"
                 className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all flex flex-col items-center text-center gap-3"
               >
-                <span className="text-4xl">{app.icon}</span>
+                {app.icon_url ? (
+                  <img src={app.icon_url} alt={app.name} className="w-12 h-12 rounded-xl object-cover" />
+                ) : (
+                  <span className="text-4xl">{app.icon}</span>
+                )}
                 <div>
                   <p className="font-semibold text-gray-800">{app.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{app.description}</p>

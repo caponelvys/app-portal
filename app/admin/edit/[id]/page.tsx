@@ -7,6 +7,9 @@ import { useParams } from 'next/navigation'
 export default function EditAppPage() {
   const { id } = useParams()
   const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed' })
+  const [iconUrl, setIconUrl] = useState<string | null>(null)
+  const [iconFile, setIconFile] = useState<File | null>(null)
+  const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -14,7 +17,10 @@ export default function EditAppPage() {
   useEffect(() => {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
-      if (data) setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status })
+      if (data) {
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status })
+        setIconUrl(data.icon_url)
+      }
       setFetching(false)
     }
     load()
@@ -24,12 +30,38 @@ export default function EditAppPage() {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIconFile(file)
+    setIconPreview(URL.createObjectURL(file))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.from('apps').update(form).eq('id', id)
+    let icon_url = iconUrl
+
+    if (iconFile) {
+      const ext = iconFile.name.split('.').pop()
+      const fileName = `${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('app-icons')
+        .upload(fileName, iconFile)
+
+      if (uploadError) {
+        setError(uploadError.message)
+        setLoading(false)
+        return
+      }
+
+      const { data } = supabase.storage.from('app-icons').getPublicUrl(fileName)
+      icon_url = data.publicUrl
+    }
+
+    const { error } = await supabase.from('apps').update({ ...form, icon_url }).eq('id', id)
 
     if (error) {
       setError(error.message)
@@ -70,7 +102,25 @@ export default function EditAppPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Icon (emoji)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Icon Image</label>
+            <div className="flex items-center gap-4">
+              {iconPreview ? (
+                <img src={iconPreview} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+              ) : iconUrl ? (
+                <img src={iconUrl} alt="current icon" className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-2xl border border-gray-200">
+                  {form.icon}
+                </div>
+              )}
+              <input type="file" accept="image/*" onChange={handleFileChange}
+                className="text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-gray-200 file:text-sm file:bg-white file:text-gray-700 hover:file:bg-gray-50" />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Upload a new image to replace the current one.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fallback Emoji</label>
             <input name="icon" value={form.icon} onChange={handleChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
