@@ -5,6 +5,7 @@
 set -e
 
 AGENT_DIR="/usr/local/appcontroller"
+VENV_DIR="$AGENT_DIR/venv"
 PLIST="/Library/LaunchDaemons/com.appcontroller.agent.plist"
 
 echo "[install] Creating agent directory..."
@@ -12,8 +13,9 @@ mkdir -p "$AGENT_DIR"
 cp agent.py "$AGENT_DIR/agent.py"
 cp requirements.txt "$AGENT_DIR/requirements.txt"
 
-echo "[install] Installing Python dependencies..."
-pip3 install -r "$AGENT_DIR/requirements.txt" --quiet
+echo "[install] Creating Python virtual environment..."
+python3 -m venv "$VENV_DIR"
+"$VENV_DIR/bin/pip" install -r "$AGENT_DIR/requirements.txt" --quiet
 
 echo "[install] Creating launch daemon..."
 cat > "$PLIST" << EOF
@@ -25,8 +27,8 @@ cat > "$PLIST" << EOF
   <string>com.appcontroller.agent</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
-    <string>/usr/local/appcontroller/agent.py</string>
+    <string>$VENV_DIR/bin/python3</string>
+    <string>$AGENT_DIR/agent.py</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
