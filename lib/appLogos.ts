@@ -78,5 +78,5 @@ const KNOWN_APP_LOGOS: Record<string, string> = {
 export function getAppLogoUrl(name: string, iconUrl: string | null): string | null {
   if (iconUrl) return iconUrl
   const domain = KNOWN_APP_LOGOS[name]
-  return domain ? `https://logo.clearbit.com/${domain}` : null
+  return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null
 }

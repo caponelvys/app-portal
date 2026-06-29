@@ -176,7 +176,7 @@ export default function NewAppPage() {
     if (exact) {
       updated.process_name = exact
       const domain = KNOWN_APP_LOGOS[value]
-      setAutoIconUrl(domain ? `https://logo.clearbit.com/${domain}` : null)
+      setAutoIconUrl(domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null)
     } else {
       setAutoIconUrl(null)
     }
@@ -194,7 +194,7 @@ export default function NewAppPage() {
     setSuggestions([])
     setShowSuggestions(false)
     const domain = KNOWN_APP_LOGOS[name]
-    setAutoIconUrl(domain ? `https://logo.clearbit.com/${domain}` : null)
+    setAutoIconUrl(domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
