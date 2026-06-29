@@ -9,6 +9,8 @@ import sys
 import time
 import uuid
 import socket
+import string
+import secrets
 import platform
 import subprocess
 import requests
@@ -27,6 +29,11 @@ HEADERS = {
 
 OS = platform.system()  # "Darwin" (Mac) or "Windows"
 DEVICE_ID_FILE = "C:\\AppController\\.device_id" if OS == "Windows" else "/usr/local/appcontroller/.device_id"
+PAIRING_CODE_FILE = "C:\\AppController\\.pairing_code" if OS == "Windows" else "/usr/local/appcontroller/.pairing_code"
+PORTAL_URL = "https://appcontroller.vercel.app/devices"
+
+# Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
+PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 # ── Device identity ────────────────────────────────────────────────────────────
 def get_device_id():
@@ -66,6 +73,46 @@ def heartbeat(device_id):
         headers=HEADERS,
         json={"last_seen": now_iso()},
     )
+
+# ── Device pairing ──────────────────────────────────────────────────────────────
+def generate_pairing_code():
+    """Create a stable local pairing code, reusing the saved one if present."""
+    if os.path.exists(PAIRING_CODE_FILE):
+        with open(PAIRING_CODE_FILE, "r") as f:
+            existing = f.read().strip()
+            if existing:
+                return existing
+    code = "".join(secrets.choice(PAIRING_ALPHABET) for _ in range(6))
+    with open(PAIRING_CODE_FILE, "w") as f:
+        f.write(code)
+    return code
+
+def setup_pairing(device_id):
+    """If this device hasn't been claimed yet, publish a pairing code and show
+    the user how to claim it. Once claimed, the code is removed locally."""
+    resp = requests.get(
+        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id",
+        headers=HEADERS,
+    )
+    claimed = resp.status_code == 200 and resp.json() and resp.json()[0].get("user_id")
+
+    if claimed:
+        if os.path.exists(PAIRING_CODE_FILE):
+            os.remove(PAIRING_CODE_FILE)
+        print("[agent] Device is paired to a user — per-user access rules active.")
+        return
+
+    code = generate_pairing_code()
+    requests.patch(
+        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
+        headers=HEADERS,
+        json={"pairing_code": code},
+    )
+    print("\n" + "=" * 44)
+    print("  This device is not yet linked to a user.")
+    print(f"  Pairing code:  {code}")
+    print(f"  Enter it at:   {PORTAL_URL}")
+    print("=" * 44 + "\n")
 
 # ── App enforcement ────────────────────────────────────────────────────────────
 def get_blocked_apps():
@@ -163,6 +210,7 @@ def main():
     print(f"[agent] OS: {OS} | Polling every {POLL_INTERVAL}s")
 
     register_device(device_id)
+    setup_pairing(device_id)
 
     while True:
         try:

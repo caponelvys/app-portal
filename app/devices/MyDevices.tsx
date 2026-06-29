@@ -7,21 +7,24 @@ type Device = {
   hostname: string
   os: string
   last_seen: string
-  user_id: string | null
 }
 
 export default function MyDevices() {
   const [mine, setMine] = useState<Device[]>([])
-  const [unclaimed, setUnclaimed] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
+
+  // Pairing form
+  const [code, setCode] = useState('')
+  const [pairing, setPairing] = useState(false)
+  const [pairError, setPairError] = useState('')
+  const [pairSuccess, setPairSuccess] = useState('')
 
   async function load() {
     const res = await fetch('/api/my-devices')
     const data = await res.json()
     setMine(data.mine ?? [])
-    setUnclaimed(data.unclaimed ?? [])
     setLoading(false)
   }
 
@@ -32,20 +35,44 @@ export default function MyDevices() {
       .then(d => {
         if (!active) return
         setMine(d.mine ?? [])
-        setUnclaimed(d.unclaimed ?? [])
         setLoading(false)
       })
     return () => { active = false }
   }, [])
 
-  async function act(device_id: string, action: 'claim' | 'release') {
+  async function pair() {
+    setPairing(true)
+    setPairError('')
+    setPairSuccess('')
+    try {
+      const res = await fetch('/api/my-devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pair', code }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setPairError(data.error ?? 'Could not pair device')
+        return
+      }
+      setPairSuccess(`Paired ${data.hostname || 'device'} successfully.`)
+      setCode('')
+      await load()
+    } catch {
+      setPairError('Network error')
+    } finally {
+      setPairing(false)
+    }
+  }
+
+  async function release(device_id: string) {
     setBusy(device_id)
     setError('')
     try {
       const res = await fetch('/api/my-devices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id, action }),
+        body: JSON.stringify({ action: 'release', device_id }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -64,70 +91,61 @@ export default function MyDevices() {
 
   return (
     <div className="space-y-8">
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+      <section>
+        <h2 className="text-lg font-semibold text-white mb-1">Pair a device</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Run the agent on your computer, then enter the pairing code it shows here to link it to your account.
+        </p>
+        <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <input
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            placeholder="Enter pairing code"
+            maxLength={12}
+            className="flex-1 border border-gray-700 rounded-lg px-3 py-2 text-white bg-gray-800 tracking-widest font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={pair}
+            disabled={pairing || code.trim().length === 0}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium whitespace-nowrap"
+          >
+            {pairing ? 'Pairing...' : 'Pair device'}
+          </button>
+        </div>
+        {pairError && <p className="text-red-400 text-sm mt-2">{pairError}</p>}
+        {pairSuccess && <p className="text-green-400 text-sm mt-2">{pairSuccess}</p>}
+      </section>
 
       <section>
         <h2 className="text-lg font-semibold text-white mb-1">My devices</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Approved app access applies to the devices you claim here.
+          Approved app access applies to the devices linked here.
         </p>
+        {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
         {mine.length === 0 ? (
-          <p className="text-gray-500 text-sm">You haven&apos;t claimed any devices yet.</p>
+          <p className="text-gray-500 text-sm">No devices paired yet.</p>
         ) : (
           <div className="space-y-2">
             {mine.map(d => (
-              <DeviceRow key={d.device_id} device={d} busy={busy === d.device_id}
-                action="release" onAction={() => act(d.device_id, 'release')} />
+              <div key={d.device_id} className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-white font-medium truncate">{d.hostname || 'Unknown device'}</p>
+                  <p className="text-xs text-gray-500">
+                    {d.os} · last seen {new Date(d.last_seen).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => release(d.device_id)}
+                  disabled={busy === d.device_id}
+                  className="text-xs px-3 py-1.5 rounded-md border border-gray-700 text-gray-300 hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {busy === d.device_id ? '...' : 'Release'}
+                </button>
+              </div>
             ))}
           </div>
         )}
       </section>
-
-      {unclaimed.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-white mb-1">Unclaimed devices</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Devices running the agent that aren&apos;t linked to anyone yet. Claim the ones that are yours.
-          </p>
-          <div className="space-y-2">
-            {unclaimed.map(d => (
-              <DeviceRow key={d.device_id} device={d} busy={busy === d.device_id}
-                action="claim" onAction={() => act(d.device_id, 'claim')} />
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
-  )
-}
-
-function DeviceRow({
-  device, busy, action, onAction,
-}: {
-  device: Device
-  busy: boolean
-  action: 'claim' | 'release'
-  onAction: () => void
-}) {
-  return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-white font-medium truncate">{device.hostname || 'Unknown device'}</p>
-        <p className="text-xs text-gray-500">
-          {device.os} · last seen {new Date(device.last_seen).toLocaleString()}
-        </p>
-      </div>
-      <button
-        onClick={onAction}
-        disabled={busy}
-        className={
-          action === 'claim'
-            ? 'text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap'
-            : 'text-xs px-3 py-1.5 rounded-md border border-gray-700 text-gray-300 hover:bg-gray-800 disabled:opacity-50 whitespace-nowrap'
-        }
-      >
-        {busy ? '...' : action === 'claim' ? 'This is mine' : 'Release'}
-      </button>
     </div>
   )
 }
