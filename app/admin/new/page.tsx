@@ -1,91 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const KNOWN_PROCESSES: Record<string, string> = {
-  'discord': 'Discord',
-  'notion': 'Notion',
-  'figma': 'Figma',
-  'spotify': 'Spotify',
-  'slack': 'Slack',
-  'zoom': 'zoom.us',
-  'whatsapp': 'WhatsApp',
-  'telegram': 'Telegram',
-  'signal': 'Signal',
-  'skype': 'Skype',
-  'microsoft teams': 'Teams',
-  'teams': 'Teams',
-  'outlook': 'Microsoft Outlook',
-  'word': 'Microsoft Word',
-  'excel': 'Microsoft Excel',
-  'powerpoint': 'Microsoft PowerPoint',
-  'onenote': 'Microsoft OneNote',
-  'visual studio code': 'Electron',
-  'vs code': 'Electron',
-  'vscode': 'Electron',
-  'xcode': 'Xcode',
-  'android studio': 'studio',
-  'steam': 'steam',
-  'epic games': 'EpicGamesLauncher',
-  'twitch': 'Twitch',
-  'obs': 'obs',
-  'obs studio': 'obs',
-  'vlc': 'VLC',
-  'plex': 'Plex',
-  'spotify': 'Spotify',
-  '1password': '1Password 7',
-  'lastpass': 'LastPass',
-  'nordvpn': 'NordVPN',
-  'expressvpn': 'ExpressVPN',
-  'dropbox': 'Dropbox',
-  'onedrive': 'OneDrive',
-  'google drive': 'Google Drive',
-  'zoom': 'zoom.us',
-  'webex': 'Webex',
-  'facetime': 'FaceTime',
-  'imessage': 'Messages',
-  'messages': 'Messages',
-  'mail': 'Mail',
-  'safari': 'Safari',
-  'chrome': 'Google Chrome',
-  'firefox': 'firefox',
-  'opera': 'Opera',
-  'brave': 'Brave Browser',
-  'arc': 'Arc',
-  'tor': 'firefox',
-  'adobe photoshop': 'Adobe Photoshop',
-  'photoshop': 'Adobe Photoshop',
-  'illustrator': 'Adobe Illustrator',
-  'premiere': 'Adobe Premiere Pro',
-  'after effects': 'After Effects',
-  'lightroom': 'Adobe Lightroom',
-  'autocad': 'acad',
-  'blender': 'Blender',
-  'unity': 'Unity',
-  'unreal': 'UnrealEditor',
-  'minecraft': 'java',
-  'roblox': 'RobloxPlayer',
-  'fortnite': 'FortniteClient',
-  'valorant': 'VALORANT',
-  'league of legends': 'LeagueClient',
-  'coinbase': 'Coinbase',
-  'binance': 'Binance',
-  'robinhood': 'Robinhood',
-  'capcut': 'CapCut',
-  'loom': 'Loom',
-  'grammarly': 'Grammarly Desktop',
-  'alfred': 'Alfred',
-  'bartender': 'Bartender 4',
-  'iterm': 'iTerm2',
-  'terminal': 'Terminal',
-  'postman': 'Postman',
-  'insomnia': 'Insomnia',
-  'tableplus': 'TablePlus',
-  'sequel pro': 'Sequel Pro',
-  'sourcetree': 'SourceTree',
-  'github desktop': 'GitHub Desktop',
-  'tower': 'Tower',
+const KNOWN_APPS: Record<string, string> = {
+  'Discord': 'Discord',
+  'Notion': 'Notion',
+  'Figma': 'Figma',
+  'Spotify': 'Spotify',
+  'Slack': 'Slack',
+  'Zoom': 'zoom.us',
+  'WhatsApp': 'WhatsApp',
+  'Telegram': 'Telegram',
+  'Signal': 'Signal',
+  'Skype': 'Skype',
+  'Microsoft Teams': 'Teams',
+  'Teams': 'Teams',
+  'Outlook': 'Microsoft Outlook',
+  'Word': 'Microsoft Word',
+  'Excel': 'Microsoft Excel',
+  'PowerPoint': 'Microsoft PowerPoint',
+  'OneNote': 'Microsoft OneNote',
+  'Visual Studio Code': 'Electron',
+  'VS Code': 'Electron',
+  'Xcode': 'Xcode',
+  'Android Studio': 'studio',
+  'Steam': 'steam',
+  'Epic Games': 'EpicGamesLauncher',
+  'Twitch': 'Twitch',
+  'OBS': 'obs',
+  'OBS Studio': 'obs',
+  'VLC': 'VLC',
+  'Plex': 'Plex',
+  '1Password': '1Password 7',
+  'LastPass': 'LastPass',
+  'NordVPN': 'NordVPN',
+  'ExpressVPN': 'ExpressVPN',
+  'Dropbox': 'Dropbox',
+  'OneDrive': 'OneDrive',
+  'Google Drive': 'Google Drive',
+  'Webex': 'Webex',
+  'FaceTime': 'FaceTime',
+  'Messages': 'Messages',
+  'Safari': 'Safari',
+  'Chrome': 'Google Chrome',
+  'Firefox': 'firefox',
+  'Opera': 'Opera',
+  'Brave': 'Brave Browser',
+  'Arc': 'Arc',
+  'Photoshop': 'Adobe Photoshop',
+  'Illustrator': 'Adobe Illustrator',
+  'Premiere': 'Adobe Premiere Pro',
+  'After Effects': 'After Effects',
+  'Lightroom': 'Adobe Lightroom',
+  'Blender': 'Blender',
+  'Unity': 'Unity',
+  'Unreal Engine': 'UnrealEditor',
+  'Minecraft': 'java',
+  'Roblox': 'RobloxPlayer',
+  'Fortnite': 'FortniteClient',
+  'Valorant': 'VALORANT',
+  'League of Legends': 'LeagueClient',
+  'Coinbase': 'Coinbase',
+  'Binance': 'Binance',
+  'Robinhood': 'Robinhood',
+  'CapCut': 'CapCut',
+  'Loom': 'Loom',
+  'Grammarly': 'Grammarly Desktop',
+  'Postman': 'Postman',
+  'Insomnia': 'Insomnia',
+  'TablePlus': 'TablePlus',
+  'Sequel Pro': 'Sequel Pro',
+  'GitHub Desktop': 'GitHub Desktop',
+  'Sourcetree': 'SourceTree',
+  'iTerm': 'iTerm2',
+  'Terminal': 'Terminal',
+  'Alfred': 'Alfred',
+  'AutoCAD': 'acad',
+  'Tower': 'Tower',
 }
 
 export default function NewAppPage() {
@@ -94,14 +86,33 @@ export default function NewAppPage() {
   const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const nameRef = useRef<HTMLDivElement>(null)
+
+  function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    const updated = { ...form, name: value }
+
+    const exact = KNOWN_APPS[value]
+    if (exact) updated.process_name = exact
+
+    const matches = Object.keys(KNOWN_APPS).filter(k =>
+      k.toLowerCase().startsWith(value.toLowerCase()) && value.length > 0
+    )
+    setSuggestions(matches)
+    setShowSuggestions(matches.length > 0 && !exact)
+    setForm(updated)
+  }
+
+  function selectSuggestion(name: string) {
+    setForm({ ...form, name, process_name: KNOWN_APPS[name] })
+    setSuggestions([])
+    setShowSuggestions(false)
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    const updated = { ...form, [e.target.name]: e.target.value }
-    if (e.target.name === 'name') {
-      const match = KNOWN_PROCESSES[e.target.value.toLowerCase().trim()]
-      if (match) updated.process_name = match
-    }
-    setForm(updated)
+    setForm({ ...form, [e.target.name]: e.target.value })
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -145,6 +156,8 @@ export default function NewAppPage() {
     }
   }
 
+  const isKnown = !!KNOWN_APPS[form.name]
+  const isCustom = form.name.length > 0 && !isKnown && suggestions.length === 0
   const inputClass = "w-full border border-gray-700 rounded-lg px-3 py-2 text-white bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
 
   return (
@@ -157,9 +170,38 @@ export default function NewAppPage() {
         <h1 className="text-2xl font-bold text-white mb-6">Add New App</h1>
 
         <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
-          <div>
+          <div className="relative" ref={nameRef}>
             <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-            <input name="name" value={form.name} onChange={handleChange} required className={inputClass} />
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleNameChange}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              required
+              autoComplete="off"
+              className={inputClass}
+            />
+            {showSuggestions && (
+              <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                {suggestions.slice(0, 6).map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onMouseDown={() => selectSuggestion(name)}
+                    className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 flex items-center justify-between"
+                  >
+                    <span>{name}</span>
+                    <span className="text-xs text-gray-500">{KNOWN_APPS[name]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {isKnown && (
+              <p className="text-xs text-green-500 mt-1">✓ Known app — process name auto-filled.</p>
+            )}
+            {isCustom && (
+              <p className="text-xs text-blue-400 mt-1">Custom app — enter the process name manually below.</p>
+            )}
           </div>
 
           <div>
@@ -192,11 +234,7 @@ export default function NewAppPage() {
             <label className="block text-sm font-medium text-gray-300 mb-1">Process Name</label>
             <input name="process_name" value={form.process_name} onChange={handleChange}
               placeholder="e.g. Spotify or Spotify.exe" className={inputClass} />
-            <p className="text-xs text-gray-500 mt-1">
-              {KNOWN_PROCESSES[form.name.toLowerCase().trim()]
-                ? '✓ Auto-filled based on app name. You can override it.'
-                : 'The exact process name the agent will watch for. Leave empty if you only want this as a portal link.'}
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Leave empty for web-only apps like Gmail or Google Drive.</p>
           </div>
 
           <div>
