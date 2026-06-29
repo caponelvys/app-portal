@@ -32,7 +32,7 @@ export default async function AdminDevicesPage() {
       <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm">← Apps</a>
-          <h1 className="text-xl font-bold text-white">Devices</h1>
+          <h1 className="text-xl font-bold text-white">Monitor</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>

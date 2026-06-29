@@ -41,7 +41,7 @@ export default async function AdminPage() {
           <h2 className="text-xl sm:text-2xl font-semibold text-white">All Apps</h2>
           <div className="flex flex-wrap gap-2">
             <a href="/admin/devices" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Devices
+              Monitor
             </a>
             <a href="/admin/users" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Manage Users
