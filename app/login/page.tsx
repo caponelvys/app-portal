@@ -27,34 +27,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Sign in</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-950">
+      <div className="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-md w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-white">Sign in</h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              className="w-full border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-800"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              className="w-full border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-800"
             />
           </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button
             type="submit"
@@ -65,9 +65,12 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-sm text-gray-600 text-center">
+        <p className="mt-4 text-sm text-gray-400 text-center">
           Don&apos;t have an account?{' '}
-          <a href="/signup" className="text-blue-600 hover:underline">Sign up</a>
+          <a href="/signup" className="text-blue-400 hover:underline">Sign up</a>
+        </p>
+        <p className="mt-2 text-sm text-gray-400 text-center">
+          <a href="/reset-password" className="text-blue-400 hover:underline">Forgot password?</a>
         </p>
       </div>
     </div>

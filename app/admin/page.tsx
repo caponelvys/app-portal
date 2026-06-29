@@ -8,7 +8,6 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Check if user is admin
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
@@ -17,22 +16,21 @@ export default async function AdminPage() {
 
   if (profile?.role !== 'admin') redirect('/')
 
-  // Fetch ALL apps (admin sees everything)
   const { data: apps } = await supabase
     .from('apps')
     .select('*')
     .order('name')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-950">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <a href="/" className="text-gray-400 hover:text-gray-600 text-sm">← Portal</a>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-800">Admin</h1>
+          <a href="/" className="text-gray-500 hover:text-gray-300 text-sm">← Portal</a>
+          <h1 className="text-lg sm:text-xl font-bold text-white">Admin</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500 hidden sm:block truncate max-w-[200px]">{user.email}</span>
-          <a href="/auth/signout" className="text-sm text-gray-500 hover:text-gray-800 underline whitespace-nowrap">
+          <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{user.email}</span>
+          <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline whitespace-nowrap">
             Sign out
           </a>
         </div>
@@ -40,24 +38,15 @@ export default async function AdminPage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">All Apps</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-white">All Apps</h2>
           <div className="flex flex-wrap gap-2">
-            <a
-              href="/admin/devices"
-              className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
-            >
+            <a href="/admin/devices" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Devices
             </a>
-            <a
-              href="/admin/users"
-              className="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium"
-            >
+            <a href="/admin/users" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Manage Users
             </a>
-            <a
-              href="/admin/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
-            >
+            <a href="/admin/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
               + Add App
             </a>
           </div>

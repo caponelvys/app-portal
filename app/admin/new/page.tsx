@@ -55,74 +55,70 @@ export default function NewAppPage() {
     }
   }
 
+  const inputClass = "w-full border border-gray-700 rounded-lg px-3 py-2 text-white bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <a href="/admin" className="text-gray-400 hover:text-gray-600 text-sm">← Back to Admin</a>
+    <div className="min-h-screen bg-gray-950">
+      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4">
+        <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm">← Back to Admin</a>
       </header>
 
-      <main className="max-w-lg mx-auto px-6 py-10">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New App</h1>
+      <main className="max-w-lg mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <h1 className="text-2xl font-bold text-white mb-6">Add New App</h1>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input name="name" value={form.name} onChange={handleChange} required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+            <input name="name" value={form.name} onChange={handleChange} required className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea name="description" value={form.description} onChange={handleChange} rows={2}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+            <textarea name="description" value={form.description} onChange={handleChange} rows={2} className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-            <input name="url" value={form.url} onChange={handleChange} required type="url"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-sm font-medium text-gray-300 mb-1">URL</label>
+            <input name="url" value={form.url} onChange={handleChange} required type="url" className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Icon Image</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Icon Image</label>
             <div className="flex items-center gap-4">
               {iconPreview ? (
-                <img src={iconPreview} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+                <img src={iconPreview} alt="preview" className="w-12 h-12 rounded-lg object-cover border border-gray-700" />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-2xl border border-gray-200">
+                <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center text-2xl border border-gray-700">
                   {form.icon}
                 </div>
               )}
               <input type="file" accept="image/*" onChange={handleFileChange}
-                className="text-sm text-gray-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-gray-200 file:text-sm file:bg-white file:text-gray-700 hover:file:bg-gray-50" />
+                className="text-sm text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border file:border-gray-600 file:text-sm file:bg-gray-800 file:text-gray-300 hover:file:bg-gray-700" />
             </div>
-            <p className="text-xs text-gray-400 mt-1">Upload an image, or leave empty to use the emoji below.</p>
+            <p className="text-xs text-gray-500 mt-1">Upload an image, or leave empty to use the emoji below.</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fallback Emoji</label>
-            <input name="icon" value={form.icon} onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="block text-sm font-medium text-gray-300 mb-1">Fallback Emoji</label>
+            <input name="icon" value={form.icon} onChange={handleChange} className={inputClass} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Process Name</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Process Name</label>
             <input name="process_name" value={form.process_name} onChange={handleChange}
-              placeholder="e.g. Spotify or Spotify.exe"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <p className="text-xs text-gray-400 mt-1">The exact process name the agent will watch for. Leave empty if you only want this as a portal link.</p>
+              placeholder="e.g. Spotify or Spotify.exe" className={inputClass} />
+            <p className="text-xs text-gray-500 mt-1">The exact process name the agent will watch for. Leave empty if you only want this as a portal link.</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select name="status" value={form.status} onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
+            <select name="status" value={form.status} onChange={handleChange} className={inputClass}>
               <option value="allowed">Allowed</option>
               <option value="blocked">Blocked</option>
             </select>
           </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button type="submit" disabled={loading}
             className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
