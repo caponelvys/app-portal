@@ -3,6 +3,91 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const KNOWN_PROCESSES: Record<string, string> = {
+  'discord': 'Discord',
+  'notion': 'Notion',
+  'figma': 'Figma',
+  'spotify': 'Spotify',
+  'slack': 'Slack',
+  'zoom': 'zoom.us',
+  'whatsapp': 'WhatsApp',
+  'telegram': 'Telegram',
+  'signal': 'Signal',
+  'skype': 'Skype',
+  'microsoft teams': 'Teams',
+  'teams': 'Teams',
+  'outlook': 'Microsoft Outlook',
+  'word': 'Microsoft Word',
+  'excel': 'Microsoft Excel',
+  'powerpoint': 'Microsoft PowerPoint',
+  'onenote': 'Microsoft OneNote',
+  'visual studio code': 'Electron',
+  'vs code': 'Electron',
+  'vscode': 'Electron',
+  'xcode': 'Xcode',
+  'android studio': 'studio',
+  'steam': 'steam',
+  'epic games': 'EpicGamesLauncher',
+  'twitch': 'Twitch',
+  'obs': 'obs',
+  'obs studio': 'obs',
+  'vlc': 'VLC',
+  'plex': 'Plex',
+  'spotify': 'Spotify',
+  '1password': '1Password 7',
+  'lastpass': 'LastPass',
+  'nordvpn': 'NordVPN',
+  'expressvpn': 'ExpressVPN',
+  'dropbox': 'Dropbox',
+  'onedrive': 'OneDrive',
+  'google drive': 'Google Drive',
+  'zoom': 'zoom.us',
+  'webex': 'Webex',
+  'facetime': 'FaceTime',
+  'imessage': 'Messages',
+  'messages': 'Messages',
+  'mail': 'Mail',
+  'safari': 'Safari',
+  'chrome': 'Google Chrome',
+  'firefox': 'firefox',
+  'opera': 'Opera',
+  'brave': 'Brave Browser',
+  'arc': 'Arc',
+  'tor': 'firefox',
+  'adobe photoshop': 'Adobe Photoshop',
+  'photoshop': 'Adobe Photoshop',
+  'illustrator': 'Adobe Illustrator',
+  'premiere': 'Adobe Premiere Pro',
+  'after effects': 'After Effects',
+  'lightroom': 'Adobe Lightroom',
+  'autocad': 'acad',
+  'blender': 'Blender',
+  'unity': 'Unity',
+  'unreal': 'UnrealEditor',
+  'minecraft': 'java',
+  'roblox': 'RobloxPlayer',
+  'fortnite': 'FortniteClient',
+  'valorant': 'VALORANT',
+  'league of legends': 'LeagueClient',
+  'coinbase': 'Coinbase',
+  'binance': 'Binance',
+  'robinhood': 'Robinhood',
+  'capcut': 'CapCut',
+  'loom': 'Loom',
+  'grammarly': 'Grammarly Desktop',
+  'alfred': 'Alfred',
+  'bartender': 'Bartender 4',
+  'iterm': 'iTerm2',
+  'terminal': 'Terminal',
+  'postman': 'Postman',
+  'insomnia': 'Insomnia',
+  'tableplus': 'TablePlus',
+  'sequel pro': 'Sequel Pro',
+  'sourcetree': 'SourceTree',
+  'github desktop': 'GitHub Desktop',
+  'tower': 'Tower',
+}
+
 export default function NewAppPage() {
   const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '' })
   const [iconFile, setIconFile] = useState<File | null>(null)
@@ -11,7 +96,12 @@ export default function NewAppPage() {
   const [loading, setLoading] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const updated = { ...form, [e.target.name]: e.target.value }
+    if (e.target.name === 'name') {
+      const match = KNOWN_PROCESSES[e.target.value.toLowerCase().trim()]
+      if (match) updated.process_name = match
+    }
+    setForm(updated)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -102,7 +192,11 @@ export default function NewAppPage() {
             <label className="block text-sm font-medium text-gray-300 mb-1">Process Name</label>
             <input name="process_name" value={form.process_name} onChange={handleChange}
               placeholder="e.g. Spotify or Spotify.exe" className={inputClass} />
-            <p className="text-xs text-gray-500 mt-1">The exact process name the agent will watch for. Leave empty if you only want this as a portal link.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {KNOWN_PROCESSES[form.name.toLowerCase().trim()]
+                ? '✓ Auto-filled based on app name. You can override it.'
+                : 'The exact process name the agent will watch for. Leave empty if you only want this as a portal link.'}
+            </p>
           </div>
 
           <div>
