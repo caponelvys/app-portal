@@ -120,7 +120,7 @@ export default async function AdminDevicesPage() {
               Linux Installer
             </a>
           </div>
-          <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Install via Command Line</p>
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Install via Terminal</p>
           <InstallCommands />
         </div>
 
