@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { isOnline, offlineThresholdIso } from '@/lib/deviceStatus'
+import EnrollmentPanel from './EnrollmentPanel'
 
 const PAGE_SIZE = 25
 
@@ -21,7 +22,7 @@ export default async function LocationDetailPage({
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') redirect('/')
 
-  const { data: location } = await supabase.from('locations').select('id, name, org_id').eq('id', locId).single()
+  const { data: location } = await supabase.from('locations').select('id, name, org_id, enrollment_token').eq('id', locId).single()
   if (!location) notFound()
   const { data: org } = await supabase.from('orgs').select('id, name').eq('id', location.org_id).single()
 
@@ -59,6 +60,11 @@ export default async function LocationDetailPage({
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-3">Enroll devices</h2>
+          <EnrollmentPanel locationId={location.id} initialToken={location.enrollment_token} />
+        </section>
+
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-semibold text-white">Devices</h2>

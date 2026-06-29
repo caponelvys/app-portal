@@ -31,6 +31,7 @@ HEADERS = {
 OS = platform.system()  # "Darwin" (Mac) or "Windows"
 DEVICE_ID_FILE = "C:\\AppController\\.device_id" if OS == "Windows" else "/usr/local/appcontroller/.device_id"
 PAIRING_CODE_FILE = "C:\\AppController\\.pairing_code" if OS == "Windows" else "/usr/local/appcontroller/.pairing_code"
+ENROLLMENT_TOKEN_FILE = "C:\\AppController\\.enrollment_token" if OS == "Windows" else "/usr/local/appcontroller/.enrollment_token"
 PORTAL_URL = "https://appcontroller.vercel.app/devices"
 
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
@@ -50,15 +51,53 @@ def get_device_id():
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
+def get_enrollment_token():
+    """Read the location enrollment token from --token (saved on first run) or
+    the token file written by the installer."""
+    if "--token" in sys.argv:
+        try:
+            token = sys.argv[sys.argv.index("--token") + 1].strip()
+            if token:
+                with open(ENROLLMENT_TOKEN_FILE, "w") as f:
+                    f.write(token)
+                return token
+        except IndexError:
+            pass
+    if os.path.exists(ENROLLMENT_TOKEN_FILE):
+        with open(ENROLLMENT_TOKEN_FILE, "r") as f:
+            return f.read().strip() or None
+    return None
+
+def resolve_location(token):
+    """Look up the org/location a token belongs to. Returns {id, org_id} or None."""
+    if not token:
+        return None
+    resp = requests.get(
+        f"{SUPABASE_URL}/rest/v1/locations?enrollment_token=eq.{token}&select=id,org_id",
+        headers=HEADERS,
+    )
+    if resp.status_code == 200 and resp.json():
+        return resp.json()[0]
+    return None
+
 def register_device(device_id):
-    """Tell Supabase this device is enrolled."""
+    """Tell Supabase this device is enrolled, placing it in the right
+    org/location if an enrollment token is present."""
     data = {
         "device_id": device_id,
         "hostname": socket.gethostname(),
         "os": OS,
         "last_seen": now_iso(),
     }
-    # Upsert — insert if new, update last_seen if existing
+
+    location = resolve_location(get_enrollment_token())
+    if location:
+        data["location_id"] = location["id"]
+        data["org_id"] = location["org_id"]
+        print(f"[agent] Enrolled into org {location['org_id']} / location {location['id']}")
+
+    # Upsert — insert if new, update if existing. org/location keys are only
+    # included when a token resolves, so we never clobber an existing placement.
     resp = requests.post(
         f"{SUPABASE_URL}/rest/v1/devices?on_conflict=device_id",
         headers={**HEADERS, "Prefer": "resolution=merge-duplicates"},
