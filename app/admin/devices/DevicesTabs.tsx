@@ -34,8 +34,8 @@ function deviceHostname(devices: Device[], deviceId: string) {
   return devices.find(d => d.device_id === deviceId)?.hostname ?? deviceId.slice(0, 8) + '...'
 }
 
-export default function DevicesTabs({ devices, logs }: { devices: Device[], logs: Log[] }) {
-  const [tab, setTab] = useState<'devices' | 'activity' | 'install'>('devices')
+export default function DevicesTabs({ devices, logs, defaultTab = 'devices' }: { devices: Device[], logs: Log[], defaultTab?: string }) {
+  const [tab, setTab] = useState<'devices' | 'activity' | 'install'>(defaultTab as 'devices' | 'activity' | 'install')
 
   const tabClass = (t: string) =>
     `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${

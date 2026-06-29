@@ -40,7 +40,10 @@ export default async function AdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-white">All Apps</h2>
           <div className="flex flex-wrap gap-2">
-            <a href="/admin/devices" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+            <a href="/admin/devices?tab=devices" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+              Devices
+            </a>
+            <a href="/admin/devices?tab=activity" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Monitor
             </a>
             <a href="/admin/users" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
