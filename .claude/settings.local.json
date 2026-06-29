@@ -19,7 +19,9 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(gh repo *)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Bash(git push *)",
+      "Bash(mkdir -p \"/Users/roidzer/App Controllor Project/app/admin/new\" && mkdir -p \"/Users/roidzer/App Controllor Project/app/admin/edit/[id]\")"
     ]
   }
 }
