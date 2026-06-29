@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import UsersTable from './UsersTable'
+import PendingInvites from './PendingInvites'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
@@ -41,6 +42,7 @@ export default async function AdminUsersPage() {
             + Invite User
           </a>
         </div>
+        <PendingInvites />
         <UsersTable users={users ?? []} currentUserId={user.id} />
       </main>
     </div>
