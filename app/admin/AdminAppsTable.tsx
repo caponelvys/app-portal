@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getAppLogoUrl } from '@/lib/appLogos'
 
 type App = {
   id: string
@@ -9,6 +10,7 @@ type App = {
   description: string
   url: string
   icon: string
+  icon_url: string | null
   status: 'allowed' | 'blocked'
 }
 
@@ -59,9 +61,13 @@ export default function AdminAppsTable({ apps: initial }: { apps: App[] }) {
             <tr key={app.id} className="border-b border-gray-800 hover:bg-gray-800">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-sm font-bold text-gray-400 border border-gray-700 shrink-0">
-                    {app.name.charAt(0).toUpperCase()}
-                  </div>
+                  {getAppLogoUrl(app.name, app.icon_url) ? (
+                    <img src={getAppLogoUrl(app.name, app.icon_url)!} alt={app.name} className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 border border-gray-700 shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-sm font-bold text-gray-400 border border-gray-700 shrink-0">
+                      {app.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <p className="font-medium text-white">{app.name}</p>
                     <p className="text-xs text-gray-500">{app.description}</p>

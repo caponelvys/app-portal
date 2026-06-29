@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getAppLogoUrl } from '@/lib/appLogos'
 
 type App = {
   id: string
@@ -60,8 +61,8 @@ export default async function DashboardPage() {
                 rel="noopener noreferrer"
                 className="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-blue-500 hover:bg-gray-800 transition-all flex flex-col items-center text-center gap-3"
               >
-                {app.icon_url ? (
-                  <img src={app.icon_url} alt={app.name} className="w-12 h-12 rounded-xl object-cover" />
+                {getAppLogoUrl(app.name, app.icon_url) ? (
+                  <img src={getAppLogoUrl(app.name, app.icon_url)!} alt={app.name} className="w-12 h-12 rounded-xl object-contain bg-white p-1" />
                 ) : (
                   <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-xl font-bold text-gray-400 border border-gray-700">
                     {app.name.charAt(0).toUpperCase()}
