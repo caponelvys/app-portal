@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import InstallCommands from './InstallCommands'
 
 export default async function AdminDevicesPage() {
   const supabase = await createClient()
@@ -103,8 +104,9 @@ export default async function AdminDevicesPage() {
         {/* Download agent */}
         <div>
           <h2 className="text-2xl font-semibold text-white mb-2">Install Agent</h2>
-          <p className="text-sm text-gray-500 mb-4">Download and run the agent installer on any device you want to enroll.</p>
-          <div className="flex flex-wrap gap-3">
+          <p className="text-sm text-gray-500 mb-4">Download the installer or run a command directly in your terminal.</p>
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Download</p>
+          <div className="flex flex-wrap gap-3 mb-6">
             <a href="/downloads/install_mac.sh" download
               className="bg-gray-800 border border-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
               Mac Installer
@@ -118,6 +120,8 @@ export default async function AdminDevicesPage() {
               Python Script (No Installer)
             </a>
           </div>
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Install via Command Line</p>
+          <InstallCommands />
         </div>
 
         {/* Recent enforcement logs */}
