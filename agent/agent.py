@@ -143,11 +143,16 @@ def generate_pairing_code():
 def setup_pairing(device_id):
     """If this device hasn't been claimed yet, publish a pairing code and show
     the user how to claim it. Once claimed, the code is removed locally."""
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id",
-        headers=HEADERS,
-    )
-    claimed = resp.status_code == 200 and resp.json() and resp.json()[0].get("user_id")
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id",
+            headers=HEADERS,
+            timeout=10,
+        )
+        claimed = resp.status_code == 200 and resp.json() and resp.json()[0].get("user_id")
+    except Exception as e:
+        print(f"[agent] Warning: pairing check failed ({e}), assuming unclaimed")
+        claimed = False
 
     if claimed:
         if os.path.exists(PAIRING_CODE_FILE):
@@ -156,11 +161,15 @@ def setup_pairing(device_id):
         return
 
     code = generate_pairing_code()
-    requests.patch(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
-        headers=HEADERS,
-        json={"pairing_code": code},
-    )
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
+            headers=HEADERS,
+            json={"pairing_code": code},
+            timeout=10,
+        )
+    except Exception:
+        pass
     print("\n" + "=" * 44)
     print("  This device is not yet linked to a user.")
     print(f"  Pairing code:  {code}")
