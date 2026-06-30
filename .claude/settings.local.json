@@ -54,7 +54,21 @@
       "Bash(grep -v \"^\\\\s*$\")",
       "Bash(sudo launchctl list)",
       "Bash(curl -s \"https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?select=hostname,last_seen,os&order=last_seen.desc&limit=3\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8\")",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(grep -n \"min-h-screen\\\\|<header\\\\|</header>\\\\|<main\\\\|</main>\\\\|</div>.*}$\" \"/Users/roidzer/App Controllor Project/app/admin/devices/[deviceId]/page.tsx\")",
+      "Bash(xargs cat)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X PATCH https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?device_id=eq.test-id -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8' -H 'Content-Type: application/json' -d '{\"last_seen\": \"2026-06-29T00:00:00Z\"}')",
+      "Bash(curl -s 'https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?select=device_id,hostname,last_seen&limit=5' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8')",
+      "Bash(curl -sI \"https://appcontroller.vercel.app/downloads/agent.py\")",
+      "Bash(git -C \"/Users/roidzer/App Controllor Project\" log --oneline -- 'public/downloads/agent.py')",
+      "Bash(curl -s 'https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?select=device_id,hostname,last_seen,os&limit=5' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8')",
+      "Bash(sed -i '' \"s/'Clients'/'Organizations'/g\" \\\\ *)",
+      "Bash(sed -i '' \\\\ *)",
+      "Bash(sed -i '' 's/className=\"section-label\"/className=\"text-sm font-semibold text-gray-400 uppercase tracking-wide\"/g' \"/Users/roidzer/App Controllor Project/app/admin/page.tsx\")",
+      "Bash(sed -i '' 's/className=\"card overflow-hidden\"/className=\"bg-gray-900 rounded-xl border border-gray-800 overflow-hidden\"/g' \"/Users/roidzer/App Controllor Project/app/admin/page.tsx\")",
+      "Bash(sed -i '' 's/className=\"card p-5/className=\"bg-gray-900 rounded-xl border border-gray-800 p-5/g' \"/Users/roidzer/App Controllor Project/app/admin/page.tsx\")",
+      "Bash(npm install *)",
+      "Bash(npm ls *)"
     ]
   }
 }

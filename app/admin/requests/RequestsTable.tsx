@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { durationLabel, isGrantActive, expiresInLabel } from '@/lib/durations'
+import DataTable, { ColDef } from '@/app/admin/DataTable'
 
 type Request = {
   id: string
@@ -166,28 +167,17 @@ export default function RequestsTable() {
       {history.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold text-white mb-3">History</h2>
-          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm min-w-[600px]">
-              <thead className="bg-gray-800 border-b border-gray-700">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">App</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">User</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">Requested</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map(req => (
-                  <tr key={req.id} className="border-b border-gray-800">
-                    <td className="px-4 py-3 text-white">{req.app_name}</td>
-                    <td className="px-4 py-3 text-gray-400">{req.user_email ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{durationLabel(req.duration)}</td>
-                    <td className="px-4 py-3"><StatusBadge req={req} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            storageId="requests-history-table"
+            rows={history}
+            rowKey={r => r.id}
+            columns={[
+              { id: 'app',       label: 'App',       defaultWidth: 180, sortValue: r => r.app_name,    renderCell: r => <span className="text-white">{r.app_name}</span> },
+              { id: 'user',      label: 'User',      defaultWidth: 200, sortValue: r => r.user_email ?? '', renderCell: r => <span className="text-gray-400">{r.user_email ?? '—'}</span> },
+              { id: 'requested', label: 'Requested', defaultWidth: 140, sortValue: r => r.duration,    renderCell: r => <span className="text-gray-500">{durationLabel(r.duration)}</span> },
+              { id: 'status',    label: 'Status',    defaultWidth: 160, sortValue: r => r.status,      renderCell: r => <StatusBadge req={r} /> },
+            ] as ColDef<Request>[]}
+          />
         </section>
       )}
     </div>

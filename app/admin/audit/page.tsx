@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { durationLabel } from '@/lib/durations'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import ExportMenu from './ExportMenu'
+import AuditTable from './AuditTable'
 
 type AuditEvent = {
   time: string
@@ -100,38 +101,7 @@ export default async function AuditLogPage() {
           </p>
           <ExportMenu orgs={orgs ?? []} />
         </div>
-        {recent.length === 0 ? (
-          <p className="text-gray-500 text-sm">No activity yet.</p>
-        ) : (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-gray-800 border-b border-gray-700">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">When</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">Event</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">App</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">Who</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-400">Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((e, i) => (
-                  <tr key={i} className="border-b border-gray-800">
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{new Date(e.time).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${KIND_STYLES[e.kind]}`}>
-                        {KIND_LABELS[e.kind]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white">{e.app}</td>
-                    <td className="px-4 py-3 text-gray-300">{e.actor}</td>
-                    <td className="px-4 py-3 text-gray-500">{e.detail}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <AuditTable events={recent} />
     </div>
   )
 }
