@@ -11,7 +11,7 @@ const ROLES = [
   { value: 'client_user',  label: 'Org Tech — view own org, request access' },
 ]
 
-const CLIENT_ROLES = ['client_admin', 'client_user']
+const ROLES_NEEDING_ORG = ['msp_tech', 'client_admin', 'client_user']
 
 export default function InviteForm({ orgs }: { orgs: Org[] }) {
   const [email, setEmail] = useState('')
@@ -21,7 +21,7 @@ export default function InviteForm({ orgs }: { orgs: Org[] }) {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const needsOrg = CLIENT_ROLES.includes(role)
+  const needsOrg = ROLES_NEEDING_ORG.includes(role)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
