@@ -62,9 +62,9 @@ function getSidebar(pathname: string) {
   for (const key of keys) {
     if (pathname === key || pathname.startsWith(key + '/') || pathname.startsWith(key + '?')) {
       const sidebar = SIDEBARS[key]
-      // Resolve Install Agent link to org-specific URL when we can extract an orgId
       const orgMatch = pathname.match(/\/admin\/orgs\/([^/]+)/)
       if (orgMatch) {
+        // Inside a specific org — resolve Install Agent to that org's install page
         const orgId = orgMatch[1]
         return {
           ...sidebar,
@@ -75,7 +75,11 @@ function getSidebar(pathname: string) {
           ),
         }
       }
-      return sidebar
+      // On the orgs list or devices pages without an org context — hide Install Agent
+      return {
+        ...sidebar,
+        items: sidebar.items.filter(item => item.label !== 'Install Agent'),
+      }
     }
   }
   return null
