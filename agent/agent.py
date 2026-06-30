@@ -22,6 +22,7 @@ PORTAL_URL   = "https://appcontroller.vercel.app"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
+AGENT_VERSION = "1.1.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -115,13 +116,34 @@ def register_device(device_id):
     else:
         print(f"[agent] Enroll failed: {resp.status_code} {resp.text}")
 
-def heartbeat(device_id):
-    """Update last_seen timestamp so the portal knows the agent is alive."""
+def get_local_ip():
+    """Return the machine's outbound IP address."""
     try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return None
+
+def heartbeat(device_id):
+    """Update last_seen, agent version, and IP so the portal has current info."""
+    try:
+        payload = {
+            "last_seen":     now_iso(),
+            "agent_version": AGENT_VERSION,
+        }
+        ip = get_local_ip()
+        if ip:
+            payload["ip_address"] = ip
         requests.patch(
             f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
             headers=HEADERS,
-            json={"last_seen": now_iso()},
+            json=payload,
             timeout=5,
         )
     except Exception:

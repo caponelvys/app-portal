@@ -12,7 +12,10 @@ export default async function AdminDevicesPage() {
 
   const orgIds = await getAccessibleOrgIds(supabase, profile)
 
-  let devQ = supabase.from('devices').select('*').order('last_seen', { ascending: false })
+  let devQ = supabase
+    .from('devices')
+    .select('*, locations(name), orgs(name)')
+    .order('last_seen', { ascending: false })
   if (orgIds !== null) devQ = devQ.in('org_id', orgIds.length ? orgIds : ['00000000-0000-0000-0000-000000000000'])
 
   const { data: devices } = await devQ
