@@ -3,28 +3,30 @@ import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import DashboardLayout from './DashboardLayout'
 
-const HEALTHY_MS = 2 * 60 * 1000
-const WARNING_MS = 24 * 60 * 60 * 1000
-const STALE_MS   = 30 * 24 * 60 * 60 * 1000
-const LOST_MS    = 90 * 24 * 60 * 60 * 1000
+const HEALTHY_MS  = 2  * 60 * 1000
+const INACTIVE_MS = 14 * 24 * 60 * 60 * 1000   // 2 weeks
+const WARNING_MS  = 30 * 24 * 60 * 60 * 1000   // 30 days
+const STALE_MS    = 90 * 24 * 60 * 60 * 1000   // 90 days
 
-type HealthTier = 'healthy' | 'warning' | 'stale' | 'lost' | 'never'
+type HealthTier = 'healthy' | 'inactive' | 'warning' | 'stale' | 'lost' | 'never'
 
 function getHealth(lastSeen: string | null): HealthTier {
   if (!lastSeen) return 'never'
   const age = Date.now() - new Date(lastSeen).getTime()
-  if (age < HEALTHY_MS) return 'healthy'
-  if (age < WARNING_MS) return 'warning'
-  if (age < LOST_MS)    return 'stale'
+  if (age < HEALTHY_MS)  return 'healthy'
+  if (age < INACTIVE_MS) return 'inactive'
+  if (age < WARNING_MS)  return 'warning'
+  if (age < STALE_MS)    return 'stale'
   return 'lost'
 }
 
 const HEALTH_META: Record<HealthTier, { label: string; dot: string; bar: string; text: string }> = {
-  healthy: { label: 'Healthy',    dot: 'bg-green-500',  bar: 'bg-green-500',  text: 'text-green-400' },
-  warning: { label: 'Warning',    dot: 'bg-yellow-500', bar: 'bg-yellow-400', text: 'text-yellow-400' },
-  stale:   { label: 'Stale',      dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-400' },
-  lost:    { label: 'Lost',       dot: 'bg-red-600',    bar: 'bg-red-600',    text: 'text-red-400' },
-  never:   { label: 'Never seen', dot: 'bg-gray-600',   bar: 'bg-gray-600',   text: 'text-gray-500' },
+  healthy:  { label: 'Healthy',    dot: 'bg-green-500',  bar: 'bg-green-500',  text: 'text-green-400'  },
+  inactive: { label: 'Inactive',   dot: 'bg-blue-400',   bar: 'bg-blue-400',   text: 'text-blue-400'   },
+  warning:  { label: 'Warning',    dot: 'bg-yellow-500', bar: 'bg-yellow-400', text: 'text-yellow-400' },
+  stale:    { label: 'Stale',      dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-400' },
+  lost:     { label: 'Lost',       dot: 'bg-red-600',    bar: 'bg-red-600',    text: 'text-red-400'    },
+  never:    { label: 'Never seen', dot: 'bg-gray-600',   bar: 'bg-gray-600',   text: 'text-gray-500'   },
 }
 
 export default async function AdminDashboard() {
@@ -52,10 +54,10 @@ export default async function AdminDashboard() {
   const devList = devices ?? []
   const totalDevices = devList.length
 
-  const tiers: Record<HealthTier, typeof devList> = { healthy: [], warning: [], stale: [], lost: [], never: [] }
+  const tiers: Record<HealthTier, typeof devList> = { healthy: [], inactive: [], warning: [], stale: [], lost: [], never: [] }
   for (const d of devList) tiers[getHealth(d.last_seen)].push(d)
 
-  const attentionDevices = [...tiers.warning, ...tiers.stale, ...tiers.lost, ...tiers.never]
+  const attentionDevices = [...tiers.inactive, ...tiers.warning, ...tiers.stale, ...tiers.lost, ...tiers.never]
     .sort((a, b) => (b.last_seen ?? '').localeCompare(a.last_seen ?? ''))
     .slice(0, 5)
 
@@ -76,7 +78,7 @@ export default async function AdminDashboard() {
   const agentHealth = (
     <Widget title="Agent Health">
       <div className="space-y-4">
-        {(['healthy', 'warning', 'stale', 'lost', 'never'] as HealthTier[]).map(tier => {
+        {(['healthy', 'inactive', 'warning', 'stale', 'lost', 'never'] as HealthTier[]).map(tier => {
           const count = tiers[tier].length
           const meta = HEALTH_META[tier]
           const pct = totalDevices > 0 ? (count / totalDevices) * 100 : 0
@@ -96,7 +98,7 @@ export default async function AdminDashboard() {
           )
         })}
         <p className="text-xs text-gray-600 pt-1 border-t border-gray-800">
-          Healthy &lt;2 min · Warning &lt;24 hr · Stale &lt;90 days · Lost &gt;3 months
+          Healthy &lt;2 min · Inactive no heartbeat 15+ min · Warning &gt;2 weeks · Stale &gt;30 days · Lost &gt;3 months
         </p>
       </div>
     </Widget>
