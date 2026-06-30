@@ -33,7 +33,7 @@ export default async function OrgPoliciesPage({ params }: { params: Promise<{ or
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <Breadcrumbs items={[
-        { label: 'Clients', href: '/admin/orgs' },
+        { label: 'Organizations', href: '/admin/orgs' },
         { label: org.name, href: `/admin/orgs/${org.id}` },
         { label: 'Policies' },
       ]} />

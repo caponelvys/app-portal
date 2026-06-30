@@ -33,7 +33,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <Breadcrumbs items={[{ label: 'Clients', href: '/admin/orgs' }, { label: org.name }]} />
+      <Breadcrumbs items={[{ label: 'Organizations', href: '/admin/orgs' }, { label: org.name }]} />
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-semibold text-white">Locations</h2>
           <div className="flex items-center gap-2">

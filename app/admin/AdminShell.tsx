@@ -7,7 +7,7 @@ import GlobalSearch from './GlobalSearch'
 
 const PRIMARY_NAV = [
   { label: 'Dashboard', href: '/admin', exact: true },
-  { label: 'Clients',   href: '/admin/orgs' },
+  { label: 'Organizations',   href: '/admin/orgs' },
   { label: 'Devices',   href: '/admin/devices' },
   { label: 'Monitor',   href: '/admin/devices?tab=activity' },
   { label: 'Apps',      href: '/admin/apps' },
@@ -28,10 +28,10 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
     { label: 'All Apps', href: '/admin/apps' },
     { label: 'Add App',  href: '/admin/new' },
   ]},
-  '/admin/orgs': { title: 'Clients', items: [
+  '/admin/orgs': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
   ]},
-  '/admin/locations': { title: 'Clients', items: [
+  '/admin/locations': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
   ]},
   '/admin/devices': { title: 'Devices', items: [

@@ -50,7 +50,7 @@ export default async function LocationDetailPage({
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Breadcrumbs items={[
-        { label: 'Clients', href: '/admin/orgs' },
+        { label: 'Organizations', href: '/admin/orgs' },
         ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
         { label: location.name },
       ]} />

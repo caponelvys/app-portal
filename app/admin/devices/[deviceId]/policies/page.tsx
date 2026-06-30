@@ -44,7 +44,7 @@ export default async function DevicePoliciesPage({ params }: { params: Promise<{
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <Breadcrumbs items={[
-        { label: 'Clients', href: '/admin/orgs' },
+        { label: 'Organizations', href: '/admin/orgs' },
         ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
         ...(location ? [{ label: location.name, href: `/admin/locations/${location.id}` }] : []),
         { label: device.hostname || 'Device', href: `/admin/devices/${device.device_id}` },
