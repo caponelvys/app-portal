@@ -27,6 +27,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default function UsersTable({ users: initial, currentUserId, userId }: { users: Profile[], currentUserId: string, userId?: string }) {
   const [users, setUsers] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
+  const [mfaBusy, setMfaBusy] = useState<string | null>(null)
 
   async function toggleRole(user: Profile) {
     if (user.id === currentUserId) return
@@ -36,6 +37,25 @@ export default function UsersTable({ users: initial, currentUserId, userId }: { 
     const { error } = await supabase.from('profiles').update({ role: newRole, role_v2: newRoleV2 }).eq('id', user.id)
     if (!error) setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole, role_v2: newRoleV2 } : u))
     setLoading(null)
+  }
+
+  async function resetMfa(user: Profile) {
+    if (!confirm(`Reset 2FA for ${user.email}? They'll be signed out and must set it up again.`)) return
+    setMfaBusy(user.id)
+    try {
+      const res = await fetch('/api/admin/reset-mfa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) alert(data.error ?? 'Failed to reset 2FA')
+      else alert(data.removed ? '2FA reset.' : 'No 2FA was enrolled.')
+    } catch {
+      alert('Network error')
+    } finally {
+      setMfaBusy(null)
+    }
   }
 
   const columns: ColDef<Profile>[] = [
@@ -68,14 +88,22 @@ export default function UsersTable({ users: initial, currentUserId, userId }: { 
       renderCell: u => <span className="text-gray-500 text-xs">{new Date(u.created_at).toLocaleDateString()}</span>,
     },
     {
-      id: 'actions', label: 'Actions', defaultWidth: 160, sortable: false,
-      renderCell: u => u.id === currentUserId ? (
-        <span className="text-xs text-gray-600">—</span>
-      ) : (
-        <button onClick={() => toggleRole(u)} disabled={loading === u.id}
-          className="text-xs px-3 py-1 rounded-md border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-50">
-          {loading === u.id ? 'Saving...' : u.role === 'admin' ? 'Remove admin' : 'Make admin'}
-        </button>
+      id: 'actions', label: 'Actions', defaultWidth: 240, sortable: false,
+      renderCell: u => (
+        <div className="flex items-center gap-2">
+          {u.id === currentUserId ? (
+            <span className="text-xs text-gray-600">—</span>
+          ) : (
+            <button onClick={() => toggleRole(u)} disabled={loading === u.id}
+              className="text-xs px-3 py-1 rounded-md border border-gray-700 text-gray-300 hover:bg-gray-700 disabled:opacity-50">
+              {loading === u.id ? 'Saving...' : u.role === 'admin' ? 'Remove admin' : 'Make admin'}
+            </button>
+          )}
+          <button onClick={() => resetMfa(u)} disabled={mfaBusy === u.id}
+            className="text-xs px-3 py-1 rounded-md border border-gray-700 text-gray-400 hover:bg-gray-700 disabled:opacity-50">
+            {mfaBusy === u.id ? '...' : 'Reset 2FA'}
+          </button>
+        </div>
       ),
     },
   ]

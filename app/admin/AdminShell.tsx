@@ -143,6 +143,9 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
           >
             Users
           </Link>
+          <a href="/account/security" className="hidden sm:inline text-xs text-gray-400 hover:text-white transition-colors">
+            Security
+          </a>
           <a href="/auth/signout" className="text-xs text-gray-400 hover:text-white transition-colors">
             Sign out
           </a>

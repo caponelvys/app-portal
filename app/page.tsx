@@ -91,6 +91,9 @@ export default async function DashboardPage() {
           <a href="/devices" className="text-sm text-gray-400 hover:text-gray-200 font-medium whitespace-nowrap">
             My Devices
           </a>
+          <a href="/account/security" className="text-sm text-gray-400 hover:text-gray-200 font-medium whitespace-nowrap">
+            Security
+          </a>
           {isAdmin && (
             <a href="/admin" className="text-sm text-blue-400 hover:text-blue-300 font-medium whitespace-nowrap">
               Admin

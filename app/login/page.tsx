@@ -21,6 +21,13 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
       setLoading(false)
+      return
+    }
+
+    // If the account has 2FA enrolled, the session is still aal1 — go verify.
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') {
+      window.location.href = '/login/mfa'
     } else {
       window.location.href = '/'
     }
@@ -66,10 +73,6 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-4 text-sm text-gray-400 text-center">
-          Don&apos;t have an account?{' '}
-          <a href="/signup" className="text-blue-400 hover:underline">Sign up</a>
-        </p>
-        <p className="mt-2 text-sm text-gray-400 text-center">
           <a href="/reset-password" className="text-blue-400 hover:underline">Forgot password?</a>
         </p>
       </div>
