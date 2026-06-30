@@ -367,7 +367,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
     <div className="space-y-3">
       <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToHorizontalAxis]} onDragEnd={handleDragEnd}>
         <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-x-auto">
-          <table className="w-full text-sm min-w-[1200px]">
+          <table className="w-full text-sm min-w-[1400px]">
             <thead className="bg-gray-800 border-b border-gray-700 group/header">
               <SortableContext items={cols} strategy={horizontalListSortingStrategy}>
                 <tr>
