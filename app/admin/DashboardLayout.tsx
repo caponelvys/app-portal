@@ -125,17 +125,9 @@ export default function DashboardLayout({
     try { localStorage.removeItem(storageKey(userId)) } catch {}
   }
 
-  if (!mounted) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {DEFAULT_ORDER.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
-      </div>
-    )
-  }
-
   return (
     <div>
-      {/* Toolbar */}
+      {/* Toolbar — always rendered to avoid hydration mismatch */}
       <div className="flex items-center justify-between mb-4">
         {editing ? (
           <p className="text-xs text-blue-400">Drag the blue bar on any widget to reorder it.</p>
@@ -164,33 +156,40 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      <DndContext
-        id={dndId}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={order} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {order.map(id =>
-              widgets[id] ? (
-                <SortableWidget key={id} id={id} editing={editing}>
-                  {widgets[id]}
-                </SortableWidget>
-              ) : null
-            )}
-          </div>
-        </SortableContext>
-
-        <DragOverlay>
-          {activeId && widgets[activeId] ? (
-            <div className="opacity-90 rotate-1 scale-105 shadow-2xl ring-2 ring-blue-500 rounded-xl">
-              {widgets[activeId]}
+      {/* Before mount: static grid (no drag context) */}
+      {!mounted ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {DEFAULT_ORDER.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
+        </div>
+      ) : (
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={order} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {order.map(id =>
+                widgets[id] ? (
+                  <SortableWidget key={id} id={id} editing={editing}>
+                    {widgets[id]}
+                  </SortableWidget>
+                ) : null
+              )}
             </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+          </SortableContext>
+
+          <DragOverlay>
+            {activeId && widgets[activeId] ? (
+              <div className="opacity-90 rotate-1 scale-105 shadow-2xl ring-2 ring-blue-500 rounded-xl">
+                {widgets[activeId]}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
     </div>
   )
 }
