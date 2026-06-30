@@ -34,7 +34,7 @@ export default async function AdminAppsPage() {
           </a>
         </div>
       </div>
-      <AdminAppsTable apps={apps ?? []} />
+      <AdminAppsTable apps={apps ?? []} userId={profile.id} />
     </div>
   )
 }

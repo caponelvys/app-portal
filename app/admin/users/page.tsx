@@ -32,8 +32,8 @@ export default async function AdminUsersPage() {
           + Invite User
         </a>
       </div>
-      <PendingInvites />
-      <UsersTable users={users ?? []} currentUserId={callerProfile.id} />
+      <PendingInvites userId={callerProfile.id} />
+      <UsersTable users={users ?? []} currentUserId={callerProfile.id} userId={callerProfile.id} />
     </div>
   )
 }

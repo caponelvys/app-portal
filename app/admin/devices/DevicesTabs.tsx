@@ -31,14 +31,14 @@ type SortDir = 'asc' | 'desc' | null
 
 const DEFAULT_COLS: ColId[] = ['hostname', 'os', 'status', 'lastSeen']
 const DEFAULT_WIDTHS: Record<ColId, number> = { hostname: 220, os: 140, status: 120, lastSeen: 180 }
-const WIDTH_STORAGE = 'devices-col-widths'
+const widthKey = (uid: string) => `devices-col-widths:${uid}`
 const COL_LABELS: Record<ColId, string> = {
   hostname: 'Hostname',
   os: 'OS',
   status: 'Status',
   lastSeen: 'Last Seen',
 }
-const COL_STORAGE = 'devices-col-order'
+const orderKey = (uid: string) => `devices-col-order:${uid}`
 
 function osLabel(os: string) {
   if (os === 'Darwin') return 'macOS'
@@ -179,7 +179,7 @@ function SortableHeader({
   )
 }
 
-export default function DevicesTabs({ devices }: { devices: Device[] }) {
+export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Device[]; userId?: string }) {
   const [cols, setCols] = useState<ColId[]>(DEFAULT_COLS)
   const [widths, setWidths] = useState<Record<ColId, number>>(DEFAULT_WIDTHS)
   const resizingRef = useRef<{ col: ColId; startX: number; startW: number } | null>(null)
@@ -192,14 +192,14 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(COL_STORAGE)
+      const saved = localStorage.getItem(orderKey(userId))
       if (saved) {
         const parsed: ColId[] = JSON.parse(saved)
         if (parsed.every(c => DEFAULT_COLS.includes(c))) setCols(parsed)
       }
     } catch {}
     try {
-      const saved = localStorage.getItem(WIDTH_STORAGE)
+      const saved = localStorage.getItem(widthKey(userId))
       if (saved) setWidths({ ...DEFAULT_WIDTHS, ...JSON.parse(saved) })
     } catch {}
 
@@ -212,7 +212,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
     function onMouseUp() {
       if (!resizingRef.current) return
       setWidths(prev => {
-        try { localStorage.setItem(WIDTH_STORAGE, JSON.stringify(prev)) } catch {}
+        try { localStorage.setItem(widthKey(userId), JSON.stringify(prev)) } catch {}
         return prev
       })
       resizingRef.current = null
@@ -233,7 +233,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
     if (!over || active.id === over.id) return
     setCols(prev => {
       const next = arrayMove(prev, prev.indexOf(active.id as ColId), prev.indexOf(over.id as ColId))
-      try { localStorage.setItem(COL_STORAGE, JSON.stringify(next)) } catch {}
+      try { localStorage.setItem(orderKey(userId), JSON.stringify(next)) } catch {}
       return next
     })
   }

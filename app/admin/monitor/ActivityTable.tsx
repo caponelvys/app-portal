@@ -4,7 +4,7 @@ import DataTable, { ColDef } from '@/app/admin/DataTable'
 
 type Log = { id: string; app_name: string; action: string; created_at: string; device_id: string }
 
-export default function ActivityTable({ logs, hostnameById }: { logs: Log[]; hostnameById: Record<string, string> }) {
+export default function ActivityTable({ logs, hostnameById, userId }: { logs: Log[]; hostnameById: Record<string, string>; userId?: string }) {
   const columns: ColDef<Log>[] = [
     {
       id: 'app', label: 'App', defaultWidth: 180, sortValue: r => r.app_name,

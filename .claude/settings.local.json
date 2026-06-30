@@ -68,7 +68,17 @@
       "Bash(sed -i '' 's/className=\"card overflow-hidden\"/className=\"bg-gray-900 rounded-xl border border-gray-800 overflow-hidden\"/g' \"/Users/roidzer/App Controllor Project/app/admin/page.tsx\")",
       "Bash(sed -i '' 's/className=\"card p-5/className=\"bg-gray-900 rounded-xl border border-gray-800 p-5/g' \"/Users/roidzer/App Controllor Project/app/admin/page.tsx\")",
       "Bash(npm install *)",
-      "Bash(npm ls *)"
+      "Bash(npm ls *)",
+      "Bash(sed -i '' 's/export default function AdminAppsTable\\({ apps: initial }: { apps: App\\\\[\\\\] }\\)/export default function AdminAppsTable\\({ apps: initial, userId }: { apps: App[]; userId?: string }\\)/' \"/Users/roidzer/App Controllor Project/app/admin/AdminAppsTable.tsx\")",
+      "Bash(sed -i '' 's/<DataTable storageId=\"apps-table\"/<DataTable storageId=\"apps-table\" userId={userId}/' \"/Users/roidzer/App Controllor Project/app/admin/AdminAppsTable.tsx\")",
+      "Bash(sed -i '' 's/export default function UsersTable\\({ users: initial, currentUserId }: { users: Profile\\\\[\\\\], currentUserId: string }\\)/export default function UsersTable\\({ users: initial, currentUserId, userId }: { users: Profile[], currentUserId: string, userId?: string }\\)/' \"/Users/roidzer/App Controllor Project/app/admin/users/UsersTable.tsx\")",
+      "Bash(sed -i '' 's/<DataTable storageId=\"users-table\"/<DataTable storageId=\"users-table\" userId={userId}/' \"/Users/roidzer/App Controllor Project/app/admin/users/UsersTable.tsx\")",
+      "Bash(sed -i '' 's/export default function PendingInvites\\(\\)/export default function PendingInvites\\({ userId }: { userId?: string }\\)/' \"/Users/roidzer/App Controllor Project/app/admin/users/PendingInvites.tsx\")",
+      "Bash(sed -i '' 's/<AdminAppsTable apps={apps ?? \\\\[\\\\]} \\\\/>/<AdminAppsTable apps={apps ?? []} userId={profile.id} \\\\/>/' \"/Users/roidzer/App Controllor Project/app/admin/apps/page.tsx\")",
+      "Bash(sed -i '' 's/<PendingInvites \\\\/>/<PendingInvites userId={callerProfile.id} \\\\/>/' \"/Users/roidzer/App Controllor Project/app/admin/users/page.tsx\")",
+      "Bash(sed -i '' 's/<UsersTable users={users ?? \\\\[\\\\]} currentUserId={callerProfile.id} \\\\/>/<UsersTable users={users ?? []} currentUserId={callerProfile.id} userId={callerProfile.id} \\\\/>/' \"/Users/roidzer/App Controllor Project/app/admin/users/page.tsx\")",
+      "Bash(sed -i '' 's/<ActivityTable logs={logs ?? \\\\[\\\\]} hostnameById={hostnameById} \\\\/>/<ActivityTable logs={logs ?? []} hostnameById={hostnameById} userId={profile.id} \\\\/>/' \"/Users/roidzer/App Controllor Project/app/admin/monitor/page.tsx\")",
+      "Bash(sed -i '' 's/<AuditTable events={recent} \\\\/>/<AuditTable events={recent} userId={profile.id} \\\\/>/' \"/Users/roidzer/App Controllor Project/app/admin/audit/page.tsx\")"
     ]
   }
 }

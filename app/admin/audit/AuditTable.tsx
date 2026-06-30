@@ -28,10 +28,10 @@ const columns: ColDef<AuditEvent>[] = [
   { id: 'detail', label: 'Detail', defaultWidth: 240, sortValue: r => r.detail, renderCell: r => <span className="text-gray-500">{r.detail}</span> },
 ]
 
-export default function AuditTable({ events }: { events: AuditEvent[] }) {
+export default function AuditTable({ events, userId }: { events: AuditEvent[]; userId?: string }) {
   return (
     <DataTable
-      storageId="audit-table"
+      storageId="audit-table" userId={userId}
       columns={columns}
       rows={events}
       rowKey={r => r.time + r.actor + r.kind}

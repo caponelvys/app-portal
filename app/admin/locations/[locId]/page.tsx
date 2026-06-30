@@ -85,7 +85,7 @@ export default async function LocationDetailPage({
           </div>
         </div>
 
-        <DevicesTable devices={devices ?? []} />
+        <DevicesTable devices={devices ?? []} userId={user.id} />
         {total > PAGE_SIZE && (
           <div className="flex items-center justify-between mt-4 text-sm text-gray-400">
             <span>{total} device{total === 1 ? '' : 's'} · page {page} of {totalPages}</span>

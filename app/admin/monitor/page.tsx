@@ -20,7 +20,7 @@ export default async function MonitorPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Monitor</h1>
-      <ActivityTable logs={logs ?? []} hostnameById={hostnameById} />
+      <ActivityTable logs={logs ?? []} hostnameById={hostnameById} userId={profile.id} />
     </div>
   )
 }

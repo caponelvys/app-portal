@@ -24,7 +24,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin', user: 'Org Tech',
 }
 
-export default function UsersTable({ users: initial, currentUserId }: { users: Profile[], currentUserId: string }) {
+export default function UsersTable({ users: initial, currentUserId, userId }: { users: Profile[], currentUserId: string, userId?: string }) {
   const [users, setUsers] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -76,5 +76,5 @@ export default function UsersTable({ users: initial, currentUserId }: { users: P
     },
   ]
 
-  return <DataTable storageId="users-table" columns={columns} rows={users} rowKey={r => r.id} emptyMessage="No users found." />
+  return <DataTable storageId="users-table" userId={userId} columns={columns} rows={users} rowKey={r => r.id} emptyMessage="No users found." />
 }

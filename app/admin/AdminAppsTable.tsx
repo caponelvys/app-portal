@@ -15,7 +15,7 @@ type App = {
   status: 'allowed' | 'blocked'
 }
 
-export default function AdminAppsTable({ apps: initial }: { apps: App[] }) {
+export default function AdminAppsTable({ apps: initial, userId }: { apps: App[]; userId?: string }) {
   const [apps, setApps] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -89,7 +89,7 @@ export default function AdminAppsTable({ apps: initial }: { apps: App[] }) {
 
   return (
     <>
-      <DataTable storageId="apps-table" columns={columns} rows={apps} rowKey={r => r.id} emptyMessage="No apps yet. Add one above." />
+      <DataTable storageId="apps-table" userId={userId} columns={columns} rows={apps} rowKey={r => r.id} emptyMessage="No apps yet. Add one above." />
     </>
   )
 }

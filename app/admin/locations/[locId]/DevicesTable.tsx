@@ -36,10 +36,10 @@ const columns: ColDef<Device>[] = [
   },
 ]
 
-export default function DevicesTable({ devices }: { devices: Device[] }) {
+export default function DevicesTable({ devices, userId }: { devices: Device[]; userId?: string }) {
   return (
     <DataTable
-      storageId="location-devices-table"
+      storageId="location-devices-table" userId={userId}
       columns={columns}
       rows={devices}
       rowKey={r => r.device_id}

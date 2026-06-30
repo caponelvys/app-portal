@@ -6,7 +6,7 @@ import DataTable, { ColDef } from '@/app/admin/DataTable'
 type PendingUser = { id: string; email: string; invited_at: string; role: string }
 type RowState = { action: 'resend' | 'cancel'; status: 'working' | 'done' | 'error'; message?: string }
 
-export default function PendingInvites() {
+export default function PendingInvites({ userId }: { userId?: string }) {
   const [pending, setPending] = useState<PendingUser[]>([])
   const [loading, setLoading] = useState(true)
   const [rowState, setRowState] = useState<Record<string, RowState>>({})
@@ -89,7 +89,7 @@ export default function PendingInvites() {
         Pending Invites
         <span className="ml-2 text-xs text-yellow-500 bg-yellow-900 px-2 py-0.5 rounded-full">{pending.length}</span>
       </h3>
-      <DataTable storageId="pending-invites-table" columns={columns} rows={pending} rowKey={r => r.id} />
+      <DataTable storageId="pending-invites-table" userId={userId} columns={columns} rows={pending} rowKey={r => r.id} />
     </div>
   )
 }

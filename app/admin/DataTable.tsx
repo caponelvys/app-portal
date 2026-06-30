@@ -93,12 +93,14 @@ function SortableHeader({
 
 export default function DataTable<T>({
   storageId,
+  userId,
   columns,
   rows,
   emptyMessage = 'No data.',
   rowKey,
 }: {
   storageId: string
+  userId?: string
   columns: ColDef<T>[]
   rows: T[]
   emptyMessage?: string
@@ -113,13 +115,15 @@ export default function DataTable<T>({
   const [sortDir, setSortDir] = useState<SortDir>(null)
   const resizingRef = useRef<{ id: string; startX: number; startW: number } | null>(null)
 
+  const key = (suffix: string) => `dt-${suffix}:${storageId}:${userId ?? 'anon'}`
+
   useEffect(() => {
     try {
-      const o = localStorage.getItem(`dt-order:${storageId}`)
+      const o = localStorage.getItem(key('order'))
       if (o) { const p: string[] = JSON.parse(o); if (p.every(id => defaultIds.includes(id))) setColOrder(p) }
     } catch {}
     try {
-      const w = localStorage.getItem(`dt-widths:${storageId}`)
+      const w = localStorage.getItem(key('widths'))
       if (w) setWidths(prev => ({ ...prev, ...JSON.parse(w) }))
     } catch {}
 
@@ -131,7 +135,7 @@ export default function DataTable<T>({
     function onUp() {
       if (!resizingRef.current) return
       setWidths(prev => {
-        try { localStorage.setItem(`dt-widths:${storageId}`, JSON.stringify(prev)) } catch {}
+        try { localStorage.setItem(key('widths'), JSON.stringify(prev)) } catch {}
         return prev
       })
       resizingRef.current = null
@@ -150,7 +154,7 @@ export default function DataTable<T>({
     if (!over || active.id === over.id) return
     setColOrder(prev => {
       const next = arrayMove(prev, prev.indexOf(active.id as string), prev.indexOf(over.id as string))
-      try { localStorage.setItem(`dt-order:${storageId}`, JSON.stringify(next)) } catch {}
+      try { localStorage.setItem(key('order'), JSON.stringify(next)) } catch {}
       return next
     })
   }

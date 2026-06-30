@@ -101,7 +101,7 @@ export default async function AuditLogPage() {
           </p>
           <ExportMenu orgs={orgs ?? []} />
         </div>
-        <AuditTable events={recent} />
+        <AuditTable events={recent} userId={profile.id} />
     </div>
   )
 }
