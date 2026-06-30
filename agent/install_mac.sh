@@ -60,6 +60,7 @@ cat > "$PLIST" << EOF
 EOF
 
 echo "[install] Starting agent service..."
+launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
 
 echo "[install] Done! Agent is running."
