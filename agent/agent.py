@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 # ── Config ────────────────────────────────────────────────────────────────────
 SUPABASE_URL = "https://fdnqjwezvkcpwckyqmbg.supabase.co"
+PORTAL_URL   = "https://appcontroller.vercel.app"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
@@ -88,43 +89,31 @@ def get_enrollment_token():
             return f.read().strip() or None
     return None
 
-def resolve_location(token):
-    """Look up the org/location a token belongs to. Returns {id, org_id} or None."""
-    if not token:
-        return None
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/locations?enrollment_token=eq.{token}&select=id,org_id",
-        headers=HEADERS,
-    )
-    if resp.status_code == 200 and resp.json():
-        return resp.json()[0]
-    return None
-
 def register_device(device_id):
-    """Tell Supabase this device is enrolled, placing it in the right
-    org/location if an enrollment token is present."""
-    data = {
+    """Register/update this device via the portal enroll API.
+    The portal validates the enrollment token server-side so the token
+    never needs to be readable by the anon key."""
+    payload = {
         "device_id": device_id,
-        "hostname": socket.gethostname(),
-        "os": OS_LABEL,
-        "last_seen": now_iso(),
+        "hostname":  socket.gethostname(),
+        "os":        OS_LABEL,
     }
+    token = get_enrollment_token()
+    if token:
+        payload["token"] = token
 
-    location = resolve_location(get_enrollment_token())
-    if location:
-        data["location_id"] = location["id"]
-        data["org_id"] = location["org_id"]
-        print(f"[agent] Enrolled into org {location['org_id']} / location {location['id']}")
-
-    # Upsert — insert if new, update if existing. org/location keys are only
-    # included when a token resolves, so we never clobber an existing placement.
     resp = requests.post(
-        f"{SUPABASE_URL}/rest/v1/devices?on_conflict=device_id",
-        headers={**HEADERS, "Prefer": "resolution=merge-duplicates"},
-        json=data,
+        f"{PORTAL_URL}/api/enroll",
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        timeout=10,
     )
-    if resp.status_code not in (200, 201):
-        print(f"[agent] Register failed: {resp.status_code} {resp.text}")
+    if resp.status_code == 200:
+        data = resp.json()
+        if token and data.get("location_id"):
+            print(f"[agent] Enrolled into location {data['location_id']}")
+    else:
+        print(f"[agent] Enroll failed: {resp.status_code} {resp.text}")
 
 def heartbeat(device_id):
     """Update last_seen timestamp so the portal knows the agent is alive."""
