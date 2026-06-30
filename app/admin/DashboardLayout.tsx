@@ -52,12 +52,12 @@ function SortableWidget({ id, children }: { id: string; children: React.ReactNod
         opacity: isDragging ? 0.35 : 1,
         zIndex: isDragging ? 10 : undefined,
       }}
-      className="relative"
+      className="relative group"
     >
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-3 right-3 z-20 p-1.5 rounded-md bg-gray-800 border border-gray-700 cursor-grab active:cursor-grabbing hover:bg-gray-700"
+        className="absolute top-3 right-3 z-20 p-1.5 rounded-md bg-gray-800 border border-gray-700 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-700"
         title="Drag to reorder"
       >
         <svg className="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
