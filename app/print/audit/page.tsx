@@ -81,7 +81,7 @@ export default async function AuditPrintPage({
   for (const l of logs ?? []) {
     if (isClientReport && !deviceIds.has(l.device_id)) continue
     const dev = device.get(l.device_id)
-    const who = (dev?.user_id && email.get(dev.user_id)) || dev?.hostname || 'Unknown device'
+    const who = (dev?.user_id && email.get(dev.user_id)) || (dev?.hostname ? dev.hostname.split('.')[0] : null) || 'Unknown device'
     events.push({
       time: l.created_at,
       kind: l.action === 'accessed' ? 'accessed' : 'killed',

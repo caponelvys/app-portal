@@ -39,7 +39,7 @@ export default function ExportMenu({ orgs }: { orgs: Org[] }) {
             <FileIcon /> All Orgs — CSV
           </a>
           <a
-            href="/admin/audit/print"
+            href="/print/audit"
             target="_blank"
             onClick={() => setOpen(false)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 transition-colors"
@@ -54,7 +54,7 @@ export default function ExportMenu({ orgs }: { orgs: Org[] }) {
               {orgs.map(org => (
                 <a
                   key={org.id}
-                  href={`/admin/audit/print?org_id=${org.id}&org_name=${encodeURIComponent(org.name)}`}
+                  href={`/print/audit?org_id=${org.id}&org_name=${encodeURIComponent(org.name)}`}
                   target="_blank"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 transition-colors truncate"
