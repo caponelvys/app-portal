@@ -9,6 +9,7 @@ import {
   useSensors,
   DragEndEvent,
 } from '@dnd-kit/core'
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import {
   SortableContext,
   arrayMove,
@@ -306,7 +307,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
 
   return (
     <div className="space-y-3">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToHorizontalAxis]} onDragEnd={handleDragEnd}>
         <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full text-sm min-w-[500px]">
             <thead className="bg-gray-800 border-b border-gray-700 group/header">
