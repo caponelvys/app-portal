@@ -43,26 +43,44 @@ function FilterIcon({ active }: { active: boolean }) {
 
 function ColumnFilter({ children, onClear, active }: { children: React.ReactNode; onClear: () => void; active: boolean }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        popRef.current && !popRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: r.left })
+    }
+    setOpen(o => !o)
+  }
+
   return (
-    <div ref={ref} className="relative inline-block">
+    <span className="inline-block">
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={toggle}
         className="group ml-1.5 p-0.5 rounded hover:bg-gray-700 transition-colors align-middle"
       >
         <FilterIcon active={active} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3 min-w-[180px]">
+        <div
+          ref={popRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="bg-gray-800 border border-gray-700 rounded-lg shadow-xl p-3 min-w-[180px]"
+        >
           {children}
           {active && (
             <button
@@ -74,7 +92,7 @@ function ColumnFilter({ children, onClear, active }: { children: React.ReactNode
           )}
         </div>
       )}
-    </div>
+    </span>
   )
 }
 
