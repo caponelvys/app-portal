@@ -1,12 +1,13 @@
 #!/bin/bash
 # App Controller Agent — Mac Installer
-# Run with: sudo bash install_mac.sh
+# Run with: sudo bash install_mac.sh [--token <enrollment_token>]
 
 set -e
 
 AGENT_DIR="/usr/local/appcontroller"
 VENV_DIR="$AGENT_DIR/venv"
 PLIST="/Library/LaunchDaemons/com.appcontroller.agent.plist"
+BASE_URL="https://appcontroller.vercel.app/downloads"
 
 # Optional: --token <enrollment-token> places this device into a location.
 TOKEN=""
@@ -19,12 +20,14 @@ done
 
 echo "[install] Creating agent directory..."
 mkdir -p "$AGENT_DIR"
-cp agent.py "$AGENT_DIR/agent.py"
-cp requirements.txt "$AGENT_DIR/requirements.txt"
+
+echo "[install] Downloading agent files..."
+curl -fsSL "$BASE_URL/agent.py" -o "$AGENT_DIR/agent.py"
+curl -fsSL "$BASE_URL/requirements.txt" -o "$AGENT_DIR/requirements.txt"
 
 if [ -n "$TOKEN" ]; then
-  echo "[install] Saving enrollment token..."
   echo "$TOKEN" > "$AGENT_DIR/.enrollment_token"
+  echo "[install] Enrollment token saved."
 fi
 
 echo "[install] Creating Python virtual environment..."
