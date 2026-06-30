@@ -9,6 +9,8 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  DragOverEvent,
+  pointerWithin,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -28,19 +30,16 @@ export type WidgetId =
   | 'unenrolledOrgs'
   | 'quickActions'
 
-const DEFAULT_ORDER: WidgetId[] = [
-  'agentHealth',
-  'needsAttention',
-  'enforcement',
-  'topBlocked',
-  'recentActivity',
-  'unenrolledOrgs',
-  'quickActions',
-]
+type Layout = { left: WidgetId[]; right: WidgetId[] }
 
-const storageKey = (userId: string) => `dashboard-widget-order:${userId}`
+const DEFAULT_LAYOUT: Layout = {
+  left:  ['agentHealth', 'enforcement', 'recentActivity', 'quickActions'],
+  right: ['needsAttention', 'unenrolledOrgs', 'topBlocked'],
+}
 
-function SortableWidget({ id, children }: { id: string; children: React.ReactNode }) {
+const storageKey = (userId: string) => `dashboard-layout-v2:${userId}`
+
+function SortableWidget({ id, children }: { id: WidgetId; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
 
   return (
@@ -69,12 +68,34 @@ function SortableWidget({ id, children }: { id: string; children: React.ReactNod
   )
 }
 
-// Split a flat ordered list into two columns: left gets even indices, right gets odd
-function toColumns(order: WidgetId[]): [WidgetId[], WidgetId[]] {
-  const left: WidgetId[] = []
-  const right: WidgetId[] = []
-  order.forEach((id, i) => (i % 2 === 0 ? left : right).push(id))
-  return [left, right]
+function Column({
+  columnId,
+  ids,
+  widgets,
+}: {
+  columnId: string
+  ids: WidgetId[]
+  widgets: Partial<Record<WidgetId, React.ReactNode>>
+}) {
+  return (
+    <SortableContext id={columnId} items={ids} strategy={verticalListSortingStrategy}>
+      <div className="flex flex-col gap-4 flex-1 min-h-32">
+        {ids.map(id =>
+          widgets[id] ? (
+            <SortableWidget key={id} id={id}>
+              {widgets[id]}
+            </SortableWidget>
+          ) : null
+        )}
+      </div>
+    </SortableContext>
+  )
+}
+
+function findColumn(layout: Layout, id: WidgetId): 'left' | 'right' | null {
+  if (layout.left.includes(id)) return 'left'
+  if (layout.right.includes(id)) return 'right'
+  return null
 }
 
 export default function DashboardLayout({
@@ -85,7 +106,7 @@ export default function DashboardLayout({
   userId: string
 }) {
   const dndId = useId()
-  const [order, setOrder] = useState<WidgetId[]>(DEFAULT_ORDER)
+  const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT)
   const [activeId, setActiveId] = useState<WidgetId | null>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -93,12 +114,12 @@ export default function DashboardLayout({
     try {
       const saved = localStorage.getItem(storageKey(userId))
       if (saved) {
-        const parsed: WidgetId[] = JSON.parse(saved)
-        const merged = [
-          ...parsed.filter(id => DEFAULT_ORDER.includes(id)),
-          ...DEFAULT_ORDER.filter(id => !parsed.includes(id)),
-        ]
-        setOrder(merged)
+        const parsed: Layout = JSON.parse(saved)
+        const allIds = new Set([...parsed.left, ...parsed.right])
+        const allDefault = [...DEFAULT_LAYOUT.left, ...DEFAULT_LAYOUT.right]
+        // Append any new widgets not in saved layout to right column
+        const missing = allDefault.filter(id => !allIds.has(id)) as WidgetId[]
+        setLayout({ left: parsed.left, right: [...parsed.right, ...missing] })
       }
     } catch {}
     setMounted(true)
@@ -108,6 +129,10 @@ export default function DashboardLayout({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   )
 
+  function save(next: Layout) {
+    try { localStorage.setItem(storageKey(userId), JSON.stringify(next)) } catch {}
+  }
+
   function handleDragStart(e: DragStartEvent) {
     setActiveId(e.active.id as WidgetId)
   }
@@ -115,28 +140,72 @@ export default function DashboardLayout({
   function handleDragEnd(e: DragEndEvent) {
     setActiveId(null)
     const { active, over } = e
-    if (!over || active.id === over.id) return
-    setOrder(prev => {
-      const next = arrayMove(prev, prev.indexOf(active.id as WidgetId), prev.indexOf(over.id as WidgetId))
-      try { localStorage.setItem(storageKey(userId), JSON.stringify(next)) } catch {}
-      return next
+    if (!over) return
+
+    const activeId = active.id as WidgetId
+    const overId = over.id as WidgetId | 'left' | 'right'
+
+    setLayout(prev => {
+      const fromCol = findColumn(prev, activeId)
+      if (!fromCol) return prev
+
+      // Dropped onto a column container (empty column drop zone)
+      if (overId === 'left' || overId === 'right') {
+        if (fromCol === overId) return prev
+        const next: Layout = {
+          left:  prev.left.filter(id => id !== activeId),
+          right: prev.right.filter(id => id !== activeId),
+          [overId]: [...prev[overId], activeId],
+        }
+        save(next)
+        return next
+      }
+
+      const toCol = findColumn(prev, overId)
+      if (!toCol) return prev
+
+      if (fromCol === toCol) {
+        // Same column — reorder
+        const col = prev[fromCol]
+        const next: Layout = {
+          ...prev,
+          [fromCol]: arrayMove(col, col.indexOf(activeId), col.indexOf(overId)),
+        }
+        save(next)
+        return next
+      } else {
+        // Cross-column — move to new column at target position
+        const toColItems = prev[toCol]
+        const insertAt = toColItems.indexOf(overId)
+        const newToCol = [...toColItems]
+        newToCol.splice(insertAt, 0, activeId)
+        const next: Layout = {
+          left:  (fromCol === 'left' ? prev.left.filter(id => id !== activeId) : newToCol) as WidgetId[],
+          right: (fromCol === 'right' ? prev.right.filter(id => id !== activeId) : newToCol) as WidgetId[],
+        }
+        // Fix: ensure we didn't double-add
+        if (fromCol === 'left') {
+          next.left = prev.left.filter(id => id !== activeId)
+          next.right = newToCol as WidgetId[]
+        } else {
+          next.right = prev.right.filter(id => id !== activeId)
+          next.left = newToCol as WidgetId[]
+        }
+        save(next)
+        return next
+      }
     })
   }
 
-  const [leftIds, rightIds] = toColumns(order)
-
-  const staticGrid = (ids: WidgetId[]) => (
-    <div className="flex flex-col gap-4">
-      {ids.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
-    </div>
-  )
-
   if (!mounted) {
-    const [l, r] = toColumns(DEFAULT_ORDER)
     return (
       <div className="flex gap-6">
-        {staticGrid(l)}
-        {staticGrid(r)}
+        <div className="flex flex-col gap-4 flex-1">
+          {DEFAULT_LAYOUT.left.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
+        </div>
+        <div className="flex flex-col gap-4 flex-1">
+          {DEFAULT_LAYOUT.right.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
+        </div>
       </div>
     )
   }
@@ -145,34 +214,14 @@ export default function DashboardLayout({
     <DndContext
       id={dndId}
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={order} strategy={verticalListSortingStrategy}>
-        <div className="flex gap-6">
-          {/* Left column — even positions */}
-          <div className="flex flex-col gap-4 flex-1">
-            {leftIds.map(id =>
-              widgets[id] ? (
-                <SortableWidget key={id} id={id}>
-                  {widgets[id]}
-                </SortableWidget>
-              ) : null
-            )}
-          </div>
-          {/* Right column — odd positions */}
-          <div className="flex flex-col gap-4 flex-1">
-            {rightIds.map(id =>
-              widgets[id] ? (
-                <SortableWidget key={id} id={id}>
-                  {widgets[id]}
-                </SortableWidget>
-              ) : null
-            )}
-          </div>
-        </div>
-      </SortableContext>
+      <div className="flex gap-6">
+        <Column columnId="left"  ids={layout.left}  widgets={widgets} />
+        <Column columnId="right" ids={layout.right} widgets={widgets} />
+      </div>
 
       <DragOverlay>
         {activeId && widgets[activeId] ? (
