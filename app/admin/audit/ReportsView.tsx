@@ -109,7 +109,8 @@ export default function ReportsView({ events, orgs, userId }: { events: AuditEve
               max={customTo || today}
               value={customFrom}
               onChange={e => setCustomFrom(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             />
             <span className="text-gray-500 text-sm">to</span>
             <input
@@ -118,7 +119,8 @@ export default function ReportsView({ events, orgs, userId }: { events: AuditEve
               max={today}
               value={customTo}
               onChange={e => setCustomTo(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             />
           </div>
         )}
