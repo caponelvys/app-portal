@@ -1,26 +1,28 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import UsersTable from './UsersTable'
 import PendingInvites from './PendingInvites'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const callerProfile = await getCallerProfile(supabase)
+  if (!callerProfile) redirect('/login')
+  if (!isMspStaff(callerProfile)) redirect('/')
 
-  const { data: profile } = await supabase
+  const { data: rawUsers } = await supabase
     .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') redirect('/')
-
-  const { data: users } = await supabase
-    .from('profiles')
-    .select('id, email, role, created_at')
+    .select('id, email, role, role_v2, org_id, created_at')
     .order('created_at', { ascending: false })
+
+  const orgIds = [...new Set((rawUsers ?? []).map(u => u.org_id).filter(Boolean))]
+  const { data: orgs } = orgIds.length
+    ? await supabase.from('orgs').select('id, name').in('id', orgIds)
+    : { data: [] }
+  const orgName = new Map((orgs ?? []).map(o => [o.id, o.name]))
+
+  const users = (rawUsers ?? []).map(u => ({ ...u, org_name: u.org_id ? (orgName.get(u.org_id) ?? null) : null }))
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -30,7 +32,7 @@ export default async function AdminUsersPage() {
           <h1 className="text-xl font-bold text-white">Manage Users</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
+          <span className="text-sm text-gray-400 hidden sm:block">{callerProfile.role_v2}</span>
           <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
         </div>
       </header>
@@ -43,7 +45,7 @@ export default async function AdminUsersPage() {
           </a>
         </div>
         <PendingInvites />
-        <UsersTable users={users ?? []} currentUserId={user.id} />
+        <UsersTable users={users ?? []} currentUserId={callerProfile.id} />
       </main>
     </div>
   )

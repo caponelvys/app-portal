@@ -1,18 +1,23 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { isOnline } from '@/lib/deviceStatus'
+import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import CreateForm from './CreateForm'
 
 export default async function OrgsPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') redirect('/')
+  const profile = await getCallerProfile(supabase)
+  if (!profile) redirect('/login')
+  if (!isMspStaff(profile)) redirect('/')
+
+  const orgIds = await getAccessibleOrgIds(supabase, profile)
+
+  let orgsQ = supabase.from('orgs').select('id, name').order('name')
+  if (orgIds !== null) orgsQ = orgsQ.in('id', orgIds.length ? orgIds : ['00000000-0000-0000-0000-000000000000'])
 
   const [{ data: orgs }, { data: locations }, { data: devices }] = await Promise.all([
-    supabase.from('orgs').select('id, name').order('name'),
+    orgsQ,
     supabase.from('locations').select('id, org_id'),
     supabase.from('devices').select('org_id, last_seen'),
   ])
@@ -41,7 +46,7 @@ export default async function OrgsPage() {
           <h1 className="text-xl font-bold text-white">Clients</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
+          <span className="text-sm text-gray-400 hidden sm:block">{profile.role_v2}</span>
           <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
         </div>
       </header>

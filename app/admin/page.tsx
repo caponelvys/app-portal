@@ -1,20 +1,15 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import AdminAppsTable from './AdminAppsTable'
+import GlobalSearch from './GlobalSearch'
 
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') redirect('/')
+  const profile = await getCallerProfile(supabase)
+  if (!profile) redirect('/login')
+  if (!isMspStaff(profile)) redirect('/')
 
   const { data: apps } = await supabase
     .from('apps')
@@ -34,7 +29,8 @@ export default async function AdminPage() {
           <h1 className="text-lg sm:text-xl font-bold text-white">Admin</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{user.email}</span>
+          <GlobalSearch />
+          <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{profile.role_v2}</span>
           <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline whitespace-nowrap">
             Sign out
           </a>

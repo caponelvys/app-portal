@@ -1,20 +1,14 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import RequestsTable from './RequestsTable'
 
 export default async function AdminRequestsPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') redirect('/')
+  const profile = await getCallerProfile(supabase)
+  if (!profile) redirect('/login')
+  if (!isMspStaff(profile)) redirect('/')
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -24,7 +18,7 @@ export default async function AdminRequestsPage() {
           <h1 className="text-xl font-bold text-white">Access Requests</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
+          <span className="text-sm text-gray-400 hidden sm:block">{profile.role_v2}</span>
           <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
         </div>
       </header>

@@ -36,7 +36,25 @@
       "Bash(curl -s 'https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?select=device_id,last_seen&order=last_seen.desc&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8')",
       "Bash(cp \"/Users/roidzer/App Controllor Project/agent/agent.py\" \"/Users/roidzer/App Controllor Project/public/downloads/agent.py\")",
       "Bash(cp \"/Users/roidzer/App Controllor Project/agent/install_mac.sh\" \"/Users/roidzer/App Controllor Project/public/downloads/install_mac.sh\")",
-      "Bash(cp \"/Users/roidzer/App Controllor Project/agent/install_win.bat\" \"/Users/roidzer/App Controllor Project/public/downloads/install_win.bat\")"
+      "Bash(cp \"/Users/roidzer/App Controllor Project/agent/install_win.bat\" \"/Users/roidzer/App Controllor Project/public/downloads/install_win.bat\")",
+      "Read(//Users/roidzer/Downloads/**)",
+      "Bash(git am *)",
+      "Bash(npm run *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "mcp__Claude_in_Chrome__navigate",
+      "Bash(curl -s http://localhost:3000/admin -L -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s http://localhost:3000/admin/orgs -L -o /dev/null -w \" orgs:%{http_code}\")",
+      "Bash(curl -s http://localhost:3000/admin/requests -L -o /dev/null -w \" requests:%{http_code}\")",
+      "Bash(curl -s http://localhost:3000/admin/audit -L -o /dev/null -w \" audit:%{http_code}\")",
+      "Bash(curl -s http://localhost:3000/devices -L -o /dev/null -w \" devices:%{http_code}\")",
+      "Bash(curl -s http://localhost:3000/admin/orgs)",
+      "Bash(curl -s http://localhost:3000/admin/requests)",
+      "Bash(curl -s http://localhost:3000/admin/audit)",
+      "Bash(grep -v \"^\\\\s*$\")",
+      "Bash(sudo launchctl list)",
+      "Bash(curl -s \"https://fdnqjwezvkcpwckyqmbg.supabase.co/rest/v1/devices?select=hostname,last_seen,os&order=last_seen.desc&limit=3\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8\")",
+      "Bash(npx tsc *)"
     ]
   }
 }

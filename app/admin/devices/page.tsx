@@ -1,25 +1,21 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import DevicesTabs from './DevicesTabs'
 
 export default async function AdminDevicesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const profile = await getCallerProfile(supabase)
+  if (!profile) redirect('/login')
+  if (!isMspStaff(profile)) redirect('/')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const orgIds = await getAccessibleOrgIds(supabase, profile)
 
-  if (profile?.role !== 'admin') redirect('/')
+  let devQ = supabase.from('devices').select('*').order('last_seen', { ascending: false })
+  if (orgIds !== null) devQ = devQ.in('org_id', orgIds.length ? orgIds : ['00000000-0000-0000-0000-000000000000'])
 
-  const { data: devices } = await supabase
-    .from('devices')
-    .select('*')
-    .order('last_seen', { ascending: false })
+  const { data: devices } = await devQ
 
   const { data: logs } = await supabase
     .from('agent_logs')
@@ -38,7 +34,7 @@ export default async function AdminDevicesPage({ searchParams }: { searchParams:
           <h1 className="text-xl font-bold text-white">{defaultTab === 'activity' ? 'Monitor' : 'Devices'}</h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
+          <span className="text-sm text-gray-400 hidden sm:block">{profile.role_v2}</span>
           <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
         </div>
       </header>

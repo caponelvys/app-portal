@@ -1,16 +1,18 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { isOnline } from '@/lib/deviceStatus'
+import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import CreateForm from '../CreateForm'
 
 export default async function OrgDetailPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') redirect('/')
+  const profile = await getCallerProfile(supabase)
+  if (!profile) redirect('/login')
+
+  const orgIds = await getAccessibleOrgIds(supabase, profile)
+  if (orgIds !== null && !orgIds.includes(orgId)) redirect('/admin/orgs')
 
   const { data: org } = await supabase.from('orgs').select('id, name').eq('id', orgId).single()
   if (!org) notFound()
