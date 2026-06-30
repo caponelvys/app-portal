@@ -21,7 +21,7 @@ export default async function AdminDevicesPage() {
   const { data: devices } = await devQ
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">All Devices</h1>
       <DevicesTabs devices={devices ?? []} userId={profile.id} />
     </div>
