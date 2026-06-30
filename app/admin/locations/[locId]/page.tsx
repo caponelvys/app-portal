@@ -1,3 +1,4 @@
+import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { isOnline, offlineThresholdIso } from '@/lib/deviceStatus'
@@ -47,19 +48,12 @@ export default async function LocationDetailPage({
   const pageLink = (p: number) => `/admin/locations/${locId}?status=${status}&page=${p}`
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
-        <nav className="text-sm text-gray-400 flex items-center gap-2 flex-wrap">
-          <a href="/admin/orgs" className="hover:text-gray-200">Clients</a>
-          <span className="text-gray-600">/</span>
-          {org && <a href={`/admin/orgs/${org.id}`} className="hover:text-gray-200">{org.name}</a>}
-          <span className="text-gray-600">/</span>
-          <span className="text-white font-semibold">{location.name}</span>
-        </nav>
-        <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="p-6 max-w-4xl mx-auto">
+      <Breadcrumbs items={[
+        { label: 'Clients', href: '/admin/orgs' },
+        ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
+        { label: location.name },
+      ]} />
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-3">Enroll devices</h2>
           <EnrollmentPanel locationId={location.id} initialToken={location.enrollment_token} />
@@ -135,7 +129,6 @@ export default async function LocationDetailPage({
         ) : (
           <p className="text-gray-500">No {status === 'all' ? '' : status} devices at this location.</p>
         )}
-      </main>
     </div>
   )
 }

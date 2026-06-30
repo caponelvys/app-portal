@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { isOnline } from '@/lib/deviceStatus'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import CreateForm from '../CreateForm'
+import Breadcrumbs from '@/app/admin/Breadcrumbs'
 
 export default async function OrgDetailPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params
@@ -31,17 +32,8 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
-        <nav className="text-sm text-gray-400 flex items-center gap-2 flex-wrap">
-          <a href="/admin/orgs" className="hover:text-gray-200">Clients</a>
-          <span className="text-gray-600">/</span>
-          <span className="text-white font-semibold">{org.name}</span>
-        </nav>
-        <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="p-6 max-w-4xl mx-auto">
+      <Breadcrumbs items={[{ label: 'Clients', href: '/admin/orgs' }, { label: org.name }]} />
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <h2 className="text-2xl font-semibold text-white">Locations</h2>
           <div className="flex items-center gap-2">
@@ -71,7 +63,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
         ) : (
           <p className="text-gray-500">No locations yet. Add one to start enrolling devices.</p>
         )}
-      </main>
     </div>
   )
 }
+

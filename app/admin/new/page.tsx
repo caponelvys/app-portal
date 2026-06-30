@@ -249,12 +249,7 @@ export default function NewAppPage() {
   const inputClass = "w-full border border-gray-700 rounded-lg px-3 py-2 text-white bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4">
-        <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm">← Back to Admin</a>
-      </header>
-
-      <main className="max-w-lg mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <div className="p-6 max-w-lg mx-auto">
         <h1 className="text-2xl font-bold text-white mb-6">Add New App</h1>
 
         <form onSubmit={handleSubmit} className="bg-gray-900 rounded-xl border border-gray-800 p-6 space-y-4">
@@ -342,7 +337,6 @@ export default function NewAppPage() {
             {loading ? 'Saving...' : 'Add App'}
           </button>
         </form>
-      </main>
     </div>
   )
 }

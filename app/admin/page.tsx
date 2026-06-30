@@ -1,77 +1,134 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
-import AdminAppsTable from './AdminAppsTable'
-import GlobalSearch from './GlobalSearch'
+import { isOnline } from '@/lib/deviceStatus'
 
-export default async function AdminPage() {
+export default async function AdminDashboard() {
   const supabase = await createClient()
-
   const profile = await getCallerProfile(supabase)
   if (!profile) redirect('/login')
   if (!isMspStaff(profile)) redirect('/')
 
-  const { data: apps } = await supabase
-    .from('apps')
-    .select('*')
-    .order('name')
+  const [
+    { count: orgCount },
+    { data: devices },
+    { count: pendingCount },
+    { data: recentLogs },
+    { data: recentRequests },
+    { data: apps },
+  ] = await Promise.all([
+    supabase.from('orgs').select('id', { count: 'exact', head: true }),
+    supabase.from('devices').select('device_id, hostname, os, last_seen, org_id'),
+    supabase.from('app_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('agent_logs').select('app_name, action, created_at, device_id').order('created_at', { ascending: false }).limit(8),
+    supabase.from('app_requests').select('id, status, created_at, app_id').order('created_at', { ascending: false }).limit(5),
+    supabase.from('apps').select('id, name'),
+  ])
 
-  const { count: pendingRequests } = await supabase
-    .from('app_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending')
+  const totalDevices = devices?.length ?? 0
+  const onlineDevices = (devices ?? []).filter(d => isOnline(d.last_seen)).length
+
+  const appName = new Map((apps ?? []).map(a => [a.id, a.name]))
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <a href="/" className="text-gray-500 hover:text-gray-300 text-sm">← Portal</a>
-          <h1 className="text-lg sm:text-xl font-bold text-white">Admin</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <GlobalSearch />
-          <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{profile.role_v2}</span>
-          <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline whitespace-nowrap">
-            Sign out
-          </a>
-        </div>
-      </header>
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold text-white mb-6">Dashboard</h1>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h2 className="text-xl sm:text-2xl font-semibold text-white">All Apps</h2>
-          <div className="flex flex-wrap gap-2">
-            <a href="/admin/orgs" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Clients
-            </a>
-            <a href="/admin/devices?tab=devices" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Devices
-            </a>
-            <a href="/admin/devices?tab=activity" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Monitor
-            </a>
-            <a href="/admin/requests" className="relative bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Requests
-              {pendingRequests ? (
-                <span className="absolute -top-2 -right-2 bg-yellow-500 text-gray-900 text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
-                  {pendingRequests}
-                </span>
-              ) : null}
-            </a>
-            <a href="/admin/audit" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Reports
-            </a>
-            <a href="/admin/users" className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
-              Manage Users
-            </a>
-            <a href="/admin/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium">
-              + Add App
-            </a>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Organizations" value={orgCount ?? 0} href="/admin/orgs" />
+        <StatCard label="Total Devices" value={totalDevices} href="/admin/devices" />
+        <StatCard label="Online Now" value={onlineDevices} href="/admin/devices" accent="green" />
+        <StatCard label="Pending Requests" value={pendingCount ?? 0} href="/admin/requests" accent={pendingCount ? 'yellow' : undefined} />
+      </div>
+
+      {/* Two column content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Recent Activity</h2>
+            <a href="/admin/audit" className="text-xs text-blue-400 hover:text-blue-300">View all</a>
           </div>
-        </div>
+          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            {recentLogs && recentLogs.length > 0 ? (
+              <div className="divide-y divide-gray-800">
+                {recentLogs.map((log, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${log.action === 'killed' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-white truncate">{log.app_name}</p>
+                      <p className="text-xs text-gray-500">{log.action === 'killed' ? 'Blocked' : 'Accessed'}</p>
+                    </div>
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm px-4 py-6">No activity yet.</p>
+            )}
+          </div>
+        </section>
 
-        <AdminAppsTable apps={apps ?? []} />
-      </main>
+        {/* Device status + quick actions */}
+        <div className="space-y-6">
+          <section>
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Device Status</h2>
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 space-y-3">
+              <StatusBar label="Online" count={onlineDevices} total={totalDevices} color="bg-green-500" />
+              <StatusBar label="Offline" count={totalDevices - onlineDevices} total={totalDevices} color="bg-gray-700" />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Quick Actions</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <QuickAction href="/admin/orgs" label="Add Client" />
+              <QuickAction href="/admin/users/invite" label="Invite User" />
+              <QuickAction href="/admin/new" label="Add App" />
+              <QuickAction href="/admin/devices?tab=install" label="Install Agent" />
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
+  )
+}
+
+function StatCard({ label, value, href, accent }: { label: string; value: number; href: string; accent?: 'green' | 'yellow' }) {
+  const valueColor = accent === 'green' ? 'text-green-400' : accent === 'yellow' && value > 0 ? 'text-yellow-400' : 'text-white'
+  return (
+    <a href={href} className="bg-gray-900 rounded-xl border border-gray-800 p-5 hover:border-gray-700 transition-colors block">
+      <p className={`text-3xl font-bold ${valueColor}`}>{value}</p>
+      <p className="text-xs text-gray-500 mt-1">{label}</p>
+    </a>
+  )
+}
+
+function StatusBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <span>{label}</span>
+        <span>{count} / {total}</span>
+      </div>
+      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function QuickAction({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      className="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 transition-colors text-center"
+    >
+      {label}
+    </a>
   )
 }

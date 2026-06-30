@@ -1,3 +1,4 @@
+import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { isOnline } from '@/lib/deviceStatus'
@@ -45,19 +46,13 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
   const online = isOnline(device.last_seen)
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
-        <nav className="text-sm text-gray-400 flex items-center gap-2 flex-wrap">
-          <a href="/admin/orgs" className="hover:text-gray-200">Clients</a>
-          <span className="text-gray-600">/</span>
-          {org && <><a href={`/admin/orgs/${org.id}`} className="hover:text-gray-200">{org.name}</a><span className="text-gray-600">/</span></>}
-          {location && <><a href={`/admin/locations/${location.id}`} className="hover:text-gray-200">{location.name}</a><span className="text-gray-600">/</span></>}
-          <span className="text-white font-semibold">{device.hostname || 'Device'}</span>
-        </nav>
-        <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline">Sign out</a>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-8">
+    <div className="p-6 max-w-3xl mx-auto space-y-8">
+      <Breadcrumbs items={[
+        { label: 'Clients', href: '/admin/orgs' },
+        ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
+        ...(location ? [{ label: location.name, href: `/admin/locations/${location.id}` }] : []),
+        { label: device.hostname || 'Device' },
+      ]} />
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-white">{device.hostname || 'Unknown device'}</h1>
@@ -119,7 +114,6 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
             <p className="text-gray-500 text-sm">No activity recorded for this device.</p>
           )}
         </section>
-      </main>
     </div>
   )
 }
