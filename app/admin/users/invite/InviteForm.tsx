@@ -5,10 +5,10 @@ import { useState } from 'react'
 type Org = { id: string; name: string }
 
 const ROLES = [
-  { value: 'msp_admin',    label: 'MSP Admin — full access to all orgs' },
-  { value: 'msp_tech',     label: 'MSP Tech — access to assigned orgs only' },
-  { value: 'client_admin', label: 'Client Admin — manage own org' },
-  { value: 'client_user',  label: 'Client User — view own org, request access' },
+  { value: 'msp_admin',    label: 'Admin — full access to all orgs' },
+  { value: 'msp_tech',     label: 'Tech — access to assigned orgs only' },
+  { value: 'client_admin', label: 'Org Admin — manage own org' },
+  { value: 'client_user',  label: 'Org Tech — view own org, request access' },
 ]
 
 const CLIENT_ROLES = ['client_admin', 'client_user']

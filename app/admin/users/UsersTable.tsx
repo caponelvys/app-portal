@@ -22,6 +22,15 @@ const ROLE_STYLES: Record<string, string> = {
   user:         'bg-gray-800 text-gray-400',
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  msp_admin:    'Admin',
+  msp_tech:     'Tech',
+  client_admin: 'Org Admin',
+  client_user:  'Org Tech',
+  admin:        'Admin',
+  user:         'Org Tech',
+}
+
 export default function UsersTable({ users: initial, currentUserId }: { users: Profile[], currentUserId: string }) {
   const [users, setUsers] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
@@ -68,7 +77,7 @@ export default function UsersTable({ users: initial, currentUserId }: { users: P
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${ROLE_STYLES[displayRole] ?? 'bg-gray-800 text-gray-400'}`}>
-                    {displayRole}
+                    {ROLE_LABELS[displayRole] ?? displayRole}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs">
