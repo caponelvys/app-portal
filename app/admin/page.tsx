@@ -107,12 +107,12 @@ export default async function AdminDashboard() {
   const needsAttention = (
     <Widget title="Needs Attention" action={attentionDevices.length > 0 ? { label: 'View all', href: '/admin/devices' } : undefined}>
       {attentionDevices.length > 0 ? (
-        <div className="divide-y divide-gray-800 -mx-5 -mb-5">
+        <div className="divide-y divide-gray-800 -mx-4 -mb-4">
           {attentionDevices.map(d => {
             const tier = getHealth(d.last_seen)
             const meta = HEALTH_META[tier]
             return (
-              <a key={d.device_id} href={`/admin/devices/${d.device_id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-800 transition-colors">
+              <a key={d.device_id} href={`/admin/devices/${d.device_id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800 transition-colors">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${meta.dot}`} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-white truncate">{d.hostname?.split('.')[0] ?? 'Unknown'}</p>
@@ -149,9 +149,9 @@ export default async function AdminDashboard() {
   const topBlockedWidget = (
     <Widget title="Top Blocked Apps — 24h" action={{ label: 'View all', href: '/admin/monitor' }}>
       {topBlocked.length > 0 ? (
-        <div className="divide-y divide-gray-800 -mx-5 -mb-5">
+        <div className="divide-y divide-gray-800 -mx-4 -mb-4">
           {topBlocked.map(([name, count]) => (
-            <div key={name} className="flex items-center justify-between px-5 py-3">
+            <div key={name} className="flex items-center justify-between px-4 py-2.5">
               <span className="text-sm text-white">{name}</span>
               <span className="text-xs font-semibold text-red-400 bg-red-950 px-2 py-0.5 rounded-full">{count}×</span>
             </div>
@@ -166,9 +166,9 @@ export default async function AdminDashboard() {
   const recentActivity = (
     <Widget title="Recent Activity" action={{ label: 'View all', href: '/admin/monitor' }}>
       {recentLogs && recentLogs.length > 0 ? (
-        <div className="divide-y divide-gray-800 -mx-5 -mb-5">
+        <div className="divide-y divide-gray-800 -mx-4 -mb-4">
           {recentLogs.map((log, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
+            <div key={i} className="flex items-center gap-3 px-4 py-2.5">
               <span className={`w-2 h-2 rounded-full shrink-0 ${log.action === 'killed' ? 'bg-red-500' : 'bg-blue-500'}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-white truncate">{log.app_name}</p>
@@ -189,9 +189,9 @@ export default async function AdminDashboard() {
   const unenrolledOrgsWidget = (
     <Widget title="Orgs Not Enrolled" action={{ label: 'View all', href: '/admin/orgs' }}>
       {unenrolledOrgs.length > 0 ? (
-        <div className="divide-y divide-gray-800 -mx-5 -mb-5">
+        <div className="divide-y divide-gray-800 -mx-4 -mb-4">
           {unenrolledOrgs.slice(0, 5).map(org => (
-            <a key={org.id} href={`/admin/orgs/${org.id}/install`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-800 transition-colors">
+            <a key={org.id} href={`/admin/orgs/${org.id}/install`} className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-800 transition-colors">
               <span className="text-sm text-white truncate">{org.name}</span>
               <span className="text-xs text-yellow-400 bg-yellow-950 px-2 py-0.5 rounded-full shrink-0 ml-2">No devices</span>
             </a>
@@ -246,9 +246,9 @@ function Widget({ title, action, children }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">{title}</h2>
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{title}</h2>
         {action && <a href={action.href} className="text-xs text-blue-400 hover:text-blue-300">{action.label}</a>}
       </div>
       {children}
