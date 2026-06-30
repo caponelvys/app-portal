@@ -13,7 +13,7 @@ import {
 import {
   SortableContext,
   arrayMove,
-  rectSwappingStrategy,
+  verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -69,6 +69,14 @@ function SortableWidget({ id, children }: { id: string; children: React.ReactNod
   )
 }
 
+// Split a flat ordered list into two columns: left gets even indices, right gets odd
+function toColumns(order: WidgetId[]): [WidgetId[], WidgetId[]] {
+  const left: WidgetId[] = []
+  const right: WidgetId[] = []
+  order.forEach((id, i) => (i % 2 === 0 ? left : right).push(id))
+  return [left, right]
+}
+
 export default function DashboardLayout({
   widgets,
   userId,
@@ -115,47 +123,64 @@ export default function DashboardLayout({
     })
   }
 
-  function resetLayout() {
-    setOrder(DEFAULT_ORDER)
-    try { localStorage.removeItem(storageKey(userId)) } catch {}
+  const [leftIds, rightIds] = toColumns(order)
+
+  const staticGrid = (ids: WidgetId[]) => (
+    <div className="flex flex-col gap-4">
+      {ids.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
+    </div>
+  )
+
+  if (!mounted) {
+    const [l, r] = toColumns(DEFAULT_ORDER)
+    return (
+      <div className="flex gap-6">
+        {staticGrid(l)}
+        {staticGrid(r)}
+      </div>
+    )
   }
 
   return (
-    <div>
-      {/* Before mount: static grid (no drag context) */}
-      {!mounted ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {DEFAULT_ORDER.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
+    <DndContext
+      id={dndId}
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={order} strategy={verticalListSortingStrategy}>
+        <div className="flex gap-6">
+          {/* Left column — even positions */}
+          <div className="flex flex-col gap-4 flex-1">
+            {leftIds.map(id =>
+              widgets[id] ? (
+                <SortableWidget key={id} id={id}>
+                  {widgets[id]}
+                </SortableWidget>
+              ) : null
+            )}
+          </div>
+          {/* Right column — odd positions */}
+          <div className="flex flex-col gap-4 flex-1">
+            {rightIds.map(id =>
+              widgets[id] ? (
+                <SortableWidget key={id} id={id}>
+                  {widgets[id]}
+                </SortableWidget>
+              ) : null
+            )}
+          </div>
         </div>
-      ) : (
-        <DndContext
-          id={dndId}
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={order} strategy={rectSwappingStrategy}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-              {order.map(id =>
-                widgets[id] ? (
-                  <SortableWidget key={id} id={id}>
-                    {widgets[id]}
-                  </SortableWidget>
-                ) : null
-              )}
-            </div>
-          </SortableContext>
+      </SortableContext>
 
-          <DragOverlay>
-            {activeId && widgets[activeId] ? (
-              <div className="opacity-90 rotate-1 scale-105 shadow-2xl ring-2 ring-blue-500 rounded-xl">
-                {widgets[activeId]}
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
-    </div>
+      <DragOverlay>
+        {activeId && widgets[activeId] ? (
+          <div className="opacity-90 rotate-1 scale-105 shadow-2xl ring-2 ring-blue-500 rounded-xl">
+            {widgets[activeId]}
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   )
 }
