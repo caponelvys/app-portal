@@ -6,6 +6,7 @@ import DashboardLayout from './DashboardLayout'
 const HEALTHY_MS = 2 * 60 * 1000
 const WARNING_MS = 24 * 60 * 60 * 1000
 const STALE_MS   = 30 * 24 * 60 * 60 * 1000
+const LOST_MS    = 90 * 24 * 60 * 60 * 1000
 
 type HealthTier = 'healthy' | 'warning' | 'stale' | 'lost' | 'never'
 
@@ -14,7 +15,7 @@ function getHealth(lastSeen: string | null): HealthTier {
   const age = Date.now() - new Date(lastSeen).getTime()
   if (age < HEALTHY_MS) return 'healthy'
   if (age < WARNING_MS) return 'warning'
-  if (age < STALE_MS)   return 'stale'
+  if (age < LOST_MS)    return 'stale'
   return 'lost'
 }
 
@@ -95,7 +96,7 @@ export default async function AdminDashboard() {
           )
         })}
         <p className="text-xs text-gray-600 pt-1 border-t border-gray-800">
-          Healthy &lt;2 min · Warning &lt;24 hr · Stale &lt;30 days · Lost &gt;30 days
+          Healthy &lt;2 min · Warning &lt;24 hr · Stale &lt;90 days · Lost &gt;3 months
         </p>
       </div>
     </Widget>
