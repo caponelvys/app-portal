@@ -93,7 +93,7 @@ export default async function AuditLogPage() {
   const recent = events.slice(0, 200)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-2"><h1 className="text-2xl font-bold text-white">Reports</h1></div>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">
