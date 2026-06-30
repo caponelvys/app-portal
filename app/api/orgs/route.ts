@@ -35,3 +35,19 @@ export async function POST(req: NextRequest) {
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 400 })
   return NextResponse.json({ success: true, id: data.id })
 }
+
+// Rename an org or location.
+export async function PATCH(req: NextRequest) {
+  const { supabase, error } = await requireMspStaff()
+  if (error) return error
+
+  const { kind, id, name } = await req.json()
+  const trimmed = typeof name === 'string' ? name.trim() : ''
+  if (!trimmed) return NextResponse.json({ error: 'A name is required' }, { status: 400 })
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const table = kind === 'location' ? 'locations' : 'orgs'
+  const { error: updErr } = await supabase.from(table).update({ name: trimmed }).eq('id', id)
+  if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 })
+  return NextResponse.json({ success: true })
+}

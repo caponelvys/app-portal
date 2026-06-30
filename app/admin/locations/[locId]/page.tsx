@@ -1,4 +1,5 @@
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
+import RenameForm from '@/app/admin/RenameForm'
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { isOnline, offlineThresholdIso } from '@/lib/deviceStatus'
@@ -54,6 +55,10 @@ export default async function LocationDetailPage({
         ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
         { label: location.name },
       ]} />
+        <div className="mb-6">
+          <RenameForm kind="location" id={location.id} currentName={location.name} />
+        </div>
+
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-3">Enroll devices</h2>
           <EnrollmentPanel locationId={location.id} initialToken={location.enrollment_token} />
