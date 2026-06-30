@@ -6,13 +6,11 @@ import { useState } from 'react'
 import GlobalSearch from './GlobalSearch'
 
 const PRIMARY_NAV = [
-  { label: 'Dashboard', href: '/admin', exact: true },
-  { label: 'Organizations',   href: '/admin/orgs' },
-  { label: 'Devices',   href: '/admin/devices' },
-  { label: 'Monitor',   href: '/admin/devices?tab=activity' },
-  { label: 'Apps',      href: '/admin/apps' },
-  { label: 'Requests',  href: '/admin/requests' },
-  { label: 'Reports',   href: '/admin/audit' },
+  { label: 'Dashboard',     href: '/admin', exact: true },
+  { label: 'Organizations', href: '/admin/orgs' },
+  { label: 'Apps',          href: '/admin/apps' },
+  { label: 'Requests',      href: '/admin/requests' },
+  { label: 'Reports',       href: '/admin/audit' },
 ]
 
 const SIDEBARS: Record<string, { title: string; items: { label: string; href: string }[] }> = {
@@ -30,14 +28,21 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
   ]},
   '/admin/orgs': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
+    { label: 'All Devices',   href: '/admin/devices' },
+    { label: 'Activity',      href: '/admin/devices?tab=activity' },
+    { label: 'Install Agent', href: '/admin/devices?tab=install' },
   ]},
   '/admin/locations': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
+    { label: 'All Devices',   href: '/admin/devices' },
+    { label: 'Activity',      href: '/admin/devices?tab=activity' },
+    { label: 'Install Agent', href: '/admin/devices?tab=install' },
   ]},
-  '/admin/devices': { title: 'Devices', items: [
-    { label: 'All Devices',  href: '/admin/devices' },
-    { label: 'Activity',     href: '/admin/devices?tab=activity' },
-    { label: 'Install Agent',href: '/admin/devices?tab=install' },
+  '/admin/devices': { title: 'Organizations', items: [
+    { label: 'Organizations', href: '/admin/orgs' },
+    { label: 'All Devices',   href: '/admin/devices' },
+    { label: 'Activity',      href: '/admin/devices?tab=activity' },
+    { label: 'Install Agent', href: '/admin/devices?tab=install' },
   ]},
   '/admin/requests': { title: 'Requests', items: [
     { label: 'Access Requests', href: '/admin/requests' },
