@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { durationLabel } from '@/lib/durations'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
+import ExportMenu from './ExportMenu'
 
 type AuditEvent = {
   time: string
@@ -36,13 +37,14 @@ export default async function AuditLogPage() {
   if (!profile) redirect('/login')
   if (!isMspStaff(profile)) redirect('/')
 
-  const [{ data: requests }, { data: logs }, { data: apps }, { data: profiles }, { data: devices }] =
+  const [{ data: requests }, { data: logs }, { data: apps }, { data: profiles }, { data: devices }, { data: orgs }] =
     await Promise.all([
       supabase.from('app_requests').select('app_id, user_id, duration, status, created_at, reviewed_at, reviewed_by'),
       supabase.from('agent_logs').select('device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(300),
       supabase.from('apps').select('id, name'),
       supabase.from('profiles').select('id, email'),
       supabase.from('devices').select('device_id, hostname, user_id'),
+      supabase.from('orgs').select('id, name').order('name'),
     ])
 
   const appName = new Map((apps ?? []).map(a => [a.id, a.name]))
@@ -107,12 +109,7 @@ export default async function AuditLogPage() {
           <p className="text-sm text-gray-500">
             Who requested, approved, used, or was blocked from apps — most recent first.
           </p>
-          <a
-            href="/api/audit/export"
-            className="text-sm bg-gray-800 border border-gray-700 text-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-colors whitespace-nowrap"
-          >
-            Export CSV
-          </a>
+          <ExportMenu orgs={orgs ?? []} />
         </div>
         {recent.length === 0 ? (
           <p className="text-gray-500 text-sm">No activity yet.</p>
