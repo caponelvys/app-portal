@@ -8,6 +8,7 @@ import GlobalSearch from './GlobalSearch'
 const PRIMARY_NAV = [
   { label: 'Dashboard',     href: '/admin', exact: true },
   { label: 'Organizations', href: '/admin/orgs' },
+  { label: 'Monitor',       href: '/admin/monitor' },
   { label: 'Apps',          href: '/admin/apps' },
   { label: 'Requests',      href: '/admin/requests' },
   { label: 'Reports',       href: '/admin/audit' },
@@ -26,23 +27,23 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
     { label: 'All Apps', href: '/admin/apps' },
     { label: 'Add App',  href: '/admin/new' },
   ]},
+  '/admin/monitor': { title: 'Monitor', items: [
+    { label: 'Activity', href: '/admin/monitor' },
+  ]},
   '/admin/orgs': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
     { label: 'All Devices',   href: '/admin/devices' },
-    { label: 'Activity',      href: '/admin/devices?tab=activity' },
-    { label: 'Install Agent', href: '/admin/devices?tab=install' },
+    { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/locations': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
     { label: 'All Devices',   href: '/admin/devices' },
-    { label: 'Activity',      href: '/admin/devices?tab=activity' },
-    { label: 'Install Agent', href: '/admin/devices?tab=install' },
+    { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/devices': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
     { label: 'All Devices',   href: '/admin/devices' },
-    { label: 'Activity',      href: '/admin/devices?tab=activity' },
-    { label: 'Install Agent', href: '/admin/devices?tab=install' },
+    { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/requests': { title: 'Requests', items: [
     { label: 'Access Requests', href: '/admin/requests' },
@@ -57,11 +58,24 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
 }
 
 function getSidebar(pathname: string) {
-  // exact match first, then prefix match (longest first)
   const keys = Object.keys(SIDEBARS).sort((a, b) => b.length - a.length)
   for (const key of keys) {
     if (pathname === key || pathname.startsWith(key + '/') || pathname.startsWith(key + '?')) {
-      return SIDEBARS[key]
+      const sidebar = SIDEBARS[key]
+      // Resolve Install Agent link to org-specific URL when we can extract an orgId
+      const orgMatch = pathname.match(/\/admin\/orgs\/([^/]+)/)
+      if (orgMatch) {
+        const orgId = orgMatch[1]
+        return {
+          ...sidebar,
+          items: sidebar.items.map(item =>
+            item.label === 'Install Agent'
+              ? { ...item, href: `/admin/orgs/${orgId}/install` }
+              : item
+          ),
+        }
+      }
+      return sidebar
     }
   }
   return null
