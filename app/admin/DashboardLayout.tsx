@@ -124,7 +124,7 @@ export default function DashboardLayout({
     <div>
       {/* Before mount: static grid (no drag context) */}
       {!mounted ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {DEFAULT_ORDER.map(id => widgets[id] ? <div key={id}>{widgets[id]}</div> : null)}
         </div>
       ) : (
@@ -136,7 +136,7 @@ export default function DashboardLayout({
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={order} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               {order.map(id =>
                 widgets[id] ? (
                   <SortableWidget key={id} id={id}>
