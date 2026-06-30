@@ -2,8 +2,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { durationLabel } from '@/lib/durations'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
-import ExportMenu from './ExportMenu'
-import AuditTable from './AuditTable'
+import ReportsView from './ReportsView'
 
 type AuditEvent = {
   time: string
@@ -41,7 +40,7 @@ export default async function AuditLogPage() {
   const [{ data: requests }, { data: logs }, { data: apps }, { data: profiles }, { data: devices }, { data: orgs }] =
     await Promise.all([
       supabase.from('app_requests').select('app_id, user_id, duration, status, created_at, reviewed_at, reviewed_by'),
-      supabase.from('agent_logs').select('device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(300),
+      supabase.from('agent_logs').select('device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(5000),
       supabase.from('apps').select('id, name'),
       supabase.from('profiles').select('id, email'),
       supabase.from('devices').select('device_id, hostname, user_id'),
@@ -90,18 +89,10 @@ export default async function AuditLogPage() {
   }
 
   events.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-  const recent = events.slice(0, 200)
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-2"><h1 className="text-2xl font-bold text-white">Reports</h1></div>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-500">
-            Who requested, approved, used, or was blocked from apps — most recent first.
-          </p>
-          <ExportMenu orgs={orgs ?? []} />
-        </div>
-        <AuditTable events={recent} userId={profile.id} />
+      <ReportsView events={events} orgs={orgs ?? []} userId={profile.id} />
     </div>
   )
 }
