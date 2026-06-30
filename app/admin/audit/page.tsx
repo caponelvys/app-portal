@@ -103,9 +103,17 @@ export default async function AuditLogPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <p className="text-sm text-gray-500 mb-4">
-          Who requested, approved, used, or was blocked from apps — most recent first.
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-500">
+            Who requested, approved, used, or was blocked from apps — most recent first.
+          </p>
+          <a
+            href="/api/audit/export"
+            className="text-sm bg-gray-800 border border-gray-700 text-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-colors whitespace-nowrap"
+          >
+            Export CSV
+          </a>
+        </div>
         {recent.length === 0 ? (
           <p className="text-gray-500 text-sm">No activity yet.</p>
         ) : (
