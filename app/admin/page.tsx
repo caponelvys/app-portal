@@ -85,7 +85,7 @@ export default async function AdminDashboard() {
           <section>
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-2">
-              <QuickAction href="/admin/orgs" label="Add Client" />
+              <QuickAction href="/admin/orgs" label="Add Org" />
               <QuickAction href="/admin/users/invite" label="Invite User" />
               <QuickAction href="/admin/new" label="Add App" />
               <QuickAction href="/admin/devices?tab=install" label="Install Agent" />
