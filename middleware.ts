@@ -23,8 +23,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to /login (except on auth pages)
-  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup') && !request.nextUrl.pathname.startsWith('/reset-password')) {
+  // Redirect unauthenticated users to /login (except on auth pages and public agent downloads)
+  const pub = ['/login', '/signup', '/reset-password', '/downloads', '/api/enroll']
+  if (!user && !pub.some(p => request.nextUrl.pathname.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
