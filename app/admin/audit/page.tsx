@@ -78,7 +78,7 @@ export default async function AuditLogPage() {
 
   for (const l of logs ?? []) {
     const dev = device.get(l.device_id)
-    const who = (dev?.user_id && email.get(dev.user_id)) || dev?.hostname || 'Unknown device'
+    const who = (dev?.user_id && email.get(dev.user_id)) || (dev?.hostname ? dev.hostname.split('.')[0] : null) || 'Unknown device'
     const kind: AuditEvent['kind'] = l.action === 'accessed' ? 'accessed' : 'killed'
     events.push({
       time: l.created_at,

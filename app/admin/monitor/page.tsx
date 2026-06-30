@@ -15,7 +15,7 @@ export default async function MonitorPage() {
     supabase.from('devices').select('device_id, hostname'),
   ])
 
-  const hostnameById = Object.fromEntries((devices ?? []).map(d => [d.device_id, d.hostname]))
+  const hostnameById = Object.fromEntries((devices ?? []).map(d => [d.device_id, (d.hostname ?? '').split('.')[0] || d.hostname]))
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
