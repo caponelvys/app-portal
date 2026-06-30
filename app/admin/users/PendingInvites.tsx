@@ -57,10 +57,10 @@ export default function PendingInvites({ userId }: { userId?: string }) {
   if (pending.length === 0) return null
 
   const columns: ColDef<PendingUser>[] = [
-    { id: 'email',   label: 'Email',   defaultWidth: 240, sortValue: r => r.email,      renderCell: u => <span className="text-white">{u.email}</span> },
-    { id: 'role',    label: 'Role',    defaultWidth: 120, sortValue: r => r.role,        renderCell: u => <span className="text-gray-400 capitalize">{u.role}</span> },
-    { id: 'invited', label: 'Invited', defaultWidth: 140, sortValue: r => r.invited_at,  renderCell: u => <span className="text-gray-500 text-xs">{new Date(u.invited_at).toLocaleDateString()}</span> },
-    { id: 'status',  label: 'Status',  defaultWidth: 110, sortable: false,               renderCell: () => <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-400">Pending</span> },
+    { id: 'email',   label: 'Email',   defaultWidth: 240, sortValue: r => r.email,     filter: { type: 'text',       value: (r: PendingUser) => r.email }, renderCell: u => <span className="text-white">{u.email}</span> },
+    { id: 'role',    label: 'Role',    defaultWidth: 120, sortValue: r => r.role,       filter: { type: 'select',     value: (r: PendingUser) => r.role }, renderCell: u => <span className="text-gray-400 capitalize">{u.role}</span> },
+    { id: 'invited', label: 'Invited', defaultWidth: 140, sortValue: r => r.invited_at, filter: { type: 'time-range', value: (r: PendingUser) => r.invited_at }, renderCell: u => <span className="text-gray-500 text-xs">{new Date(u.invited_at).toLocaleDateString()}</span> },
+    { id: 'status',  label: 'Status',  defaultWidth: 110, sortable: false,                                                                                  renderCell: () => <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-400">Pending</span> },
     {
       id: 'actions', label: 'Actions', defaultWidth: 240, sortable: false,
       renderCell: u => {

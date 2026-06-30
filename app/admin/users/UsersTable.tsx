@@ -41,6 +41,7 @@ export default function UsersTable({ users: initial, currentUserId, userId }: { 
   const columns: ColDef<Profile>[] = [
     {
       id: 'email', label: 'Email', defaultWidth: 240, sortValue: r => r.email,
+      filter: { type: 'text', value: (r: Profile) => r.email },
       renderCell: u => (
         <span className="text-white">
           {u.email}
@@ -50,6 +51,7 @@ export default function UsersTable({ users: initial, currentUserId, userId }: { 
     },
     {
       id: 'role', label: 'Role', defaultWidth: 120, sortValue: r => r.role_v2 ?? r.role,
+      filter: { type: 'select', value: (r: Profile) => ROLE_LABELS[r.role_v2 ?? r.role] ?? (r.role_v2 ?? r.role) },
       renderCell: u => {
         const r = u.role_v2 ?? u.role
         return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${ROLE_STYLES[r] ?? 'bg-gray-800 text-gray-400'}`}>{ROLE_LABELS[r] ?? r}</span>
@@ -57,10 +59,12 @@ export default function UsersTable({ users: initial, currentUserId, userId }: { 
     },
     {
       id: 'org', label: 'Org', defaultWidth: 160, sortValue: r => r.org_name ?? '',
+      filter: { type: 'text', value: (r: Profile) => r.org_name ?? '' },
       renderCell: u => <span className="text-gray-400 text-xs">{u.org_name ?? '—'}</span>,
     },
     {
       id: 'joined', label: 'Joined', defaultWidth: 140, sortValue: r => r.created_at,
+      filter: { type: 'time-range', value: (r: Profile) => r.created_at },
       renderCell: u => <span className="text-gray-500 text-xs">{new Date(u.created_at).toLocaleDateString()}</span>,
     },
     {

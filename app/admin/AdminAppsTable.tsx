@@ -39,6 +39,7 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
     {
       id: 'app', label: 'App', defaultWidth: 240, sortable: true,
       sortValue: r => r.name,
+      filter: { type: 'text', value: (r: App) => r.name + ' ' + r.description },
       renderCell: app => (
         <div className="flex items-center gap-2">
           {getAppLogoUrl(app.name, app.icon_url) ? (
@@ -58,11 +59,13 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
     {
       id: 'url', label: 'URL', defaultWidth: 180, sortable: true,
       sortValue: r => r.url,
+      filter: { type: 'text', value: (r: App) => r.url },
       renderCell: app => <span className="text-gray-500 text-xs truncate block max-w-[160px]">{app.url}</span>,
     },
     {
       id: 'status', label: 'Status', defaultWidth: 110, sortable: true,
       sortValue: r => r.status,
+      filter: { type: 'select', value: (r: App) => r.status, options: [{ label: 'Allowed', value: 'allowed' }, { label: 'Blocked', value: 'blocked' }] },
       renderCell: app => (
         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${app.status === 'allowed' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}`}>
           {app.status}

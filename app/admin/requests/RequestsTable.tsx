@@ -172,10 +172,10 @@ export default function RequestsTable() {
             rows={history}
             rowKey={r => r.id}
             columns={[
-              { id: 'app',       label: 'App',       defaultWidth: 180, sortValue: r => r.app_name,    renderCell: r => <span className="text-white">{r.app_name}</span> },
-              { id: 'user',      label: 'User',      defaultWidth: 200, sortValue: r => r.user_email ?? '', renderCell: r => <span className="text-gray-400">{r.user_email ?? '—'}</span> },
-              { id: 'requested', label: 'Requested', defaultWidth: 140, sortValue: r => r.duration,    renderCell: r => <span className="text-gray-500">{durationLabel(r.duration)}</span> },
-              { id: 'status',    label: 'Status',    defaultWidth: 160, sortValue: r => r.status,      renderCell: r => <StatusBadge req={r} /> },
+              { id: 'app',       label: 'App',       defaultWidth: 180, sortValue: r => r.app_name,        filter: { type: 'text',       value: (r: Request) => r.app_name },    renderCell: r => <span className="text-white">{r.app_name}</span> },
+              { id: 'user',      label: 'User',      defaultWidth: 200, sortValue: r => r.user_email ?? '', filter: { type: 'text',       value: (r: Request) => r.user_email ?? '' }, renderCell: r => <span className="text-gray-400">{r.user_email ?? '—'}</span> },
+              { id: 'requested', label: 'Requested', defaultWidth: 140, sortValue: r => r.created_at,      filter: { type: 'time-range', value: (r: Request) => r.created_at },  renderCell: r => <span className="text-gray-500">{durationLabel(r.duration)}</span> },
+              { id: 'status',    label: 'Status',    defaultWidth: 160, sortValue: r => r.status,          filter: { type: 'select', value: (r: Request) => r.status, options: [{ label: 'Approved', value: 'approved' }, { label: 'Denied', value: 'denied' }, { label: 'Revoked', value: 'revoked' }, { label: 'Expired', value: 'expired' }] }, renderCell: r => <StatusBadge req={r} /> },
             ] as ColDef<Request>[]}
           />
         </section>
