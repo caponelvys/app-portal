@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { AGENT_VERSION } from '@/lib/agentVersion'
 
 const BASE = 'https://appcontroller.vercel.app/downloads'
-const AGENT_VERSION = '1.1.0'
 
 const installCommands: Record<string, string> = {
   'Mac Terminal':            `curl -fsSL ${BASE}/install_mac.sh | sudo bash`,

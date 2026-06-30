@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { AGENT_VERSION } from '@/lib/agentVersion'
 
 const BASE = 'https://appcontroller.vercel.app/downloads'
-const AGENT_VERSION = '1.1.0'
 
 function installCommandsFor(token: string): Record<string, string> {
   return {
