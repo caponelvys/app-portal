@@ -30,6 +30,8 @@ type ColId = 'hostname' | 'os' | 'status' | 'lastSeen'
 type SortDir = 'asc' | 'desc' | null
 
 const DEFAULT_COLS: ColId[] = ['hostname', 'os', 'status', 'lastSeen']
+const DEFAULT_WIDTHS: Record<ColId, number> = { hostname: 220, os: 140, status: 120, lastSeen: 180 }
+const WIDTH_STORAGE = 'devices-col-widths'
 const COL_LABELS: Record<ColId, string> = {
   hostname: 'Hostname',
   os: 'OS',
@@ -131,24 +133,27 @@ function ColumnFilter({ children, onClear, active }: { children: React.ReactNode
 
 function SortableHeader({
   id,
+  width,
   children,
   sortDir,
   onSort,
+  onResizeStart,
 }: {
   id: ColId
+  width: number
   children: React.ReactNode
   sortDir: SortDir
   onSort: () => void
+  onResizeStart: (e: React.MouseEvent) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
     <th
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="text-left px-4 py-3 font-medium text-gray-400 whitespace-nowrap select-none"
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, width, minWidth: width }}
+      className="relative text-left px-4 py-3 font-medium text-gray-400 whitespace-nowrap select-none"
     >
       <div className="flex items-center gap-1">
-        {/* Drag handle */}
         <span
           {...attributes}
           {...listeners}
@@ -164,12 +169,20 @@ function SortableHeader({
           <SortIcon dir={sortDir} />
         </button>
       </div>
+      {/* Resize handle */}
+      <div
+        onMouseDown={onResizeStart}
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50 transition-colors group-hover/header:bg-gray-700/50"
+        title="Drag to resize column"
+      />
     </th>
   )
 }
 
 export default function DevicesTabs({ devices }: { devices: Device[] }) {
   const [cols, setCols] = useState<ColId[]>(DEFAULT_COLS)
+  const [widths, setWidths] = useState<Record<ColId, number>>(DEFAULT_WIDTHS)
+  const resizingRef = useRef<{ col: ColId; startX: number; startW: number } | null>(null)
   const [hostnameFilter, setHostnameFilter] = useState('')
   const [osFilter, setOsFilter]             = useState('all')
   const [statusFilter, setStatusFilter]     = useState('all')
@@ -185,6 +198,33 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
         if (parsed.every(c => DEFAULT_COLS.includes(c))) setCols(parsed)
       }
     } catch {}
+    try {
+      const saved = localStorage.getItem(WIDTH_STORAGE)
+      if (saved) setWidths({ ...DEFAULT_WIDTHS, ...JSON.parse(saved) })
+    } catch {}
+
+    function onMouseMove(e: MouseEvent) {
+      if (!resizingRef.current) return
+      const { col, startX, startW } = resizingRef.current
+      const next = Math.max(80, startW + (e.clientX - startX))
+      setWidths(prev => ({ ...prev, [col]: next }))
+    }
+    function onMouseUp() {
+      if (!resizingRef.current) return
+      setWidths(prev => {
+        try { localStorage.setItem(WIDTH_STORAGE, JSON.stringify(prev)) } catch {}
+        return prev
+      })
+      resizingRef.current = null
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
   }, [])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -196,6 +236,13 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
       try { localStorage.setItem(COL_STORAGE, JSON.stringify(next)) } catch {}
       return next
     })
+  }
+
+  function startResize(col: ColId, e: React.MouseEvent) {
+    e.preventDefault()
+    resizingRef.current = { col, startX: e.clientX, startW: widths[col] }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
   }
 
   function toggleSort(col: ColId) {
@@ -240,7 +287,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
     const dir = sortCol === col ? sortDir : null
     switch (col) {
       case 'hostname': return (
-        <SortableHeader key={col} id={col} sortDir={dir} onSort={() => toggleSort(col)}>
+        <SortableHeader key={col} id={col} width={widths[col]} sortDir={dir} onSort={() => toggleSort(col)} onResizeStart={e => startResize(col, e)}>
           Hostname
           <ColumnFilter active={!!hostnameFilter} onClear={() => setHostnameFilter('')}>
             <input autoFocus type="text" placeholder="Search hostname..." value={hostnameFilter} onChange={e => setHostnameFilter(e.target.value)} className={inputClass} />
@@ -248,7 +295,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
         </SortableHeader>
       )
       case 'os': return (
-        <SortableHeader key={col} id={col} sortDir={dir} onSort={() => toggleSort(col)}>
+        <SortableHeader key={col} id={col} width={widths[col]} sortDir={dir} onSort={() => toggleSort(col)} onResizeStart={e => startResize(col, e)}>
           OS
           <ColumnFilter active={osFilter !== 'all'} onClear={() => setOsFilter('all')}>
             <select value={osFilter} onChange={e => setOsFilter(e.target.value)} className={selectClass}>
@@ -259,7 +306,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
         </SortableHeader>
       )
       case 'status': return (
-        <SortableHeader key={col} id={col} sortDir={dir} onSort={() => toggleSort(col)}>
+        <SortableHeader key={col} id={col} width={widths[col]} sortDir={dir} onSort={() => toggleSort(col)} onResizeStart={e => startResize(col, e)}>
           Status
           <ColumnFilter active={statusFilter !== 'all'} onClear={() => setStatusFilter('all')}>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={selectClass}>
@@ -271,7 +318,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
         </SortableHeader>
       )
       case 'lastSeen': return (
-        <SortableHeader key={col} id={col} sortDir={dir} onSort={() => toggleSort(col)}>
+        <SortableHeader key={col} id={col} width={widths[col]} sortDir={dir} onSort={() => toggleSort(col)} onResizeStart={e => startResize(col, e)}>
           Last Seen
           <ColumnFilter active={lastSeenFilter !== 'any'} onClear={() => setLastSeenFilter('any')}>
             <select value={lastSeenFilter} onChange={e => setLastSeenFilter(e.target.value)} className={selectClass}>
