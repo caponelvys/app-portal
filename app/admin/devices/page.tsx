@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import DevicesTabs from './DevicesTabs'
 
-export default async function AdminDevicesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function AdminDevicesPage() {
   const supabase = await createClient()
 
   const profile = await getCallerProfile(supabase)
@@ -17,18 +17,10 @@ export default async function AdminDevicesPage({ searchParams }: { searchParams:
 
   const { data: devices } = await devQ
 
-  const { data: logs } = await supabase
-    .from('agent_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  const { tab } = await searchParams
-  const defaultTab = tab === 'activity' ? 'activity' : tab === 'install' ? 'install' : 'devices'
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <DevicesTabs devices={devices ?? []} logs={logs ?? []} defaultTab={defaultTab} />
+      <h1 className="text-2xl font-bold text-white mb-6">All Devices</h1>
+      <DevicesTabs devices={devices ?? []} />
     </div>
   )
 }
