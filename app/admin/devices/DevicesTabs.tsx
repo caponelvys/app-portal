@@ -159,7 +159,7 @@ export default function DevicesTabs({ devices }: { devices: Device[] }) {
               <tr key={device.id} className="border-b border-gray-800 hover:bg-gray-800">
                 <td className="px-4 py-3 font-medium text-white">
                   <a href={`/admin/devices/${device.device_id}`} className="hover:text-blue-400 transition-colors">
-                    {device.hostname}
+                    {device.hostname.split('.')[0]}
                   </a>
                 </td>
                 <td className="px-4 py-3 text-gray-400">{osLabel(device.os)}</td>
