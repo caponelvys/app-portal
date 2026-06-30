@@ -25,24 +25,18 @@ const RANGE_OPTIONS: { value: Range; label: string }[] = [
   { value: 'custom', label: 'Custom date' },
 ]
 
-function rangeStart(range: Range, customDate: string): Date | null {
+function rangeStart(range: Range, customFrom: string): Date | null {
   const now = new Date()
-  if (range === 'today') {
-    const d = new Date(now); d.setHours(0, 0, 0, 0); return d
-  }
+  if (range === 'today') { const d = new Date(now); d.setHours(0, 0, 0, 0); return d }
   if (range === '7d')  return new Date(now.getTime() - 7  * 86400e3)
   if (range === '30d') return new Date(now.getTime() - 30 * 86400e3)
   if (range === '90d') return new Date(now.getTime() - 90 * 86400e3)
-  if (range === 'custom' && customDate) {
-    const d = new Date(customDate); d.setHours(0, 0, 0, 0); return d
-  }
+  if (range === 'custom' && customFrom) { const d = new Date(customFrom); d.setHours(0, 0, 0, 0); return d }
   return null
 }
 
-function rangeEnd(range: Range, customDate: string): Date | null {
-  if (range === 'custom' && customDate) {
-    const d = new Date(customDate); d.setHours(23, 59, 59, 999); return d
-  }
+function rangeEnd(range: Range, customTo: string): Date | null {
+  if (range === 'custom' && customTo) { const d = new Date(customTo); d.setHours(23, 59, 59, 999); return d }
   return null
 }
 
@@ -57,18 +51,19 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 export default function ReportsView({ events, orgs, userId }: { events: AuditEvent[]; orgs: Org[]; userId?: string }) {
   const [range, setRange] = useState<Range>('30d')
-  const [customDate, setCustomDate] = useState('')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo]     = useState('')
 
   const filtered = useMemo(() => {
-    const start = rangeStart(range, customDate)
-    const end   = rangeEnd(range, customDate)
+    const start = rangeStart(range, customFrom)
+    const end   = rangeEnd(range, customTo)
     return events.filter(e => {
       const t = new Date(e.time)
       if (start && t < start) return false
       if (end   && t > end)   return false
       return true
     })
-  }, [events, range, customDate])
+  }, [events, range, customFrom, customTo])
 
   const stats = useMemo(() => ({
     total:    filtered.length,
@@ -108,13 +103,24 @@ export default function ReportsView({ events, orgs, userId }: { events: AuditEve
           </button>
         ))}
         {range === 'custom' && (
-          <input
-            type="date"
-            max={today}
-            value={customDate}
-            onChange={e => setCustomDate(e.target.value)}
-            className="ml-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          <div className="flex items-center gap-2 ml-1">
+            <input
+              type="date"
+              max={customTo || today}
+              value={customFrom}
+              onChange={e => setCustomFrom(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <span className="text-gray-500 text-sm">to</span>
+            <input
+              type="date"
+              min={customFrom || undefined}
+              max={today}
+              value={customTo}
+              onChange={e => setCustomTo(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
         )}
       </div>
 
