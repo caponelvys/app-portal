@@ -96,7 +96,7 @@ export default async function AuditLogPage() {
       <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm">← Apps</a>
-          <h1 className="text-xl font-bold text-white">Audit Log</h1>
+          <h1 className="text-xl font-bold text-white">Reports</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400 hidden sm:block">{profile.role_v2}</span>
