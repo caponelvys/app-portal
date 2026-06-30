@@ -117,11 +117,15 @@ def register_device(device_id):
 
 def heartbeat(device_id):
     """Update last_seen timestamp so the portal knows the agent is alive."""
-    requests.patch(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
-        headers=HEADERS,
-        json={"last_seen": now_iso()},
-    )
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
+            headers=HEADERS,
+            json={"last_seen": now_iso()},
+            timeout=5,
+        )
+    except Exception:
+        pass  # transient network error — next heartbeat will catch up
 
 # ── Device pairing ──────────────────────────────────────────────────────────────
 def generate_pairing_code():
@@ -291,7 +295,10 @@ def main():
     print(f"[agent] Starting — device ID: {device_id}")
     print(f"[agent] OS: {OS} | Polling every {POLL_INTERVAL}s")
 
-    register_device(device_id)
+    try:
+        register_device(device_id)
+    except Exception as e:
+        print(f"[agent] Warning: registration failed ({e}), continuing anyway")
     setup_pairing(device_id)
 
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
