@@ -148,7 +148,7 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
           </a>
           {/* Mobile hamburger */}
           <button
-            className="md:hidden text-gray-400 hover:text-white"
+            className="md:hidden text-gray-400 hover:text-white p-2 -mr-2 rounded-md"
             onClick={() => setMobileOpen(o => !o)}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,14 +167,40 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className="px-3 py-2.5 rounded-md text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800"
+                className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                  isNavActive(item.href, item.exact, pathname)
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                }`}
               >
                 {item.label}
               </Link>
             ))}
+
+            {/* Current section sub-items */}
+            {sidebar && sidebar.items.length > 0 && (
+              <div className="border-t border-gray-800 mt-2 pt-2">
+                <p className="px-4 py-1 text-xs text-gray-500 uppercase tracking-wider font-medium">{sidebar.title}</p>
+                {sidebar.items.map(item => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-4 py-3 rounded-md text-sm transition-colors ${
+                      pathname === item.href || pathname.startsWith(item.href + '/')
+                        ? 'bg-blue-600 text-white font-medium'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+
             <div className="border-t border-gray-800 mt-2 pt-2">
-              <Link href="/admin/users" onClick={() => setMobileOpen(false)} className="block px-3 py-2.5 text-sm text-gray-400 hover:text-white">Users</Link>
-              <a href="/auth/signout" className="block px-3 py-2.5 text-sm text-gray-400 hover:text-white">Sign out</a>
+              <Link href="/admin/users" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800">Users</Link>
+              <a href="/auth/signout" className="block px-4 py-3 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800">Sign out</a>
             </div>
           </div>
         </div>

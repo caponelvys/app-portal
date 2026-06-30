@@ -112,7 +112,7 @@ function ColumnFilter({ active, onClear, children }: { active: boolean; onClear:
 
   return (
     <span className="inline-block group/fi">
-      <button ref={btnRef} onClick={toggle} className="ml-1.5 p-0.5 rounded hover:bg-gray-700 transition-colors align-middle">
+      <button ref={btnRef} onClick={toggle} className="ml-1 p-1.5 rounded hover:bg-gray-700 transition-colors align-middle min-w-[32px] min-h-[32px] flex items-center justify-center">
         <FilterIcon active={active} />
       </button>
       {open && (
@@ -163,7 +163,7 @@ function SortableHeader({
         <span
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing mr-1 opacity-0 group-hover/hd:opacity-100 transition-opacity"
+          className="cursor-grab active:cursor-grabbing mr-1 opacity-100 sm:opacity-0 sm:group-hover/hd:opacity-100 transition-opacity touch-none"
           title="Drag to reorder"
         >
           <svg className="w-3 h-3 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
@@ -187,7 +187,7 @@ function SortableHeader({
       </div>
       <div
         onMouseDown={onResizeStart}
-        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50 transition-colors group-hover/hd:bg-gray-700/50"
+        className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/50 transition-colors group-hover/hd:bg-gray-700/50 hidden sm:block"
       />
     </th>
   )
