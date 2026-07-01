@@ -20,6 +20,22 @@ const updateCommands: Record<string, string> = {
   'Windows CMD':    `curl -fsSL ${BASE}/agent.py -o "C:\\AppController\\agent.py" && schtasks /end /tn "AppControllerAgent" && schtasks /run /tn "AppControllerAgent"`,
 }
 
+// Direct installer downloads per OS.
+const INSTALLERS = [
+  { os: 'macOS',   file: 'install_mac.sh'   },
+  { os: 'Windows', file: 'install_win.bat'  },
+  { os: 'Linux',   file: 'install_linux.sh' },
+]
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M8 2v8m0 0L5 7m3 3l3-3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 11.5v1a1 1 0 001 1h9a1 1 0 001-1v-1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 type Tab = 'install' | 'update'
 
 export default function InstallCommands() {
@@ -60,6 +76,32 @@ export default function InstallCommands() {
         </p>
       )}
 
+      {/* One-click downloads */}
+      {tab === 'install' ? (
+        <div>
+          <p className="text-xs text-gray-400 mb-2">Download installer</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {INSTALLERS.map(({ os: label, file }) => (
+              <a key={label} href={`/downloads/${file}`} download
+                className="flex items-center justify-center gap-2 text-sm text-white bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-700 hover:border-gray-500 transition-colors">
+                <DownloadIcon />
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="text-xs text-gray-400 mb-2">Download agent</p>
+          <a href="/downloads/agent.py" download
+            className="inline-flex items-center gap-2 text-sm text-white bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-700 hover:border-gray-500 transition-colors">
+            <DownloadIcon />
+            agent.py (v{AGENT_VERSION})
+          </a>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500">Or run this command:</p>
       <select
         value={activeKey}
         onChange={e => { setSelected(e.target.value); setCopied(false) }}
