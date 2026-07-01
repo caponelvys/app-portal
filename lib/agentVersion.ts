@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.2.0'
+export const AGENT_VERSION = '1.2.1'
 
 export type ChangelogEntry = {
   version: string
@@ -13,6 +13,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.2.1',
+    date: '2026-06-30',
+    changes: [
+      'Fixed enrollment: agent posted to the wrong URL (/devices/api/enroll), so token enrollment silently failed with a 405. Now posts to /api/enroll',
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-06-30',

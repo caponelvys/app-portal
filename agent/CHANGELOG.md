@@ -1,5 +1,11 @@
 # App Controller Agent — Changelog
 
+## v1.2.1 — 2026-06-30
+- Fixed enrollment: `register_device` was posting to `/devices/api/enroll`
+  (PORTAL_URL had been repurposed for the pairing display URL), which redirected
+  to login and returned 405 — so `--token` enrollment silently failed. Split the
+  pairing display URL into `PAIRING_URL`; enrollment now posts to `/api/enroll`.
+
 ## v1.2.0 — 2026-06-30
 - Agent now reports structured activity events to `agent_events` (started,
   enrolled, paired, errors) — shown in the portal's per-device Activity log

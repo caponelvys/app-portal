@@ -22,7 +22,7 @@ PORTAL_URL   = "https://appcontroller.vercel.app"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
-AGENT_VERSION = "1.2.0"
+AGENT_VERSION = "1.2.1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -54,7 +54,9 @@ OS_LABEL = get_os_label()  # e.g. "macOS 14.5"
 DEVICE_ID_FILE = "C:\\AppController\\.device_id" if OS == "Windows" else "/usr/local/appcontroller/.device_id"
 PAIRING_CODE_FILE = "C:\\AppController\\.pairing_code" if OS == "Windows" else "/usr/local/appcontroller/.pairing_code"
 ENROLLMENT_TOKEN_FILE = "C:\\AppController\\.enrollment_token" if OS == "Windows" else "/usr/local/appcontroller/.enrollment_token"
-PORTAL_URL = "https://appcontroller.vercel.app/devices"
+# User-facing page where a device owner enters their pairing code. Kept separate
+# from PORTAL_URL (the API base) so it can't break the /api/enroll endpoint.
+PAIRING_URL = "https://appcontroller.vercel.app/devices"
 
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -198,7 +200,7 @@ def setup_pairing(device_id):
     print("\n" + "=" * 44)
     print("  This device is not yet linked to a user.")
     print(f"  Pairing code:  {code}")
-    print(f"  Enter it at:   {PORTAL_URL}")
+    print(f"  Enter it at:   {PAIRING_URL}")
     print("=" * 44 + "\n")
 
 # ── App enforcement ────────────────────────────────────────────────────────────
