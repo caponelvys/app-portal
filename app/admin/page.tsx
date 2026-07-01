@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import DashboardLayout from './DashboardLayout'
@@ -37,6 +38,11 @@ export default async function AdminDashboard() {
 
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
+  // app_requests is only visible to a user's own rows under RLS, so count
+  // pending requests with the service-role client (same as the nav badge and
+  // the /api/app-requests routes) to see all staff-reviewable requests.
+  const admin = createAdminClient()
+
   const [
     { data: orgs },
     { data: devices },
@@ -46,7 +52,7 @@ export default async function AdminDashboard() {
   ] = await Promise.all([
     supabase.from('orgs').select('id, name'),
     supabase.from('devices').select('device_id, hostname, last_seen, org_id'),
-    supabase.from('app_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    admin.from('app_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('agent_logs').select('app_name, action, created_at').order('created_at', { ascending: false }).limit(8),
     supabase.from('agent_logs').select('app_name, action').gte('created_at', since24h),
   ])
