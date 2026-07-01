@@ -7,10 +7,11 @@ import { durationLabel, expiresInLabel } from './durations'
 //   NEXT_PUBLIC_APP_URL - portal base URL used in email links
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://appcontroller.vercel.app'
 
-type SendArgs = { to: string; subject: string; html: string }
+type SendArgs = { to: string | string[]; subject: string; html: string }
 
 // Returns true if the email was sent, false if skipped or failed.
 export async function sendEmail({ to, subject, html }: SendArgs): Promise<boolean> {
+  if (Array.isArray(to) && to.length === 0) return false
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.EMAIL_FROM || 'App Portal <onboarding@resend.dev>'
 
@@ -39,16 +40,49 @@ export async function sendEmail({ to, subject, html }: SendArgs): Promise<boolea
   }
 }
 
-function layout(title: string, body: string): string {
+function layout(
+  title: string,
+  body: string,
+  opts: { ctaPath?: string; ctaLabel?: string; footer?: string } = {},
+): string {
+  const href = `${APP_URL}${opts.ctaPath ?? ''}`
+  const ctaLabel = opts.ctaLabel ?? 'Open App Portal'
+  const footer = opts.footer ?? "You're receiving this because you requested app access in the App Portal."
   return `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">
     <h2 style="margin:0 0 16px">${title}</h2>
     ${body}
     <p style="margin-top:24px">
-      <a href="${APP_URL}" style="background:#2563eb;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;display:inline-block">Open App Portal</a>
+      <a href="${href}" style="background:#2563eb;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;display:inline-block">${ctaLabel}</a>
     </p>
-    <p style="color:#888;font-size:12px;margin-top:24px">You're receiving this because you requested app access in the App Portal.</p>
+    <p style="color:#888;font-size:12px;margin-top:24px">${footer}</p>
   </div>`
+}
+
+// Notify MSP staff (admins + techs) that a user submitted a new access request.
+export async function sendAccessRequestedEmail(args: {
+  to: string[]
+  appName: string
+  requesterEmail: string
+  duration: string
+  reason: string | null
+}): Promise<boolean> {
+  const { to, appName, requesterEmail, duration, reason } = args
+  return sendEmail({
+    to,
+    subject: `New access request: ${appName}`,
+    html: layout(
+      `New access request`,
+      `<p><strong>${requesterEmail}</strong> is requesting access to <strong>${appName}</strong> (${durationLabel(duration).toLowerCase()}).</p>
+       ${reason ? `<p style="color:#444">Reason: <em>&ldquo;${reason}&rdquo;</em></p>` : ''}
+       <p>Review it in the portal to approve or deny.</p>`,
+      {
+        ctaPath: '/admin/requests',
+        ctaLabel: 'Review request',
+        footer: "You're receiving this because you're an administrator in the App Portal.",
+      },
+    ),
+  })
 }
 
 // Notify a requester that their app-access request was approved or denied.

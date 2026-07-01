@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import GlobalSearch from './GlobalSearch'
 
 const PRIMARY_NAV = [
@@ -85,6 +85,15 @@ function getSidebar(pathname: string) {
   return null
 }
 
+function NavBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
 function isNavActive(href: string, exact: boolean | undefined, pathname: string) {
   if (exact) return pathname === href
   // strip query from href for prefix check
@@ -96,6 +105,21 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
   const pathname = usePathname()
   const sidebar = getSidebar(pathname)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  // Poll the pending-request count for the nav badge. Refreshes on mount,
+  // on navigation (e.g. after approving), and every 45s.
+  useEffect(() => {
+    let active = true
+    const load = () =>
+      fetch('/api/app-requests/pending-count')
+        .then(r => r.json())
+        .then(d => { if (active) setPendingCount(d.count ?? 0) })
+        .catch(() => {})
+    load()
+    const t = setInterval(load, 45_000)
+    return () => { active = false; clearInterval(t) }
+  }, [pathname])
 
   const ROLE_LABELS: Record<string, string> = {
     msp_admin: 'Admin', msp_tech: 'Tech', client_admin: 'Org Admin', client_user: 'Org Tech',
@@ -119,13 +143,14 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center ${
                   active
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
                 {item.label}
+                {item.href === '/admin/requests' && <NavBadge count={pendingCount} />}
               </Link>
             )
           })}
@@ -170,13 +195,14 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={`px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                className={`px-4 py-3 rounded-md text-sm font-medium transition-colors inline-flex items-center ${
                   isNavActive(item.href, item.exact, pathname)
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-800'
                 }`}
               >
                 {item.label}
+                {item.href === '/admin/requests' && <NavBadge count={pendingCount} />}
               </Link>
             ))}
 
