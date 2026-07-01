@@ -19,11 +19,12 @@ const updateCommands: Record<string, string> = {
   'Windows CMD':    `curl -fsSL ${BASE}/agent.py -o "C:\\AppController\\agent.py" && schtasks /end /tn "AppControllerAgent" && schtasks /run /tn "AppControllerAgent"`,
 }
 
-// Direct installer downloads per OS (no token embedded — see note in UI).
+// Per-location installer downloads. The /api/enroll/installer route bakes this
+// location's enrollment token into the script, so the download is run-as-is.
 const INSTALLERS = [
-  { os: 'Windows', file: 'install_win.bat'  },
-  { os: 'macOS',   file: 'install_mac.sh'   },
-  { os: 'Linux',   file: 'install_linux.sh' },
+  { label: 'Windows', slug: 'windows' },
+  { label: 'macOS',   slug: 'mac'     },
+  { label: 'Linux',   slug: 'linux'   },
 ]
 
 function DownloadIcon() {
@@ -120,8 +121,8 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
           <div className="mb-3">
             <p className="text-xs text-gray-400 mb-2">Download installer</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {INSTALLERS.map(({ os: label, file }) => (
-                <a key={label} href={`/downloads/${file}`} download
+              {INSTALLERS.map(({ label, slug }) => (
+                <a key={slug} href={`/api/enroll/installer?loc=${locationId}&os=${slug}`} download
                   className="flex items-center justify-center gap-2 text-sm text-white bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-700 hover:border-gray-500 transition-colors">
                   <DownloadIcon />
                   {label}
@@ -129,8 +130,7 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
               ))}
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              After downloading, run the installer with this location&apos;s token:{' '}
-              <code className="text-green-400 font-mono">--token {token || 'NO_TOKEN'}</code> (or copy the ready-made command below).
+              Ready to run — this location&apos;s enrollment token is baked in, so devices land here automatically.
             </p>
           </div>
         )}
