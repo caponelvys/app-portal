@@ -3,8 +3,9 @@
 import DataTable, { ColDef } from '@/app/admin/DataTable'
 import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT } from '@/lib/deviceStatus'
 import { cleanHostname } from '@/lib/hostname'
+import DeviceActionsMenu from '@/app/admin/devices/DeviceActionsMenu'
 
-type Device = { device_id: string; hostname: string; os: string; last_seen: string; agent_version: string | null }
+type Device = { device_id: string; hostname: string; os: string; last_seen: string; agent_version: string | null; user_id: string | null }
 
 const TIER_RANK = ['healthy', 'inactive', 'warning', 'stale', 'lost', 'never']
 
@@ -45,6 +46,14 @@ const columns: ColDef<Device>[] = [
     id: 'lastSeen', label: 'Last seen', defaultWidth: 180, sortValue: r => r.last_seen,
     filter: { type: 'time-range', value: (r: Device) => r.last_seen },
     renderCell: d => <span className="text-gray-500 text-xs">{d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</span>,
+  },
+  {
+    id: 'actions', label: '', defaultWidth: 56, sortable: false,
+    renderCell: d => (
+      <div className="flex justify-end">
+        <DeviceActionsMenu deviceId={d.device_id} hostname={cleanHostname(d.hostname) || d.device_id} hasOwner={!!d.user_id} />
+      </div>
+    ),
   },
 ]
 

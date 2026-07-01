@@ -33,7 +33,7 @@ export default async function LocationDetailPage({
 
   const { data: devices, count } = await supabase
     .from('devices')
-    .select('device_id, hostname, os, last_seen, agent_version', { count: 'exact' })
+    .select('device_id, hostname, os, last_seen, agent_version, user_id', { count: 'exact' })
     .eq('location_id', locId)
     .order('last_seen', { ascending: false })
     .range(from, to)
