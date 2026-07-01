@@ -23,6 +23,7 @@ import { useState, useEffect, useId } from 'react'
 export type WidgetId =
   | 'agentHealth'
   | 'needsAttention'
+  | 'agentVersions'
   | 'enforcement'
   | 'topBlocked'
   | 'recentActivity'
@@ -33,7 +34,7 @@ type Layout = { left: WidgetId[]; right: WidgetId[] }
 
 const DEFAULT_LAYOUT: Layout = {
   left:  ['agentHealth', 'enforcement', 'recentActivity', 'quickActions'],
-  right: ['needsAttention', 'unenrolledOrgs', 'topBlocked'],
+  right: ['needsAttention', 'agentVersions', 'unenrolledOrgs', 'topBlocked'],
 }
 
 const storageKey = (userId: string) => `dashboard-layout-v2:${userId}`

@@ -3,7 +3,22 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import { cleanHostname } from '@/lib/hostname'
+import { AGENT_VERSION } from '@/lib/agentVersion'
 import DashboardLayout from './DashboardLayout'
+
+// True if a reported agent version is older than `latest` (null = never
+// reported → treat as behind).
+function versionBehind(v: string | null, latest: string): boolean {
+  if (!v) return true
+  const pa = v.split('.').map(n => parseInt(n, 10) || 0)
+  const pb = latest.split('.').map(n => parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const a = pa[i] ?? 0, b = pb[i] ?? 0
+    if (a < b) return true
+    if (a > b) return false
+  }
+  return false
+}
 
 const HEALTHY_MS  = 2  * 60 * 1000
 const INACTIVE_MS = 14 * 24 * 60 * 60 * 1000   // 2 weeks
@@ -52,7 +67,7 @@ export default async function AdminDashboard() {
     { data: logs24h },
   ] = await Promise.all([
     supabase.from('orgs').select('id, name'),
-    supabase.from('devices').select('device_id, hostname, last_seen, org_id'),
+    supabase.from('devices').select('device_id, hostname, last_seen, org_id, agent_version'),
     admin.from('app_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('agent_logs').select('app_name, action, created_at').order('created_at', { ascending: false }).limit(8),
     supabase.from('agent_logs').select('app_name, action').gte('created_at', since24h),
@@ -134,6 +149,40 @@ export default async function AdminDashboard() {
         </div>
       ) : (
         <p className="text-gray-500 text-sm">All devices are healthy.</p>
+      )}
+    </Widget>
+  )
+
+  const outdatedAll = devList
+    .filter(d => versionBehind(d.agent_version, AGENT_VERSION))
+    .sort((a, b) => (a.agent_version ?? '').localeCompare(b.agent_version ?? ''))
+  const outdated = outdatedAll.slice(0, 6)
+
+  const agentVersions = (
+    <Widget title="Agent Versions" action={{ label: 'View all', href: '/admin/devices' }}>
+      {outdatedAll.length === 0 ? (
+        <p className="text-gray-500 text-sm">
+          {totalDevices > 0 ? `All agents on v${AGENT_VERSION}.` : 'No devices enrolled yet.'}
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-gray-500 mb-3">
+            {outdatedAll.length} {outdatedAll.length === 1 ? 'agent is' : 'agents are'} behind the latest (v{AGENT_VERSION}). Online agents auto-update within ~5 minutes.
+          </p>
+          <div className="divide-y divide-gray-800 -mx-4 -mb-4">
+            {outdated.map(d => (
+              <a key={d.device_id} href={`/admin/devices/${d.device_id}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-800 transition-colors">
+                <span className="text-sm text-white truncate">{cleanHostname(d.hostname) || 'Unknown'}</span>
+                <span className="text-xs font-mono text-yellow-400 bg-yellow-950 px-2 py-0.5 rounded-full shrink-0 ml-2 whitespace-nowrap">
+                  {d.agent_version ?? 'unknown'} → {AGENT_VERSION}
+                </span>
+              </a>
+            ))}
+            {outdatedAll.length > outdated.length && (
+              <p className="px-4 py-2.5 text-xs text-gray-500">+{outdatedAll.length - outdated.length} more</p>
+            )}
+          </div>
+        </>
       )}
     </Widget>
   )
@@ -237,6 +286,7 @@ export default async function AdminDashboard() {
       <DashboardLayout userId={profile.id} widgets={{
         agentHealth:    agentHealth,
         needsAttention: needsAttention,
+        agentVersions:  agentVersions,
         enforcement:    enforcement,
         topBlocked:     topBlockedWidget,
         recentActivity: recentActivity,
