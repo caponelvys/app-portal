@@ -2,7 +2,6 @@ import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import RenameForm from '@/app/admin/RenameForm'
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
-import { isOnline, offlineThresholdIso } from '@/lib/deviceStatus'
 import EnrollmentPanel from './EnrollmentPanel'
 import DevicesTable from './DevicesTable'
 
@@ -13,10 +12,10 @@ export default async function LocationDetailPage({
   searchParams,
 }: {
   params: Promise<{ locId: string }>
-  searchParams: Promise<{ page?: string; status?: string }>
+  searchParams: Promise<{ page?: string }>
 }) {
   const { locId } = await params
-  const { page: pageParam, status = 'all' } = await searchParams
+  const { page: pageParam } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
 
   const supabase = await createClient()
@@ -29,25 +28,19 @@ export default async function LocationDetailPage({
   if (!location) notFound()
   const { data: org } = await supabase.from('orgs').select('id, name').eq('id', location.org_id).single()
 
-  const thresholdIso = offlineThresholdIso()
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
-  let query = supabase
+  const { data: devices, count } = await supabase
     .from('devices')
     .select('device_id, hostname, os, last_seen, agent_version', { count: 'exact' })
     .eq('location_id', locId)
     .order('last_seen', { ascending: false })
     .range(from, to)
-  if (status === 'online') query = query.gte('last_seen', thresholdIso)
-  else if (status === 'offline') query = query.or(`last_seen.is.null,last_seen.lt.${thresholdIso}`)
-
-  const { data: devices, count } = await query
   const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  const filterLink = (s: string) => `/admin/locations/${locId}?status=${s}`
-  const pageLink = (p: number) => `/admin/locations/${locId}?status=${status}&page=${p}`
+  const pageLink = (p: number) => `/admin/locations/${locId}?page=${p}`
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -65,24 +58,11 @@ export default async function LocationDetailPage({
           <EnrollmentPanel locationId={location.id} initialToken={location.enrollment_token} />
         </section>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold text-white">Devices</h2>
-            <a href={`/admin/locations/${locId}/policies`} className="text-sm text-blue-400 hover:text-blue-300 font-medium">
-              Policies
-            </a>
-          </div>
-          <div className="flex gap-1 text-sm">
-            {(['all', 'online', 'offline'] as const).map(s => (
-              <a
-                key={s}
-                href={filterLink(s)}
-                className={`px-3 py-1.5 rounded-lg capitalize ${status === s ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
-              >
-                {s}
-              </a>
-            ))}
-          </div>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-2xl font-semibold text-white">Devices</h2>
+          <a href={`/admin/locations/${locId}/policies`} className="text-sm text-blue-400 hover:text-blue-300 font-medium">
+            Policies
+          </a>
         </div>
 
         <DevicesTable devices={devices ?? []} userId={user.id} />
