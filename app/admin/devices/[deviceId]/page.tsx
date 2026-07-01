@@ -5,6 +5,32 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { isOnline } from '@/lib/deviceStatus'
 import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import { cleanHostname } from '@/lib/hostname'
+import OwnerSuggestion from './OwnerSuggestion'
+
+// Suggest a portal account for an unclaimed device by matching the reported OS
+// username against email local-parts. Exact/starts-with only (no weak
+// substring), preferring a candidate in the device's org on ties.
+function suggestOwner(
+  osUser: string | null,
+  profiles: { id: string; email: string; org_id: string | null }[],
+  deviceOrgId: string | null,
+): { id: string; email: string } | null {
+  const u = (osUser ?? '').trim().toLowerCase()
+  if (!u) return null
+  let best: { id: string; email: string } | null = null
+  let bestRank = 0
+  for (const p of profiles) {
+    const local = (p.email ?? '').split('@')[0].toLowerCase()
+    if (!local) continue
+    let rank = 0
+    if (local === u) rank = 3
+    else if (local.startsWith(u) || u.startsWith(local)) rank = 2
+    else if (local.includes(u) || u.includes(local)) rank = 1
+    if (rank > 0 && deviceOrgId && p.org_id === deviceOrgId) rank += 0.5
+    if (rank > bestRank) { best = { id: p.id, email: p.email }; bestRank = rank }
+  }
+  return bestRank >= 2 ? best : null
+}
 
 type Activity = { time: string; level: 'info' | 'warn' | 'error'; label: string; detail: string }
 
@@ -91,6 +117,17 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     .sort((a, b) => b.time.localeCompare(a.time))
     .slice(0, 60)
 
+  // If the device is unclaimed but the agent reported an OS user, try to match
+  // it to a portal account and suggest it as the owner.
+  let ownerSuggestion: { id: string; email: string } | null = null
+  if (!device.user_id && device.device_user) {
+    const { data: candidates } = await createAdminClient()
+      .from('profiles')
+      .select('id, email, org_id')
+      .limit(1000)
+    ownerSuggestion = suggestOwner(device.device_user, candidates ?? [], device.org_id)
+  }
+
   const online = isOnline(device.last_seen)
 
   return (
@@ -121,6 +158,9 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
             <Field label="Last seen" value={device.last_seen ? new Date(device.last_seen).toLocaleString() : '—'} />
             <Field label="Device ID" value={device.device_id} mono />
           </dl>
+          {ownerSuggestion && device.device_user && (
+            <OwnerSuggestion deviceId={device.device_id} osUser={device.device_user} suggestion={ownerSuggestion} />
+          )}
         </section>
 
         <section>
