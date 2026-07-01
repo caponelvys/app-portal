@@ -22,8 +22,8 @@ const updateCommands: Record<string, string> = {
 
 // Direct installer downloads per OS.
 const INSTALLERS = [
-  { os: 'macOS',   file: 'install_mac.sh'   },
   { os: 'Windows', file: 'install_win.bat'  },
+  { os: 'macOS',   file: 'install_mac.sh'   },
   { os: 'Linux',   file: 'install_linux.sh' },
 ]
 
