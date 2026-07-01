@@ -44,7 +44,13 @@ export default function RequestsTable() {
 
   async function load() {
     const res = await fetch('/api/app-requests')
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setError(data.error ?? 'Failed to load requests')
+      setLoading(false)
+      return
+    }
+    setError('')
     setRequests(data.requests ?? [])
     setLoading(false)
   }
@@ -52,12 +58,14 @@ export default function RequestsTable() {
   useEffect(() => {
     let active = true
     fetch('/api/app-requests')
-      .then(r => r.json())
-      .then(d => {
+      .then(async r => {
+        const d = await r.json().catch(() => ({}))
         if (!active) return
-        setRequests(d.requests ?? [])
+        if (!r.ok) setError(d.error ?? 'Failed to load requests')
+        else setRequests(d.requests ?? [])
         setLoading(false)
       })
+      .catch(() => { if (active) { setError('Network error'); setLoading(false) } })
     return () => { active = false }
   }, [])
 

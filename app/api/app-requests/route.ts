@@ -89,18 +89,22 @@ export async function GET() {
 
   // Attach app names and (for admins) requester emails without relying on
   // PostgREST embedding, so the route works regardless of FK cache state.
+  // These lookups must not fail silently: a permission/query error here would
+  // otherwise surface as bogus "Unknown app" rows and hide the real problem.
   const appIds = [...new Set((requests ?? []).map(r => r.app_id))]
-  const { data: apps } = appIds.length
+  const { data: apps, error: appsError } = appIds.length
     ? await admin.from('apps').select('id, name, icon_url').in('id', appIds)
-    : { data: [] }
+    : { data: [], error: null }
+  if (appsError) return NextResponse.json({ error: `Failed to load apps: ${appsError.message}` }, { status: 500 })
   const appMap = new Map((apps ?? []).map(a => [a.id, a]))
 
   let emailMap = new Map<string, string>()
   if (role === 'admin') {
     const userIds = [...new Set((requests ?? []).map(r => r.user_id))]
-    const { data: profiles } = userIds.length
+    const { data: profiles, error: profilesError } = userIds.length
       ? await admin.from('profiles').select('id, email').in('id', userIds)
-      : { data: [] }
+      : { data: [], error: null }
+    if (profilesError) return NextResponse.json({ error: `Failed to load users: ${profilesError.message}` }, { status: 500 })
     emailMap = new Map((profiles ?? []).map(p => [p.id, p.email]))
   }
 
