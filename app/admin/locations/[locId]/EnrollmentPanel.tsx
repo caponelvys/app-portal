@@ -57,7 +57,7 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
   }
 
   async function rotate() {
-    if (!confirm('Rotate this token? Existing install commands will stop enrolling new devices.')) return
+    if (!confirm('Rotate this token? Previously downloaded installers and copied commands will stop enrolling new devices. Already-enrolled devices are unaffected.')) return
     setRotating(true)
     setError('')
     try {
