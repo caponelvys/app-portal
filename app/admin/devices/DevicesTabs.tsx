@@ -382,7 +382,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
                       {renderFilter(col)}
                     </SortableHeader>
                   ))}
-                  <th className="px-4 py-3 w-12" aria-label="Actions" />
+                  <th className="px-2 py-3 w-12 sticky right-0 bg-gray-800 border-l border-gray-700" aria-label="Actions" />
                 </tr>
               </SortableContext>
             </thead>
@@ -390,7 +390,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
               {filtered.length > 0 ? filtered.map(device => (
                 <tr key={device.id} className="border-b border-gray-800 hover:bg-gray-800/50">
                   {cols.map(col => renderCell(col, device))}
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-3 text-right sticky right-0 bg-gray-900 border-l border-gray-800">
                     <DeviceActionsMenu
                       deviceId={device.device_id}
                       hostname={cleanHostname(device.hostname) || device.device_id}
