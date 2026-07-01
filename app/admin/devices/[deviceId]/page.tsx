@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { isOnline } from '@/lib/deviceStatus'
 import { isGrantActive, expiresInLabel } from '@/lib/durations'
+import { cleanHostname } from '@/lib/hostname'
 
 export default async function DeviceDetailPage({ params }: { params: Promise<{ deviceId: string }> }) {
   const { deviceId } = await params
@@ -51,11 +52,11 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
         { label: 'Organizations', href: '/admin/orgs' },
         ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
         ...(location ? [{ label: location.name, href: `/admin/locations/${location.id}` }] : []),
-        { label: device.hostname || 'Device' },
+        { label: cleanHostname(device.hostname) || 'Device' },
       ]} />
         <section className="bg-gray-900 rounded-xl border border-gray-800 p-5">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">{device.hostname || 'Unknown device'}</h1>
+            <h1 className="text-2xl font-bold text-white">{cleanHostname(device.hostname) || 'Unknown device'}</h1>
             <div className="flex items-center gap-4">
               <a href={`/admin/devices/${device.device_id}/policies`} className="text-sm text-blue-400 hover:text-blue-300 font-medium">
                 Policies

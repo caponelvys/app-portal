@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { cleanHostname } from '@/lib/hostname'
 
 type Device = {
   device_id: string
@@ -55,7 +56,7 @@ export default function MyDevices() {
         setPairError(data.error ?? 'Could not pair device')
         return
       }
-      setPairSuccess(`Paired ${data.hostname || 'device'} successfully.`)
+      setPairSuccess(`Paired ${cleanHostname(data.hostname) || 'device'} successfully.`)
       setCode('')
       await load()
     } catch {
@@ -129,7 +130,7 @@ export default function MyDevices() {
             {mine.map(d => (
               <div key={d.device_id} className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-white font-medium truncate">{d.hostname || 'Unknown device'}</p>
+                  <p className="text-white font-medium truncate">{cleanHostname(d.hostname) || 'Unknown device'}</p>
                   <p className="text-xs text-gray-500">
                     {d.os} · last seen {new Date(d.last_seen).toLocaleString()}
                   </p>

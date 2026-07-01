@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
+import { cleanHostname } from '@/lib/hostname'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim()
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   const results = [
     ...(orgs ?? []).map(o => ({ type: 'org' as const, id: o.id, label: o.name, url: `/admin/orgs/${o.id}` })),
     ...(locations ?? []).map(l => ({ type: 'location' as const, id: l.id, label: l.name, url: `/admin/locations/${l.id}` })),
-    ...(devices ?? []).map(d => ({ type: 'device' as const, id: d.device_id, label: d.hostname ?? d.device_id, url: `/admin/devices/${d.device_id}` })),
+    ...(devices ?? []).map(d => ({ type: 'device' as const, id: d.device_id, label: cleanHostname(d.hostname) || d.device_id, url: `/admin/devices/${d.device_id}` })),
   ]
 
   return NextResponse.json({ results })

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
+import { cleanHostname } from '@/lib/hostname'
 import ActivityTable from './ActivityTable'
 
 export default async function MonitorPage() {
@@ -15,7 +16,7 @@ export default async function MonitorPage() {
     supabase.from('devices').select('device_id, hostname'),
   ])
 
-  const hostnameById = Object.fromEntries((devices ?? []).map(d => [d.device_id, (d.hostname ?? '').split('.')[0] || d.hostname]))
+  const hostnameById = Object.fromEntries((devices ?? []).map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

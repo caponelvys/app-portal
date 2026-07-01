@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { toStatusMap, type PolicyApp, type PolicyStatus } from '@/lib/policy'
 import PolicyEditor from '../../../PolicyEditor'
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
+import { cleanHostname } from '@/lib/hostname'
 
 export default async function DevicePoliciesPage({ params }: { params: Promise<{ deviceId: string }> }) {
   const { deviceId } = await params
@@ -47,12 +48,12 @@ export default async function DevicePoliciesPage({ params }: { params: Promise<{
         { label: 'Organizations', href: '/admin/orgs' },
         ...(org ? [{ label: org.name, href: `/admin/orgs/${org.id}` }] : []),
         ...(location ? [{ label: location.name, href: `/admin/locations/${location.id}` }] : []),
-        { label: device.hostname || 'Device', href: `/admin/devices/${device.device_id}` },
+        { label: cleanHostname(device.hostname) || 'Device', href: `/admin/devices/${device.device_id}` },
         { label: 'Policies' },
       ]} />
       <h2 className="text-2xl font-semibold text-white mb-1">Device policies</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Overrides for {device.hostname || 'this device'} only. &ldquo;Inherit&rdquo; uses the location/org defaults.
+        Overrides for {cleanHostname(device.hostname) || 'this device'} only. &ldquo;Inherit&rdquo; uses the location/org defaults.
       </p>
       <PolicyEditor scopeType="device" scopeId={device.device_id} apps={policyApps} />
     </div>

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import { durationLabel } from '@/lib/durations'
+import { cleanHostname } from '@/lib/hostname'
 
 const KIND_LABELS: Record<string, string> = {
   request: 'Requested', approved: 'Approved', denied: 'Denied',
@@ -81,15 +82,16 @@ export default async function AuditPrintPage({
   for (const l of logs ?? []) {
     if (isClientReport && !deviceIds.has(l.device_id)) continue
     const dev = allDeviceMap.get(l.device_id)
-    const who = (dev?.user_id && allEmailMap.get(dev.user_id)) || (dev?.hostname ? dev.hostname.split('.')[0] : null) || 'Unknown device'
+    const cleanName = cleanHostname(dev?.hostname)
+    const who = (dev?.user_id && allEmailMap.get(dev.user_id)) || cleanName || 'Unknown device'
     events.push({
       time: l.created_at,
       kind: l.action === 'accessed' ? 'accessed' : 'killed',
       app: l.app_name,
       actor: who,
       detail: l.action === 'accessed'
-        ? `used on ${dev?.hostname?.split('.')[0] ?? 'a device'}`
-        : `blocked on ${dev?.hostname?.split('.')[0] ?? 'a device'}`,
+        ? `used on ${cleanName || 'a device'}`
+        : `blocked on ${cleanName || 'a device'}`,
     })
   }
 

@@ -2,16 +2,17 @@
 
 import DataTable, { ColDef } from '@/app/admin/DataTable'
 import { isOnline } from '@/lib/deviceStatus'
+import { cleanHostname } from '@/lib/hostname'
 
 type Device = { device_id: string; hostname: string; os: string; last_seen: string }
 
 const columns: ColDef<Device>[] = [
   {
-    id: 'device', label: 'Device', defaultWidth: 220, sortValue: r => r.hostname,
-    filter: { type: 'text', value: (r: Device) => r.hostname },
+    id: 'device', label: 'Device', defaultWidth: 220, sortValue: r => cleanHostname(r.hostname),
+    filter: { type: 'text', value: (r: Device) => cleanHostname(r.hostname) },
     renderCell: d => (
       <a href={`/admin/devices/${d.device_id}`} className="text-blue-400 hover:text-blue-300 font-medium">
-        {d.hostname || 'Unknown device'}
+        {cleanHostname(d.hostname) || 'Unknown device'}
       </a>
     ),
   },

@@ -8,6 +8,7 @@ import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT, HealthTier } from '@/lib/deviceStatus'
+import { cleanHostname } from '@/lib/hostname'
 
 type Device = {
   id: string
@@ -232,7 +233,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
     const cutoff = lastSeenCutoff(lastSeenFilter)
     const now = Date.now()
     let list = devices.filter(d => {
-      if (hostnameFilter && !d.hostname.toLowerCase().includes(hostnameFilter.toLowerCase())) return false
+      if (hostnameFilter && !cleanHostname(d.hostname).toLowerCase().includes(hostnameFilter.toLowerCase())) return false
       if (osFilter !== 'all' && d.os !== osFilter) return false
       if (statusFilter !== 'all' && getHealthTier(d.last_seen) !== statusFilter) return false
       if (orgFilter !== 'all' && (d.orgs?.name ?? '') !== orgFilter) return false
@@ -244,7 +245,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
     if (sortCol && sortDir) {
       list = [...list].sort((a, b) => {
         let av: string | number = '', bv: string | number = ''
-        if (sortCol === 'hostname')     { av = a.hostname; bv = b.hostname }
+        if (sortCol === 'hostname')     { av = cleanHostname(a.hostname); bv = cleanHostname(b.hostname) }
         else if (sortCol === 'os')      { av = a.os; bv = b.os }
         else if (sortCol === 'status')  { av = getHealthTier(a.last_seen); bv = getHealthTier(b.last_seen) }
         else if (sortCol === 'org')     { av = a.orgs?.name ?? ''; bv = b.orgs?.name ?? '' }
@@ -325,7 +326,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
       case 'hostname': return (
         <td key={col} className="px-4 py-3 font-medium text-white">
           <a href={`/admin/devices/${d.device_id}`} className="hover:text-blue-400 transition-colors">
-            {d.hostname.split('.')[0]}
+            {cleanHostname(d.hostname)}
           </a>
         </td>
       )

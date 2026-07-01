@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { durationLabel } from '@/lib/durations'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
+import { cleanHostname } from '@/lib/hostname'
 import ReportsView from './ReportsView'
 
 type AuditEvent = {
@@ -77,14 +78,15 @@ export default async function AuditLogPage() {
 
   for (const l of logs ?? []) {
     const dev = device.get(l.device_id)
-    const who = (dev?.user_id && email.get(dev.user_id)) || (dev?.hostname ? dev.hostname.split('.')[0] : null) || 'Unknown device'
+    const cleanName = cleanHostname(dev?.hostname)
+    const who = (dev?.user_id && email.get(dev.user_id)) || cleanName || 'Unknown device'
     const kind: AuditEvent['kind'] = l.action === 'accessed' ? 'accessed' : 'killed'
     events.push({
       time: l.created_at,
       kind,
       app: l.app_name,
       actor: who,
-      detail: kind === 'accessed' ? `used on ${dev?.hostname ?? 'a device'}` : `blocked on ${dev?.hostname ?? 'a device'}`,
+      detail: kind === 'accessed' ? `used on ${cleanName || 'a device'}` : `blocked on ${cleanName || 'a device'}`,
     })
   }
 

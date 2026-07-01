@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import { durationLabel } from '@/lib/durations'
+import { cleanHostname } from '@/lib/hostname'
 
 function escapeCell(v: string | null | undefined): string {
   const s = v ?? ''
@@ -52,13 +53,14 @@ export async function GET() {
 
   for (const l of logs ?? []) {
     const dev = device.get(l.device_id)
-    const who = (dev?.user_id && email.get(dev.user_id)) || dev?.hostname || 'Unknown device'
+    const cleanName = cleanHostname(dev?.hostname)
+    const who = (dev?.user_id && email.get(dev.user_id)) || cleanName || 'Unknown device'
     events.push({
       time: l.created_at,
       kind: l.action === 'accessed' ? 'Accessed' : 'Blocked',
       app: l.app_name,
       actor: who,
-      detail: l.action === 'accessed' ? `used on ${dev?.hostname ?? 'a device'}` : `blocked on ${dev?.hostname ?? 'a device'}`,
+      detail: l.action === 'accessed' ? `used on ${cleanName || 'a device'}` : `blocked on ${cleanName || 'a device'}`,
     })
   }
 
