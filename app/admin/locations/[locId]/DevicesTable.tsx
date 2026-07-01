@@ -4,7 +4,7 @@ import DataTable, { ColDef } from '@/app/admin/DataTable'
 import { isOnline } from '@/lib/deviceStatus'
 import { cleanHostname } from '@/lib/hostname'
 
-type Device = { device_id: string; hostname: string; os: string; last_seen: string }
+type Device = { device_id: string; hostname: string; os: string; last_seen: string; agent_version: string | null }
 
 const columns: ColDef<Device>[] = [
   {
@@ -33,6 +33,11 @@ const columns: ColDef<Device>[] = [
         </span>
       )
     },
+  },
+  {
+    id: 'agentVersion', label: 'Agent Version', defaultWidth: 130, sortValue: r => r.agent_version ?? '',
+    filter: { type: 'select', value: (r: Device) => r.agent_version ?? '—' },
+    renderCell: d => <span className="text-gray-400 font-mono text-xs">{d.agent_version ?? '—'}</span>,
   },
   {
     id: 'lastSeen', label: 'Last seen', defaultWidth: 180, sortValue: r => r.last_seen,
