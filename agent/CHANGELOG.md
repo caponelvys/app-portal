@@ -1,5 +1,8 @@
 # App Controller Agent — Changelog
 
+## v1.3.1 — 2026-06-30
+- Verification build to exercise the auto-update path end-to-end (no functional change)
+
 ## v1.3.0 — 2026-06-30
 - Auto-update: the agent polls `/api/agent/version` every 5 min and, when a newer
   version is published, downloads it, validates it (reject HTML, compile-check,

@@ -24,7 +24,7 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
-AGENT_VERSION = "1.3.0"
+AGENT_VERSION = "1.3.1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
