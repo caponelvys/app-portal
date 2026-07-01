@@ -139,7 +139,18 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-white mb-3">Activity</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-white">Activity</h2>
+            {activity.length > 0 && (
+              <a
+                href={`/api/devices/${device.device_id}/logs`}
+                download
+                className="text-xs text-gray-300 border border-gray-700 rounded-md px-3 py-1.5 hover:bg-gray-800 hover:border-gray-500 transition-colors"
+              >
+                Download logs
+              </a>
+            )}
+          </div>
           {activity.length > 0 ? (
             <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800">
               {activity.map((a, i) => (
