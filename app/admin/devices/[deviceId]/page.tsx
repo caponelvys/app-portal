@@ -1,9 +1,28 @@
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { isOnline } from '@/lib/deviceStatus'
 import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import { cleanHostname } from '@/lib/hostname'
+
+type Activity = { time: string; level: 'info' | 'warn' | 'error'; label: string; detail: string }
+
+const EVENT_LABEL: Record<string, string> = {
+  started:       'Agent started',
+  enrolled:      'Enrolled into location',
+  enroll_failed: 'Enrollment failed',
+  paired:        'Paired to user',
+  pairing:       'Awaiting user pairing',
+  update_applied:'Agent updated',
+  error:         'Agent error',
+}
+
+const LEVEL_DOT: Record<Activity['level'], string> = {
+  info:  'bg-gray-500',
+  warn:  'bg-orange-400',
+  error: 'bg-red-500',
+}
 
 export default async function DeviceDetailPage({ params }: { params: Promise<{ deviceId: string }> }) {
   const { deviceId } = await params
@@ -43,6 +62,33 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
       grants = active.map(a => ({ app_name: nameById.get(a.app_id) ?? 'Unknown app', expires_at: a.expires_at }))
     }
   }
+
+  // agent_events (lifecycle/errors) is written by the agent with the anon key
+  // and read here via the service-role client. Merge it with agent_logs
+  // (enforcement) into one time-ordered activity feed.
+  const { data: events } = await createAdminClient()
+    .from('agent_events')
+    .select('level, event, message, created_at')
+    .eq('device_id', deviceId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const activity: Activity[] = [
+    ...(events ?? []).map(e => ({
+      time: e.created_at,
+      level: (['info', 'warn', 'error'].includes(e.level) ? e.level : 'info') as Activity['level'],
+      label: EVENT_LABEL[e.event] ?? e.event,
+      detail: e.message ?? '',
+    })),
+    ...(logs ?? []).map(l => ({
+      time: l.created_at,
+      level: (l.action === 'killed' ? 'warn' : 'info') as Activity['level'],
+      label: l.action === 'accessed' ? 'Accessed app' : 'Blocked app',
+      detail: l.app_name,
+    })),
+  ]
+    .sort((a, b) => b.time.localeCompare(a.time))
+    .slice(0, 60)
 
   const online = isOnline(device.last_seen)
 
@@ -92,24 +138,21 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-white mb-3">Recent activity</h2>
-          {logs && logs.length > 0 ? (
-            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden overflow-x-auto">
-              <table className="w-full text-sm min-w-[420px]">
-                <tbody>
-                  {logs.map((l, i) => (
-                    <tr key={i} className="border-b border-gray-800 last:border-0">
-                      <td className="px-4 py-2.5 text-white">{l.app_name}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`text-xs font-medium ${l.action === 'accessed' ? 'text-blue-300' : 'text-gray-400'}`}>
-                          {l.action === 'accessed' ? 'Accessed' : 'Blocked'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-500 text-xs text-right">{new Date(l.created_at).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <h2 className="text-lg font-semibold text-white mb-3">Activity</h2>
+          {activity.length > 0 ? (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800">
+              {activity.map((a, i) => (
+                <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                  <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${LEVEL_DOT[a.level]}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white">
+                      {a.label}
+                      {a.detail && <span className="text-gray-400"> — {a.detail}</span>}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">{new Date(a.time).toLocaleString()}</span>
+                </div>
+              ))}
             </div>
           ) : (
             <p className="text-gray-500 text-sm">No activity recorded for this device.</p>

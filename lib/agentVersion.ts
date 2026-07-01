@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.1.1'
+export const AGENT_VERSION = '1.2.0'
 
 export type ChangelogEntry = {
   version: string
@@ -13,6 +13,14 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.2.0',
+    date: '2026-06-30',
+    changes: [
+      'Reports structured activity events (started, enrolled, paired, errors) to the portal — shown in the per-device Activity log',
+      'Repeated errors are throttled so the activity log stays readable',
+    ],
+  },
   {
     version: '1.1.1',
     date: '2026-06-30',

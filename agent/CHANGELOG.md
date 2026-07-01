@@ -1,5 +1,11 @@
 # App Controller Agent — Changelog
 
+## v1.2.0 — 2026-06-30
+- Agent now reports structured activity events to `agent_events` (started,
+  enrolled, paired, errors) — shown in the portal's per-device Activity log
+- Repeated errors are throttled (max once per 5 min per distinct message) so the
+  activity log stays readable instead of filling with duplicate spam
+
 ## v1.1.1 — 2026-06-30
 - Installers/updaters now download `agent.py` to a temp file and validate it
   (reject HTML error pages, `python -m py_compile` check) before replacing the

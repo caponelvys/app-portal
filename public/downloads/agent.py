@@ -22,7 +22,7 @@ PORTAL_URL   = "https://appcontroller.vercel.app"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
-AGENT_VERSION = "1.1.1"
+AGENT_VERSION = "1.2.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -113,8 +113,10 @@ def register_device(device_id):
         data = resp.json()
         if token and data.get("location_id"):
             print(f"[agent] Enrolled into location {data['location_id']}")
+            log_event(device_id, "info", "enrolled", f"Enrolled into location {data['location_id']}")
     else:
         print(f"[agent] Enroll failed: {resp.status_code} {resp.text}")
+        log_event(device_id, "error", "enroll_failed", f"{resp.status_code} {resp.text[:200]}")
 
 def get_local_ip():
     """Return the machine's outbound IP address."""
@@ -180,6 +182,7 @@ def setup_pairing(device_id):
         if os.path.exists(PAIRING_CODE_FILE):
             os.remove(PAIRING_CODE_FILE)
         print("[agent] Device is paired to a user — per-user access rules active.")
+        log_event(device_id, "info", "paired", "Device paired to a user")
         return
 
     code = generate_pairing_code()
@@ -320,19 +323,41 @@ def log_action(device_id, app_name, action):
         json={"device_id": device_id, "app_name": app_name, "action": action},
     )
 
+def log_event(device_id, level, event, message=""):
+    """Best-effort structured activity event for the portal's per-device log.
+    level: 'info' | 'warn' | 'error'. Failures are swallowed — logging must
+    never disrupt the agent."""
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/agent_events",
+            headers=HEADERS,
+            json={
+                "device_id": device_id,
+                "level": level,
+                "event": event,
+                "message": (message or "")[:500],
+            },
+            timeout=5,
+        )
+    except Exception:
+        pass
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 def main():
     device_id = get_device_id()
     print(f"[agent] Starting — device ID: {device_id}")
     print(f"[agent] OS: {OS} | Polling every {POLL_INTERVAL}s")
+    log_event(device_id, "info", "started", f"Agent v{AGENT_VERSION} started on {OS_LABEL}")
 
     try:
         register_device(device_id)
     except Exception as e:
         print(f"[agent] Warning: registration failed ({e}), continuing anyway")
+        log_event(device_id, "error", "enroll_failed", f"Registration error: {e}")
     setup_pairing(device_id)
 
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
+    last_error = {"msg": None, "ts": 0.0}  # throttle repeated error events
 
     while True:
         try:
@@ -381,6 +406,13 @@ def main():
 
         except Exception as e:
             print(f"[agent] Error during check: {e}")
+            # Throttle: only record a new error event when the message changes
+            # or 5 minutes have passed, so a persistent failure can't spam the log.
+            msg = str(e)
+            now_err = time.time()
+            if msg != last_error["msg"] or now_err - last_error["ts"] >= 300:
+                log_event(device_id, "error", "error", f"Check failed: {msg}")
+                last_error = {"msg": msg, "ts": now_err}
 
         time.sleep(POLL_INTERVAL)
 
