@@ -22,7 +22,20 @@ echo "[install] Creating agent directory..."
 mkdir -p "$AGENT_DIR"
 
 echo "[install] Downloading agent files..."
-curl -fsSL "$BASE_URL/agent.py" -o "$AGENT_DIR/agent.py"
+# Download to a temp file and validate before installing, so a bad response
+# (HTML error page, deploy race) can never overwrite the agent with garbage.
+TMP_AGENT="$AGENT_DIR/agent.py.new"
+curl -fsSL "$BASE_URL/agent.py" -o "$TMP_AGENT"
+if head -c 300 "$TMP_AGENT" | grep -qiE '<!doctype|<html|<script|__next'; then
+  echo "[install] ERROR: downloaded agent.py looks like HTML, not Python. Aborting."
+  rm -f "$TMP_AGENT"; exit 1
+fi
+if ! python3 -m py_compile "$TMP_AGENT" 2>/dev/null; then
+  echo "[install] ERROR: downloaded agent.py failed to compile. Aborting."
+  rm -f "$TMP_AGENT"; exit 1
+fi
+[ -f "$AGENT_DIR/agent.py" ] && cp "$AGENT_DIR/agent.py" "$AGENT_DIR/agent.py.bak"
+mv "$TMP_AGENT" "$AGENT_DIR/agent.py"
 curl -fsSL "$BASE_URL/requirements.txt" -o "$AGENT_DIR/requirements.txt"
 
 if [ -n "$TOKEN" ]; then

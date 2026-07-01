@@ -14,9 +14,9 @@ function installCommandsFor(token: string): Record<string, string> {
 }
 
 const updateCommands: Record<string, string> = {
-  'Mac Terminal':   `sudo curl -fsSL ${BASE}/agent.py -o /usr/local/appcontroller/agent.py && sudo launchctl kickstart -k system/com.appcontroller.agent`,
-  'Linux Terminal': `sudo curl -fsSL ${BASE}/agent.py -o /usr/local/appcontroller/agent.py && sudo systemctl restart appcontroller`,
-  'Windows CMD':    `curl -fsSL ${BASE}/agent.py -o "C:\\AppController\\agent.py" && schtasks /end /tn "AppControllerAgent" && schtasks /run /tn "AppControllerAgent"`,
+  'Mac Terminal':   `curl -fsSL ${BASE}/update_mac.sh | sudo bash`,
+  'Linux Terminal': `curl -fsSL ${BASE}/update_linux.sh | sudo bash`,
+  'Windows CMD':    `curl -fsSL ${BASE}/update_win.bat -o "%TEMP%\\update_win.bat" && "%TEMP%\\update_win.bat"`,
 }
 
 // Per-location installer downloads. The /api/enroll/installer route bakes this

@@ -24,7 +24,17 @@ echo [install] Creating agent directory...
 mkdir "%AGENT_DIR%" 2>nul
 
 echo [install] Downloading agent files...
-curl -fsSL "%BASE_URL%/agent.py" -o "%AGENT_DIR%\agent.py"
+:: Download to a temp file and validate before installing, so a bad response
+:: (HTML error page, deploy race) can never overwrite the agent with garbage.
+curl -fsSL "%BASE_URL%/agent.py" -o "%AGENT_DIR%\agent.py.new"
+python -c "import py_compile,sys; py_compile.compile(r'%AGENT_DIR%\agent.py.new', doraise=True)" 2>nul
+if errorlevel 1 (
+  echo [install] ERROR: downloaded agent.py is invalid (not Python^). Aborting.
+  del "%AGENT_DIR%\agent.py.new" 2>nul
+  exit /b 1
+)
+if exist "%AGENT_DIR%\agent.py" copy /y "%AGENT_DIR%\agent.py" "%AGENT_DIR%\agent.py.bak" >nul
+move /y "%AGENT_DIR%\agent.py.new" "%AGENT_DIR%\agent.py" >nul
 curl -fsSL "%BASE_URL%/requirements.txt" -o "%AGENT_DIR%\requirements.txt"
 
 :: Save enrollment token if provided

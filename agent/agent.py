@@ -22,7 +22,7 @@ PORTAL_URL   = "https://appcontroller.vercel.app"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
-AGENT_VERSION = "1.1.0"
+AGENT_VERSION = "1.1.1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
