@@ -32,6 +32,9 @@ export type ColDef<T> = {
   filter?: FilterDef<T>
   renderCell: (row: T) => React.ReactNode
   headerExtra?: React.ReactNode
+  // Pins the column to the right edge (always visible) and excludes it from
+  // drag-reordering. Use for a trailing actions column.
+  sticky?: boolean
 }
 
 type SortDir = 'asc' | 'desc' | null
@@ -208,7 +211,9 @@ export default function DataTable<T>({
   emptyMessage?: string
   rowKey?: (row: T) => string
 }) {
-  const defaultIds = columns.map(c => c.id)
+  // Sticky columns are pinned right and not drag-reorderable, so the draggable
+  // order is built from the non-sticky columns only.
+  const defaultIds = columns.filter(c => !c.sticky).map(c => c.id)
   const defaultWidths = Object.fromEntries(columns.map(c => [c.id, c.defaultWidth ?? 160]))
 
   const [colOrder, setColOrder] = useState<string[]>(defaultIds)
@@ -284,7 +289,11 @@ export default function DataTable<T>({
   }
 
   const colMap = Object.fromEntries(columns.map(c => [c.id, c]))
-  const orderedCols = colOrder.map(id => colMap[id]).filter(Boolean)
+  const normalCols = columns.filter(c => !c.sticky)
+  const orderedNormal = colOrder.map(id => colMap[id]).filter((c): c is ColDef<T> => !!c && !c.sticky)
+  const missing = normalCols.filter(c => !colOrder.includes(c.id))
+  const orderedCols = [...orderedNormal, ...missing]
+  const stickyCols = columns.filter(c => c.sticky)
 
   const dynamicOptions = useMemo(() => {
     const result: Record<string, { label: string; value: string }[]> = {}
@@ -388,6 +397,12 @@ export default function DataTable<T>({
                       onClearFilter={() => col.filter && clearFilter(col.id, col.filter.type)}
                     />
                   ))}
+                  {stickyCols.map(col => (
+                    <th key={col.id} style={{ width: widths[col.id] ?? 56, minWidth: widths[col.id] ?? 56 }}
+                      className="px-2 py-3 text-left font-medium text-gray-400 sticky right-0 bg-gray-800 border-l border-gray-700">
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
               </SortableContext>
             </thead>
@@ -399,10 +414,15 @@ export default function DataTable<T>({
                       {col.renderCell(row)}
                     </td>
                   ))}
+                  {stickyCols.map(col => (
+                    <td key={col.id} className="px-2 py-3 sticky right-0 bg-gray-900 border-l border-gray-800">
+                      {col.renderCell(row)}
+                    </td>
+                  ))}
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={orderedCols.length} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={orderedCols.length + stickyCols.length} className="px-4 py-10 text-center text-gray-500">
                     {anyFilter ? 'No rows match the active filters.' : emptyMessage}
                   </td>
                 </tr>

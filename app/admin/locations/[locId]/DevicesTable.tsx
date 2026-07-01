@@ -48,7 +48,7 @@ const columns: ColDef<Device>[] = [
     renderCell: d => <span className="text-gray-500 text-xs">{d.last_seen ? new Date(d.last_seen).toLocaleString() : '—'}</span>,
   },
   {
-    id: 'actions', label: '', defaultWidth: 56, sortable: false,
+    id: 'actions', label: '', defaultWidth: 56, sortable: false, sticky: true,
     renderCell: d => (
       <div className="flex justify-end">
         <DeviceActionsMenu deviceId={d.device_id} hostname={cleanHostname(d.hostname) || d.device_id} hasOwner={!!d.user_id} />
