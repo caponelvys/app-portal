@@ -24,7 +24,7 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
-AGENT_VERSION = "1.4.0"
+AGENT_VERSION = "1.5.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -258,9 +258,9 @@ def get_all_apps():
     return []
 
 def get_device_context(device_id):
-    """Return {user_id, org_id, location_id} for this device (values may be None)."""
+    """Return {user_id, org_id, location_id, pending_command} for this device."""
     resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id,org_id,location_id",
+        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id,org_id,location_id,pending_command",
         headers=HEADERS,
     )
     if resp.status_code == 200 and resp.json():
@@ -436,6 +436,64 @@ def self_update(device_id, latest):
     except Exception as e:
         log_event(device_id, "error", "update_failed", f"Update to {latest} error: {e}")
 
+# ── Remote commands ───────────────────────────────────────────────────────────
+INSTALL_DIR = "C:\\AppController" if OS == "Windows" else "/usr/local/appcontroller"
+
+def clear_command(device_id):
+    """Clear the device's pending_command. Returns True on success."""
+    try:
+        r = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
+            headers=HEADERS, json={"pending_command": None}, timeout=5,
+        )
+        return r.status_code < 300
+    except Exception:
+        return False
+
+def uninstall_agent():
+    """Remove the service and installed files, then stop. Best-effort per OS."""
+    try:
+        if OS == "Darwin":
+            plist = "/Library/LaunchDaemons/com.appcontroller.agent.plist"
+            try: os.remove(plist)
+            except Exception: pass
+            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
+            subprocess.run(["launchctl", "bootout", "system/com.appcontroller.agent"], capture_output=True)
+        elif OS == "Linux":
+            subprocess.run(["systemctl", "disable", "--now", "appcontroller"], capture_output=True)
+            try: os.remove("/etc/systemd/system/appcontroller.service")
+            except Exception: pass
+            subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
+            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
+        elif OS == "Windows":
+            subprocess.run(["schtasks", "/delete", "/tn", "AppControllerAgent", "/f"], capture_output=True)
+            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
+    except Exception as e:
+        print(f"[agent] Uninstall error: {e}")
+    finally:
+        os._exit(0)
+
+def handle_command(device_id, cmd):
+    """Execute a portal-issued command. Clears it first so it runs at most once."""
+    cmd = (cmd or "").strip().lower()
+    if cmd not in ("restart", "update", "uninstall"):
+        clear_command(device_id)
+        return
+    # Only act once we've cleared it, so a failed clear can't loop the command.
+    if not clear_command(device_id):
+        return
+    if cmd == "restart":
+        log_event(device_id, "info", "command_restart", "Restart requested from portal")
+        os.execv(sys.executable, [sys.executable, AGENT_FILE] + sys.argv[1:])
+    elif cmd == "update":
+        log_event(device_id, "info", "command_update", "Update requested from portal")
+        latest = get_latest_version()
+        if latest and latest != AGENT_VERSION:
+            self_update(device_id, latest)  # re-execs on success
+    elif cmd == "uninstall":
+        log_event(device_id, "warn", "command_uninstall", "Uninstall requested from portal")
+        uninstall_agent()  # terminal
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 def main():
     device_id = get_device_id()
@@ -471,6 +529,12 @@ def main():
             # Resolve the effective blocked set for THIS device using policy
             # inheritance (device > location > org > global default).
             ctx = get_device_context(device_id)
+
+            # Portal-issued commands (restart/update/uninstall). May re-exec or
+            # terminate the process, so handle it before enforcement.
+            if ctx.get("pending_command"):
+                handle_command(device_id, ctx.get("pending_command"))
+
             owner_id = ctx.get("user_id")
             all_apps = get_all_apps()
             policies = get_policies([ctx.get("org_id"), ctx.get("location_id"), device_id])

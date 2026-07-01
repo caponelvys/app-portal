@@ -6,6 +6,7 @@ import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT } from '@/lib/deviceSta
 import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import { cleanHostname } from '@/lib/hostname'
 import OwnerSuggestion from './OwnerSuggestion'
+import DeviceActionsMenu from '../DeviceActionsMenu'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
 // username against email local-parts. Exact/starts-with only (no weak
@@ -149,6 +150,11 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
                 <span className={`w-2.5 h-2.5 rounded-full ${TIER_DOT[tier]}`} />
                 {TIER_LABEL[tier]}
               </span>
+              <DeviceActionsMenu
+                deviceId={device.device_id}
+                hostname={cleanHostname(device.hostname) || device.device_id}
+                hasOwner={!!device.user_id}
+              />
             </div>
           </div>
           <dl className="grid grid-cols-2 gap-3 mt-4 text-sm">

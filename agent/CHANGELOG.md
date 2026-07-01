@@ -1,5 +1,11 @@
 # App Controller Agent — Changelog
 
+## v1.5.0 — 2026-07-01
+- Executes portal-issued commands polled from `devices.pending_command` each
+  cycle: `restart` (re-exec), `update` (self-update to latest), `uninstall`
+  (remove service + installed files and stop). The command is cleared before it
+  runs so it executes at most once.
+
 ## v1.4.0 — 2026-07-01
 - Reports the logged-in OS username (`device_user`) on every heartbeat, detected
   via the console/active session (agent runs as root/SYSTEM): macOS

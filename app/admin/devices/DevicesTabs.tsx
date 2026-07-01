@@ -9,6 +9,7 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable 
 import { CSS } from '@dnd-kit/utilities'
 import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT, HealthTier } from '@/lib/deviceStatus'
 import { cleanHostname } from '@/lib/hostname'
+import DeviceActionsMenu from './DeviceActionsMenu'
 
 type Device = {
   id: string
@@ -18,6 +19,7 @@ type Device = {
   last_seen: string
   agent_version?: string | null
   ip_address?: string | null
+  user_id?: string | null
   locations?: { name: string } | null
   orgs?: { name: string } | null
 }
@@ -380,6 +382,7 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
                       {renderFilter(col)}
                     </SortableHeader>
                   ))}
+                  <th className="px-4 py-3 w-12" aria-label="Actions" />
                 </tr>
               </SortableContext>
             </thead>
@@ -387,10 +390,17 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
               {filtered.length > 0 ? filtered.map(device => (
                 <tr key={device.id} className="border-b border-gray-800 hover:bg-gray-800/50">
                   {cols.map(col => renderCell(col, device))}
+                  <td className="px-4 py-3 text-right">
+                    <DeviceActionsMenu
+                      deviceId={device.device_id}
+                      hostname={cleanHostname(device.hostname) || device.device_id}
+                      hasOwner={!!device.user_id}
+                    />
+                  </td>
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={cols.length} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={cols.length + 1} className="px-4 py-10 text-center text-gray-500">
                     {devices.length === 0
                       ? 'No devices enrolled yet.'
                       : anyFilter ? 'No devices match the active filters.' : 'No devices found.'}
