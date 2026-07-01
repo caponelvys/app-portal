@@ -1,5 +1,11 @@
 # App Controller Agent — Changelog
 
+## v1.4.0 — 2026-07-01
+- Reports the logged-in OS username (`device_user`) on every heartbeat, detected
+  via the console/active session (agent runs as root/SYSTEM): macOS
+  `stat -f%%Su /dev/console`, Linux `who`, Windows `quser`/WMI. Shown on the
+  device page so you can see who's using a machine without pairing.
+
 ## v1.3.1 — 2026-06-30
 - Verification build to exercise the auto-update path end-to-end (no functional change)
 

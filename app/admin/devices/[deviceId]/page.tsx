@@ -36,7 +36,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   const { data: device } = await supabase
     .from('devices')
-    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code')
+    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user')
     .eq('device_id', deviceId)
     .single()
   if (!device) notFound()
@@ -116,6 +116,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
           </div>
           <dl className="grid grid-cols-2 gap-3 mt-4 text-sm">
             <Field label="OS" value={device.os} />
+            <Field label="Device user" value={device.device_user ?? '—'} />
             <Field label="Owner" value={owner?.email ?? (device.pairing_code ? `Unclaimed (code ${device.pairing_code})` : 'Unclaimed')} />
             <Field label="Last seen" value={device.last_seen ? new Date(device.last_seen).toLocaleString() : '—'} />
             <Field label="Device ID" value={device.device_id} mono />

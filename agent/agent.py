@@ -24,7 +24,7 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
-AGENT_VERSION = "1.3.1"
+AGENT_VERSION = "1.4.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -127,6 +127,39 @@ def register_device(device_id):
         print(f"[agent] Enroll failed: {resp.status_code} {resp.text}")
         log_event(device_id, "error", "enroll_failed", f"{resp.status_code} {resp.text[:200]}")
 
+def get_device_user():
+    """Detect the console/logged-in OS username. The agent runs as root/SYSTEM,
+    so we look up the active console user rather than the process owner.
+    Returns None if no interactive user is logged in."""
+    try:
+        if OS == "Darwin":
+            out = subprocess.check_output(["stat", "-f", "%Su", "/dev/console"], text=True).strip()
+            return out if out and out != "root" else None
+        if OS == "Linux":
+            out = subprocess.check_output(["who"], text=True)
+            for line in out.splitlines():
+                parts = line.split()
+                if parts and parts[0] != "root":
+                    return parts[0]
+            return None
+        if OS == "Windows":
+            try:
+                out = subprocess.check_output(["quser"], text=True, stderr=subprocess.DEVNULL)
+                for line in out.splitlines()[1:]:
+                    parts = line.split()
+                    if parts:
+                        return parts[0].lstrip(">")
+            except Exception:
+                out = subprocess.check_output(["wmic", "computersystem", "get", "username"], text=True)
+                for line in out.splitlines():
+                    v = line.strip()
+                    if v and v.lower() != "username":
+                        return v.split("\\")[-1]
+            return None
+    except Exception:
+        pass
+    return None
+
 def get_local_ip():
     """Return the machine's outbound IP address."""
     try:
@@ -151,6 +184,9 @@ def heartbeat(device_id):
         ip = get_local_ip()
         if ip:
             payload["ip_address"] = ip
+        device_user = get_device_user()
+        if device_user:
+            payload["device_user"] = device_user
         requests.patch(
             f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
             headers=HEADERS,

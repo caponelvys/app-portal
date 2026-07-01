@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.3.1'
+export const AGENT_VERSION = '1.4.0'
 
 export type ChangelogEntry = {
   version: string
@@ -13,6 +13,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.4.0',
+    date: '2026-07-01',
+    changes: [
+      'Reports the logged-in OS username (device_user) on every heartbeat — shown on the device page',
+    ],
+  },
   {
     version: '1.3.1',
     date: '2026-06-30',
