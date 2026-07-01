@@ -115,8 +115,8 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
           </p>
         )}
 
-        {/* One-click installer downloads */}
-        {tab === 'install' ? (
+        {/* One-click installer downloads (install only — updates use the command) */}
+        {tab === 'install' && (
           <div className="mb-3">
             <p className="text-xs text-gray-400 mb-2">Download installer</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -133,18 +133,9 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
               <code className="text-green-400 font-mono">--token {token || 'NO_TOKEN'}</code> (or copy the ready-made command below).
             </p>
           </div>
-        ) : (
-          <div className="mb-3">
-            <p className="text-xs text-gray-400 mb-2">Download agent</p>
-            <a href="/downloads/agent.py" download
-              className="inline-flex items-center gap-2 text-sm text-white bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-700 hover:border-gray-500 transition-colors">
-              <DownloadIcon />
-              agent.py (v{AGENT_VERSION})
-            </a>
-          </div>
         )}
 
-        <p className="text-xs text-gray-500 mb-2">Or run this command:</p>
+        {tab === 'install' && <p className="text-xs text-gray-500 mb-2">Or run this command:</p>}
         <select value={activeOs} onChange={e => { setOs(e.target.value); setCopied(null) }}
           className="w-full sm:w-auto mb-2 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
           {Object.keys(commands).map(label => (

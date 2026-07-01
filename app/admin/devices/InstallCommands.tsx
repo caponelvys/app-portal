@@ -76,8 +76,8 @@ export default function InstallCommands() {
         </p>
       )}
 
-      {/* One-click downloads */}
-      {tab === 'install' ? (
+      {/* One-click downloads (install only — updates use the command) */}
+      {tab === 'install' && (
         <div>
           <p className="text-xs text-gray-400 mb-2">Download installer</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -90,18 +90,9 @@ export default function InstallCommands() {
             ))}
           </div>
         </div>
-      ) : (
-        <div>
-          <p className="text-xs text-gray-400 mb-2">Download agent</p>
-          <a href="/downloads/agent.py" download
-            className="inline-flex items-center gap-2 text-sm text-white bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-700 hover:border-gray-500 transition-colors">
-            <DownloadIcon />
-            agent.py (v{AGENT_VERSION})
-          </a>
-        </div>
       )}
 
-      <p className="text-xs text-gray-500">Or run this command:</p>
+      {tab === 'install' && <p className="text-xs text-gray-500">Or run this command:</p>}
       <select
         value={activeKey}
         onChange={e => { setSelected(e.target.value); setCopied(false) }}
