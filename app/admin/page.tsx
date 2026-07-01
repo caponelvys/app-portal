@@ -167,7 +167,7 @@ export default async function AdminDashboard() {
       ) : (
         <>
           <p className="text-xs text-gray-500 mb-3">
-            {outdatedAll.length} {outdatedAll.length === 1 ? 'agent is' : 'agents are'} behind the latest (v{AGENT_VERSION}). Online agents auto-update within ~5 minutes.
+            {outdatedAll.length} {outdatedAll.length === 1 ? 'agent is' : 'agents are'} behind the latest (v{AGENT_VERSION}). Healthy agents auto-update within ~5 minutes.
           </p>
           <div className="divide-y divide-gray-800 -mx-4 -mb-4">
             {outdated.map(d => (
@@ -278,7 +278,7 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Organizations"    value={orgs?.length ?? 0}    href="/admin/orgs"     />
         <StatCard label="Total Devices"    value={totalDevices}          href="/admin/devices"  />
-        <StatCard label="Online Now"       value={tiers.healthy.length}  href="/admin/devices"  accent="green" />
+        <StatCard label="Healthy"          value={tiers.healthy.length}  href="/admin/devices"  accent="green" />
         <StatCard label="Pending Requests" value={pendingCount ?? 0}     href="/admin/requests" accent={pendingCount ? 'yellow' : undefined} />
       </div>
 

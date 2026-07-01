@@ -2,7 +2,7 @@ import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase-admin'
-import { isOnline } from '@/lib/deviceStatus'
+import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT } from '@/lib/deviceStatus'
 import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import { cleanHostname } from '@/lib/hostname'
 import OwnerSuggestion from './OwnerSuggestion'
@@ -128,7 +128,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     ownerSuggestion = suggestOwner(device.device_user, candidates ?? [], device.org_id)
   }
 
-  const online = isOnline(device.last_seen)
+  const tier = getHealthTier(device.last_seen)
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-8">
@@ -145,9 +145,9 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
               <a href={`/admin/devices/${device.device_id}/policies`} className="text-sm text-blue-400 hover:text-blue-300 font-medium">
                 Policies
               </a>
-              <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${online ? 'text-green-400' : 'text-gray-500'}`}>
-                <span className={`w-2.5 h-2.5 rounded-full ${online ? 'bg-green-400' : 'bg-gray-600'}`} />
-                {online ? 'Online' : 'Offline'}
+              <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${TIER_COLOR[tier]}`}>
+                <span className={`w-2.5 h-2.5 rounded-full ${TIER_DOT[tier]}`} />
+                {TIER_LABEL[tier]}
               </span>
             </div>
           </div>

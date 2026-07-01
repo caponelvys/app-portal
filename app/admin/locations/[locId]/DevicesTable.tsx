@@ -1,10 +1,12 @@
 'use client'
 
 import DataTable, { ColDef } from '@/app/admin/DataTable'
-import { isOnline } from '@/lib/deviceStatus'
+import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT } from '@/lib/deviceStatus'
 import { cleanHostname } from '@/lib/hostname'
 
 type Device = { device_id: string; hostname: string; os: string; last_seen: string; agent_version: string | null }
+
+const TIER_RANK = ['healthy', 'inactive', 'warning', 'stale', 'lost', 'never']
 
 const columns: ColDef<Device>[] = [
   {
@@ -22,14 +24,14 @@ const columns: ColDef<Device>[] = [
     renderCell: d => <span className="text-gray-400">{d.os}</span>,
   },
   {
-    id: 'status', label: 'Status', defaultWidth: 110, sortValue: r => isOnline(r.last_seen) ? 0 : 1,
-    filter: { type: 'select', value: (r: Device) => isOnline(r.last_seen) ? 'online' : 'offline', options: [{ label: 'Online', value: 'online' }, { label: 'Offline', value: 'offline' }] },
+    id: 'status', label: 'Status', defaultWidth: 120, sortValue: r => TIER_RANK.indexOf(getHealthTier(r.last_seen)),
+    filter: { type: 'select', value: (r: Device) => TIER_LABEL[getHealthTier(r.last_seen)] },
     renderCell: d => {
-      const online = isOnline(d.last_seen)
+      const tier = getHealthTier(d.last_seen)
       return (
-        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${online ? 'text-green-400' : 'text-gray-500'}`}>
-          <span className={`w-2 h-2 rounded-full ${online ? 'bg-green-400' : 'bg-gray-600'}`} />
-          {online ? 'Online' : 'Offline'}
+        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${TIER_COLOR[tier]}`}>
+          <span className={`w-2 h-2 rounded-full ${TIER_DOT[tier]}`} />
+          {TIER_LABEL[tier]}
         </span>
       )
     },

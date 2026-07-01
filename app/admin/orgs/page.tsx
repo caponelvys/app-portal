@@ -44,7 +44,7 @@ export default async function OrgsPage() {
           <div className="flex gap-6 mt-2">
             <Stat label="Organizations" value={orgs?.length ?? 0} />
             <Stat label="Devices" value={totalDevices} />
-            <Stat label="Online" value={totalOnline} accent />
+            <Stat label="Healthy" value={totalOnline} accent />
           </div>
         </div>
         <CreateForm kind="org" label="+ Add Organization" />
@@ -58,7 +58,7 @@ export default async function OrgsPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-400">Organization</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-400">Locations</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-400">Devices</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-400">Online</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-400">Healthy</th>
               </tr>
             </thead>
             <tbody>

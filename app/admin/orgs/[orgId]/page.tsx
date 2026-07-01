@@ -56,7 +56,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
                 <p className="text-white font-medium">{loc.name}</p>
                 <div className="flex gap-4 text-sm text-gray-400">
                   <span>{devCount.get(loc.id) ?? 0} devices</span>
-                  <span className="text-green-400">{onlineCount.get(loc.id) ?? 0} online</span>
+                  <span className="text-green-400">{onlineCount.get(loc.id) ?? 0} healthy</span>
                 </div>
               </a>
             ))}
