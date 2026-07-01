@@ -24,6 +24,7 @@ export type WidgetId =
   | 'agentHealth'
   | 'needsAttention'
   | 'agentVersions'
+  | 'activityChart'
   | 'enforcement'
   | 'topBlocked'
   | 'recentActivity'
@@ -33,7 +34,7 @@ export type WidgetId =
 type Layout = { left: WidgetId[]; right: WidgetId[] }
 
 const DEFAULT_LAYOUT: Layout = {
-  left:  ['agentHealth', 'enforcement', 'recentActivity', 'quickActions'],
+  left:  ['agentHealth', 'activityChart', 'enforcement', 'recentActivity', 'quickActions'],
   right: ['needsAttention', 'agentVersions', 'unenrolledOrgs', 'topBlocked'],
 }
 

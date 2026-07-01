@@ -5,6 +5,7 @@ import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import { cleanHostname } from '@/lib/hostname'
 import { AGENT_VERSION } from '@/lib/agentVersion'
 import DashboardLayout from './DashboardLayout'
+import ActivityChart from './ActivityChart'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treat as behind).
@@ -53,6 +54,7 @@ export default async function AdminDashboard() {
   if (!isMspStaff(profile)) redirect('/')
 
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const since14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
 
   // app_requests is only visible to a user's own rows under RLS, so count
   // pending requests with the service-role client (same as the nav badge and
@@ -65,12 +67,14 @@ export default async function AdminDashboard() {
     { count: pendingCount },
     { data: recentLogs },
     { data: logs24h },
+    { data: logs14d },
   ] = await Promise.all([
     supabase.from('orgs').select('id, name'),
     supabase.from('devices').select('device_id, hostname, last_seen, org_id, agent_version'),
     admin.from('app_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('agent_logs').select('app_name, action, created_at').order('created_at', { ascending: false }).limit(8),
     supabase.from('agent_logs').select('app_name, action').gte('created_at', since24h),
+    supabase.from('agent_logs').select('action, created_at').gte('created_at', since14d).limit(5000),
   ])
 
   const devList = devices ?? []
@@ -94,6 +98,19 @@ export default async function AdminDashboard() {
   for (const l of l24.filter(l => l.action === 'killed'))
     blockCounts.set(l.app_name, (blockCounts.get(l.app_name) ?? 0) + 1)
   const topBlocked = [...blockCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+  // 14-day activity buckets (UTC days) for the trend chart.
+  const activityDays = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.now() - (13 - i) * 24 * 60 * 60 * 1000)
+    return { key: d.toISOString().slice(0, 10), label: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, blocked: 0, accessed: 0 }
+  })
+  const dayByKey = new Map(activityDays.map(d => [d.key, d]))
+  for (const l of logs14d ?? []) {
+    const day = dayByKey.get((l.created_at as string).slice(0, 10))
+    if (!day) continue
+    if (l.action === 'killed') day.blocked++
+    else if (l.action === 'accessed') day.accessed++
+  }
 
   // ── Widgets ──────────────────────────────────────────────────────────────
 
@@ -184,6 +201,12 @@ export default async function AdminDashboard() {
           </div>
         </>
       )}
+    </Widget>
+  )
+
+  const activityChart = (
+    <Widget title="Activity — Last 14 days" action={{ label: 'View all', href: '/admin/monitor' }}>
+      <ActivityChart days={activityDays} />
     </Widget>
   )
 
@@ -287,6 +310,7 @@ export default async function AdminDashboard() {
         agentHealth:    agentHealth,
         needsAttention: needsAttention,
         agentVersions:  agentVersions,
+        activityChart:  activityChart,
         enforcement:    enforcement,
         topBlocked:     topBlockedWidget,
         recentActivity: recentActivity,
