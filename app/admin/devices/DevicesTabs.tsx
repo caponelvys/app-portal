@@ -324,8 +324,8 @@ export default function DevicesTabs({ devices, userId = 'anon' }: { devices: Dev
   function renderCell(col: ColId, d: Device) {
     switch (col) {
       case 'hostname': return (
-        <td key={col} className="px-4 py-3 font-medium text-white">
-          <a href={`/admin/devices/${d.device_id}`} className="hover:text-blue-400 transition-colors">
+        <td key={col} className="px-4 py-3 font-medium">
+          <a href={`/admin/devices/${d.device_id}`} className="text-blue-400 hover:text-blue-300 transition-colors">
             {cleanHostname(d.hostname)}
           </a>
         </td>
