@@ -15,6 +15,25 @@ type Request = {
   created_at: string
 }
 
+// Dark-theme checkbox matching the app's rounded / gray-border / blue-accent
+// language (native checkboxes render as heavy white squares on dark). Visual
+// only — put the click handler on the wrapping button.
+function Check({ checked, className = '' }: { checked: boolean; className?: string }) {
+  return (
+    <span
+      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+        checked ? 'bg-blue-600 border-blue-600' : 'bg-gray-800 border-gray-600'
+      } ${className}`}
+    >
+      {checked && (
+        <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M2.5 6.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </span>
+  )
+}
+
 function StatusBadge({ req }: { req: Request }) {
   if (req.status === 'pending')
     return <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-400">Pending</span>
@@ -178,15 +197,14 @@ export default function RequestsTable() {
           <>
             {/* Select-all + bulk action bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-2 px-1">
-              <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={toggleAll}
-                  className="w-4 h-4 rounded border-gray-600 bg-gray-800 accent-blue-600"
-                />
+              <button
+                type="button"
+                onClick={toggleAll}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 select-none"
+              >
+                <Check checked={allVisibleSelected} />
                 {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
-              </label>
+              </button>
               {selected.size > 0 && (
                 <div className="flex items-center gap-2">
                   <button
@@ -212,12 +230,14 @@ export default function RequestsTable() {
                 <div key={req.id} className={`bg-gray-900 rounded-xl border p-4 ${selected.has(req.id) ? 'border-blue-600' : 'border-gray-800'}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(req.id)}
-                        onChange={() => toggle(req.id)}
-                        className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 accent-blue-600 shrink-0"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => toggle(req.id)}
+                        aria-label={selected.has(req.id) ? 'Deselect request' : 'Select request'}
+                        className="mt-1 shrink-0"
+                      >
+                        <Check checked={selected.has(req.id)} />
+                      </button>
                       <div className="min-w-0">
                         <p className="text-white font-medium">{req.app_name}</p>
                         <p className="text-xs text-gray-400">{req.user_email ?? 'Unknown user'} · wants {durationLabel(req.duration).toLowerCase()}</p>
