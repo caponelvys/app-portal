@@ -1,5 +1,13 @@
 # App Controller Agent — Changelog
 
+## v1.3.0 — 2026-06-30
+- Auto-update: the agent polls `/api/agent/version` every 5 min and, when a newer
+  version is published, downloads it, validates it (reject HTML, compile-check,
+  confirm the advertised version), backs up the current agent, and re-execs into
+  the new version — no manual per-device update needed
+- A bad download is rejected before the running agent is touched, so auto-update
+  can never brick the agent
+
 ## v1.2.1 — 2026-06-30
 - Fixed enrollment: `register_device` was posting to `/devices/api/enroll`
   (PORTAL_URL had been repurposed for the pairing display URL), which redirected

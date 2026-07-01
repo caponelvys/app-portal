@@ -15,6 +15,7 @@ const EVENT_LABEL: Record<string, string> = {
   paired:        'Paired to user',
   pairing:       'Awaiting user pairing',
   update_applied:'Agent updated',
+  update_failed: 'Agent update failed',
   error:         'Agent error',
 }
 

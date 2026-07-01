@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.2.1'
+export const AGENT_VERSION = '1.3.0'
 
 export type ChangelogEntry = {
   version: string
@@ -13,6 +13,14 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.3.0',
+    date: '2026-06-30',
+    changes: [
+      'Auto-update: the agent checks for the latest published version every 5 min and updates itself — no manual per-device download needed',
+      'Self-update validates the download (reject HTML, compile-check, version-match) and backs up before swapping, then restarts into the new version',
+    ],
+  },
   {
     version: '1.2.1',
     date: '2026-06-30',

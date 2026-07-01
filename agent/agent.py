@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import uuid
+import shutil
 import socket
 import string
 import secrets
@@ -22,7 +23,8 @@ PORTAL_URL   = "https://appcontroller.vercel.app"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
-AGENT_VERSION = "1.2.1"
+UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
+AGENT_VERSION = "1.3.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -57,6 +59,11 @@ ENROLLMENT_TOKEN_FILE = "C:\\AppController\\.enrollment_token" if OS == "Windows
 # User-facing page where a device owner enters their pairing code. Kept separate
 # from PORTAL_URL (the API base) so it can't break the /api/enroll endpoint.
 PAIRING_URL = "https://appcontroller.vercel.app/devices"
+
+# Auto-update: poll the portal for the latest published version and self-update.
+DOWNLOAD_BASE = "https://appcontroller.vercel.app/downloads"
+VERSION_URL   = f"{PORTAL_URL}/api/agent/version"
+AGENT_FILE    = os.path.abspath(__file__)
 
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -344,6 +351,55 @@ def log_event(device_id, level, event, message=""):
     except Exception:
         pass
 
+# ── Auto-update ───────────────────────────────────────────────────────────────
+def get_latest_version():
+    """Ask the portal for the latest published agent version, or None."""
+    try:
+        r = requests.get(VERSION_URL, timeout=10)
+        if r.status_code == 200:
+            v = r.json().get("version")
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    except Exception:
+        pass
+    return None
+
+def self_update(device_id, latest):
+    """Download, validate, and swap in the latest agent, then re-exec into it.
+    A bad download (HTML error page, wrong version, non-compiling code) is
+    rejected before the running agent is touched — it can never brick itself."""
+    try:
+        r = requests.get(f"{DOWNLOAD_BASE}/agent.py", timeout=30)
+        if r.status_code != 200:
+            return
+        source = r.text
+        # Reject non-Python responses (deploy race / SPA fallback).
+        if any(tag in source[:400].lower() for tag in ("<!doctype", "<html", "<script", "__next")):
+            log_event(device_id, "error", "update_failed", f"Update to {latest} rejected: download was not Python")
+            return
+        # Reject anything that won't compile.
+        try:
+            compile(source, AGENT_FILE, "exec")
+        except SyntaxError as e:
+            log_event(device_id, "error", "update_failed", f"Update to {latest} rejected: {e}")
+            return
+        # Confirm the download really is the version the portal advertised.
+        if f'AGENT_VERSION = "{latest}"' not in source:
+            log_event(device_id, "error", "update_failed", f"Update aborted: downloaded agent is not v{latest}")
+            return
+        # Back up the current agent, install the new one, then re-exec.
+        try:
+            shutil.copy2(AGENT_FILE, AGENT_FILE + ".bak")
+        except Exception:
+            pass
+        with open(AGENT_FILE, "w") as f:
+            f.write(source)
+        print(f"[agent] Updated {AGENT_VERSION} -> {latest}; restarting")
+        log_event(device_id, "info", "update_applied", f"Updated {AGENT_VERSION} -> {latest}; restarting")
+        os.execv(sys.executable, [sys.executable, AGENT_FILE] + sys.argv[1:])
+    except Exception as e:
+        log_event(device_id, "error", "update_failed", f"Update to {latest} error: {e}")
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 def main():
     device_id = get_device_id()
@@ -360,9 +416,20 @@ def main():
 
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
     last_error = {"msg": None, "ts": 0.0}  # throttle repeated error events
+    last_update_check = 0.0  # 0 → check for updates on the first iteration
 
     while True:
         try:
+            # Auto-update: converge to the latest published version. self_update
+            # re-execs on success (never returns), so this runs before enforcement.
+            now_upd = time.time()
+            if now_upd - last_update_check >= UPDATE_CHECK_INTERVAL:
+                last_update_check = now_upd
+                latest = get_latest_version()
+                if latest and latest != AGENT_VERSION:
+                    print(f"[agent] Update available: {latest} (running {AGENT_VERSION})")
+                    self_update(device_id, latest)
+
             heartbeat(device_id)
 
             # Resolve the effective blocked set for THIS device using policy

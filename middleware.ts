@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Redirect unauthenticated users to /login (except on auth pages and public agent downloads)
-  const pub = ['/login', '/signup', '/reset-password', '/downloads', '/api/enroll', '/auth/callback']
+  const pub = ['/login', '/signup', '/reset-password', '/downloads', '/api/enroll', '/api/agent', '/auth/callback']
   if (!user && !pub.some(p => path.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
