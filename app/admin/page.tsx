@@ -46,34 +46,46 @@ export default async function AdminDashboard() {
   // pending requests with the service-role client (same as the nav badge and
   // the /api/app-requests routes) to see all staff-reviewable requests.
   const admin = createAdminClient()
+  const notHealthyBefore = new Date(Date.now() - HEALTHY_MS).toISOString()
 
   const [
     { data: orgs },
-    { data: devices },
+    { data: healthRows },
+    { data: versionRows },
+    { data: orgCountRows },
+    { data: attentionData },
+    { data: outdatedData },
     { count: pendingCount },
     { data: recentLogs },
     { data: logs24h },
     { data: logs14d },
   ] = await Promise.all([
     supabase.from('orgs').select('id, name'),
-    supabase.from('devices').select('device_id, hostname, last_seen, org_id, agent_version'),
+    // Exact fleet aggregates via grouped-count RPCs (no row loading).
+    admin.rpc('device_health_counts'),
+    admin.rpc('device_version_counts'),
+    admin.rpc('org_device_counts'),
+    // Bounded previews for the two device lists — just the worst few rows.
+    admin.from('devices').select('device_id, hostname, last_seen').or(`last_seen.is.null,last_seen.lt.${notHealthyBefore}`).order('last_seen', { ascending: false }).limit(6),
+    admin.from('devices').select('device_id, hostname, agent_version').or(`agent_version.neq.${AGENT_VERSION},agent_version.is.null`).order('last_seen', { ascending: false }).limit(6),
     admin.from('app_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('agent_logs').select('app_name, action, created_at').order('created_at', { ascending: false }).limit(8),
-    supabase.from('agent_logs').select('app_name, action').gte('created_at', since24h),
+    supabase.from('agent_logs').select('app_name, action').gte('created_at', since24h).limit(5000),
     supabase.from('agent_logs').select('action, created_at').gte('created_at', since14d).limit(5000),
   ])
 
-  const devList = devices ?? []
-  const totalDevices = devList.length
+  const tierCounts: Record<HealthTier, number> = { healthy: 0, inactive: 0, warning: 0, stale: 0, lost: 0, never: 0 }
+  for (const r of (healthRows ?? []) as { tier: HealthTier; count: number }[]) tierCounts[r.tier] = Number(r.count)
+  const totalDevices = Object.values(tierCounts).reduce((a, b) => a + b, 0)
 
-  const tiers: Record<HealthTier, typeof devList> = { healthy: [], inactive: [], warning: [], stale: [], lost: [], never: [] }
-  for (const d of devList) tiers[getHealth(d.last_seen)].push(d)
+  const attentionDevices = (attentionData ?? []) as { device_id: string; hostname: string; last_seen: string | null }[]
 
-  const attentionDevices = [...tiers.inactive, ...tiers.warning, ...tiers.stale, ...tiers.lost, ...tiers.never]
-    .sort((a, b) => (b.last_seen ?? '').localeCompare(a.last_seen ?? ''))
-    .slice(0, 5)
+  const outdatedCount = ((versionRows ?? []) as { agent_version: string; count: number }[])
+    .filter(v => isVersionBehind(v.agent_version === 'unknown' ? null : v.agent_version))
+    .reduce((sum, v) => sum + Number(v.count), 0)
+  const outdatedList = (outdatedData ?? []) as { device_id: string; hostname: string; agent_version: string | null }[]
 
-  const orgsWithDevices = new Set(devList.map(d => d.org_id).filter(Boolean))
+  const orgsWithDevices = new Set(((orgCountRows ?? []) as { org_id: string; total: number }[]).filter(o => Number(o.total) > 0).map(o => o.org_id))
   const unenrolledOrgs = (orgs ?? []).filter(o => !orgsWithDevices.has(o.id))
 
   const l24 = logs24h ?? []
@@ -104,7 +116,7 @@ export default async function AdminDashboard() {
     <Widget title="Agent Health">
       <div className="space-y-4">
         {(['healthy', 'inactive', 'warning', 'stale', 'lost', 'never'] as HealthTier[]).map(tier => {
-          const count = tiers[tier].length
+          const count = tierCounts[tier]
           const meta = HEALTH_META[tier]
           const pct = totalDevices > 0 ? (count / totalDevices) * 100 : 0
           return (
@@ -156,24 +168,19 @@ export default async function AdminDashboard() {
     </Widget>
   )
 
-  const outdatedAll = devList
-    .filter(d => isVersionBehind(d.agent_version, AGENT_VERSION))
-    .sort((a, b) => (a.agent_version ?? '').localeCompare(b.agent_version ?? ''))
-  const outdated = outdatedAll.slice(0, 6)
-
   const agentVersions = (
     <Widget title="Agent Versions" action={{ label: 'View all', href: '/admin/devices' }}>
-      {outdatedAll.length === 0 ? (
+      {outdatedCount === 0 ? (
         <p className="text-gray-500 text-sm">
           {totalDevices > 0 ? `All agents on v${AGENT_VERSION}.` : 'No devices enrolled yet.'}
         </p>
       ) : (
         <>
           <p className="text-xs text-gray-500 mb-3">
-            {outdatedAll.length} {outdatedAll.length === 1 ? 'agent is' : 'agents are'} behind the latest (v{AGENT_VERSION}). Healthy agents auto-update within ~5 minutes.
+            {outdatedCount} {outdatedCount === 1 ? 'agent is' : 'agents are'} behind the latest (v{AGENT_VERSION}). Healthy agents auto-update within ~5 minutes.
           </p>
           <div className="divide-y divide-gray-800 -mx-4 -mb-4">
-            {outdated.map(d => (
+            {outdatedList.map(d => (
               <a key={d.device_id} href={`/admin/devices/${d.device_id}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-800 transition-colors">
                 <span className="text-sm text-white truncate">{cleanHostname(d.hostname) || 'Unknown'}</span>
                 <span className="text-xs font-mono text-yellow-400 bg-yellow-950 px-2 py-0.5 rounded-full shrink-0 ml-2 whitespace-nowrap">
@@ -181,8 +188,8 @@ export default async function AdminDashboard() {
                 </span>
               </a>
             ))}
-            {outdatedAll.length > outdated.length && (
-              <p className="px-4 py-2.5 text-xs text-gray-500">+{outdatedAll.length - outdated.length} more</p>
+            {outdatedCount > outdatedList.length && (
+              <p className="px-4 py-2.5 text-xs text-gray-500">+{outdatedCount - outdatedList.length} more</p>
             )}
           </div>
         </>
@@ -287,7 +294,7 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Organizations"    value={orgs?.length ?? 0}    href="/admin/orgs"     />
         <StatCard label="Total Devices"    value={totalDevices}          href="/admin/devices"  />
-        <StatCard label="Healthy"          value={tiers.healthy.length}  href="/admin/devices"  accent="green" />
+        <StatCard label="Healthy"          value={tierCounts.healthy}    href="/admin/devices"  accent="green" />
         <StatCard label="Pending Requests" value={pendingCount ?? 0}     href="/admin/requests" accent={pendingCount ? 'yellow' : undefined} />
       </div>
 

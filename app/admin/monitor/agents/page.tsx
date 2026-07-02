@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import { cleanHostname } from '@/lib/hostname'
-import { getHealthTier, TIER_LABEL } from '@/lib/deviceStatus'
+import { getHealthTier, TIER_LABEL, INACTIVE_MS } from '@/lib/deviceStatus'
 import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import { agentEventLabel } from '@/lib/agentEvents'
 import AgentEventsTable from './AgentEventsTable'
@@ -21,58 +21,71 @@ export default async function AgentMonitorPage() {
 
   const orgIds = await getAccessibleOrgIds(supabase, profile)
   const admin = createAdminClient()
+  const scopeIds = orgIds === null ? null : (orgIds.length ? orgIds : [NO_MATCH])
+  const inactiveBefore = new Date(Date.now() - INACTIVE_MS).toISOString()  // offline 14+ days = attention
 
-  // Devices (org-scoped, small columns). At extreme scale this becomes SQL
-  // aggregation / pagination — see scale-first memory.
-  let devsQ = admin.from('devices').select('device_id, hostname, last_seen, agent_version, org_id, pending_command')
-  if (orgIds !== null) devsQ = devsQ.in('org_id', orgIds.length ? orgIds : [NO_MATCH])
-  const { data: devices } = await devsQ
-  const devList = devices ?? []
-  const deviceIds = devList.map(d => d.device_id)
-  const hostnameById = Object.fromEntries(devList.map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
+  // Exact fleet aggregates (grouped-count RPCs) + bounded preview queries.
+  let offlineQ = admin.from('devices').select('device_id, hostname, last_seen')
+    .or(`last_seen.is.null,last_seen.lt.${inactiveBefore}`).order('last_seen', { ascending: true, nullsFirst: true }).limit(6)
+  let pendingQ = admin.from('devices').select('device_id, hostname, pending_command').not('pending_command', 'is', null).limit(50)
+  if (scopeIds) { offlineQ = offlineQ.in('org_id', scopeIds); pendingQ = pendingQ.in('org_id', scopeIds) }
 
-  // Only the most recent events are pulled — the stream is a drill-down, not a firehose.
-  const { data: events } = deviceIds.length
-    ? await admin.from('agent_events').select('id, device_id, level, event, message, created_at')
-        .in('device_id', deviceIds).order('created_at', { ascending: false }).limit(EVENT_LIMIT)
-    : { data: [] }
+  const [{ data: healthRows }, { data: versionRows }, { data: offlineRows }, { data: pendingRows }] = await Promise.all([
+    admin.rpc('device_health_counts', { org_ids: orgIds }),
+    admin.rpc('device_version_counts', { org_ids: orgIds }),
+    offlineQ,
+    pendingQ,
+  ])
+
+  // agent_events has no org_id, so org-scoping needs the device id set (weak
+  // point noted in scale memory — deferred: add org_id to agent_events).
+  let scopedDeviceIds: string[] | null = null
+  if (scopeIds) {
+    const { data: idRows } = await admin.from('devices').select('device_id').in('org_id', scopeIds).limit(5000)
+    scopedDeviceIds = (idRows ?? []).map(d => d.device_id)
+  }
+  let evQ = admin.from('agent_events').select('id, device_id, level, event, message, created_at').order('created_at', { ascending: false }).limit(EVENT_LIMIT)
+  if (scopedDeviceIds !== null) evQ = evQ.in('device_id', scopedDeviceIds.length ? scopedDeviceIds : [NO_MATCH])
+  const { data: events } = await evQ
   const evList = events ?? []
 
   // ── Aggregates ────────────────────────────────────────────────────────────
-  const total = devList.length
-  const healthy = devList.filter(d => getHealthTier(d.last_seen) === 'healthy').length
-  const outdated = devList.filter(d => isVersionBehind(d.agent_version)).length
-  const pending = devList
-    .filter(d => d.pending_command)
+  const tierCounts: Record<string, number> = {}
+  for (const r of (healthRows ?? []) as { tier: string; count: number }[]) tierCounts[r.tier] = Number(r.count)
+  const total = Object.values(tierCounts).reduce((a, b) => a + b, 0)
+  const healthy = tierCounts.healthy ?? 0
+  const offlineCount = (ATTENTION_TIERS as readonly string[]).reduce((a, t) => a + (tierCounts[t] ?? 0), 0)
+
+  const versionRowsT = (versionRows ?? []) as { agent_version: string; count: number }[]
+  const versions = versionRowsT.map(v => [v.agent_version, Number(v.count)] as [string, number]).sort((a, b) => b[0].localeCompare(a[0]))
+  const outdated = versionRowsT
+    .filter(v => isVersionBehind(v.agent_version === 'unknown' ? null : v.agent_version))
+    .reduce((s, v) => s + Number(v.count), 0)
+
+  const pending = ((pendingRows ?? []) as { device_id: string; hostname: string; pending_command: string }[])
     .map(d => ({ hostname: cleanHostname(d.hostname) || d.device_id, command: CMD_LABEL[d.pending_command] ?? d.pending_command }))
 
-  const versionCount = new Map<string, number>()
-  for (const d of devList) {
-    const v = d.agent_version ?? 'unknown'
-    versionCount.set(v, (versionCount.get(v) ?? 0) + 1)
-  }
-  const versions = [...versionCount.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+  // Hostname map for the event stream — only devices referenced by these events.
+  const evDeviceIds = [...new Set(evList.map(e => e.device_id).filter(Boolean))]
+  const { data: evDevices } = evDeviceIds.length
+    ? await admin.from('devices').select('device_id, hostname').in('device_id', evDeviceIds)
+    : { data: [] }
+  const hostnameById = Object.fromEntries((evDevices ?? []).map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
 
-  // Needs attention: recent error events (24h) + devices offline long enough (warning+).
+  // Needs attention: recent error events (24h) + a preview of long-offline devices.
   const dayAgo = Date.now() - 24 * 60 * 60 * 1000
-  const attention: { hostname: string; issue: string; time: string | null; level: 'error' | 'warn' }[] = []
-  for (const e of evList) {
-    if (e.level === 'error' && new Date(e.created_at).getTime() >= dayAgo) {
-      attention.push({ hostname: hostnameById[e.device_id] ?? e.device_id, issue: `${agentEventLabel(e.event)}${e.message ? ' — ' + e.message : ''}`, time: e.created_at, level: 'error' })
-    }
-  }
-  for (const d of devList) {
-    const tier = getHealthTier(d.last_seen)
-    if ((ATTENTION_TIERS as readonly string[]).includes(tier)) {
-      attention.push({ hostname: cleanHostname(d.hostname) || d.device_id, issue: `No heartbeat — ${TIER_LABEL[tier]}`, time: d.last_seen, level: 'warn' })
-    }
-  }
-  attention.sort((a, b) => (b.time ?? '').localeCompare(a.time ?? ''))
+  const recentErrors = evList.filter(e => e.level === 'error' && new Date(e.created_at).getTime() >= dayAgo)
+  const attention: { hostname: string; issue: string; time: string | null; level: 'error' | 'warn' }[] = [
+    ...recentErrors.map(e => ({ hostname: hostnameById[e.device_id] ?? e.device_id, issue: `${agentEventLabel(e.event)}${e.message ? ' — ' + e.message : ''}`, time: e.created_at, level: 'error' as const })),
+    ...((offlineRows ?? []) as { device_id: string; hostname: string; last_seen: string | null }[])
+      .map(d => ({ hostname: cleanHostname(d.hostname) || d.device_id, issue: `No heartbeat — ${TIER_LABEL[getHealthTier(d.last_seen)]}`, time: d.last_seen, level: 'warn' as const })),
+  ].sort((a, b) => (b.time ?? '').localeCompare(a.time ?? ''))
+  const attentionTotal = offlineCount + recentErrors.length
 
   const stats: { label: string; value: number; accent?: 'green' | 'yellow' | 'red' }[] = [
     { label: 'Agents', value: total },
     { label: 'Healthy', value: healthy, accent: 'green' },
-    { label: 'Needs attention', value: attention.length, accent: attention.length ? 'red' : undefined },
+    { label: 'Needs attention', value: attentionTotal, accent: attentionTotal ? 'red' : undefined },
     { label: 'Outdated', value: outdated, accent: outdated ? 'yellow' : undefined },
     { label: 'Pending commands', value: pending.length, accent: pending.length ? 'yellow' : undefined },
   ]
@@ -97,7 +110,7 @@ export default async function AgentMonitorPage() {
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Needs attention</h2>
-          {attention.length > 6 && <span className="text-xs text-gray-500">showing 6 of {attention.length} — filter events below for the rest</span>}
+          {attentionTotal > attention.slice(0, 6).length && <span className="text-xs text-gray-500">showing {Math.min(6, attention.length)} of {attentionTotal} — filter events below for the rest</span>}
         </div>
         {attention.length === 0 ? (
           <p className="text-gray-500 text-sm">All agents healthy and reporting in.</p>

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect, notFound } from 'next/navigation'
-import { getHealthTier, TIER_LABEL, TIER_COLOR, TIER_DOT, type HealthTier } from '@/lib/deviceStatus'
+import { TIER_LABEL, TIER_COLOR, TIER_DOT, type HealthTier } from '@/lib/deviceStatus'
 import { getCallerProfile, getAccessibleOrgIds } from '@/lib/rbac'
 import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import CreateForm from '../CreateForm'
@@ -23,31 +24,35 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
   const { data: org } = await supabase.from('orgs').select('id, name').eq('id', orgId).single()
   if (!org) notFound()
 
-  const [{ data: locations }, { data: devices }] = await Promise.all([
+  const admin = createAdminClient()
+  const scope = [orgId]
+  const [{ data: locations }, { data: healthRows }, { data: versionRows }, { data: locCountRows }, { data: idRows }] = await Promise.all([
     supabase.from('locations').select('id, name').eq('org_id', orgId).order('name'),
-    supabase.from('devices').select('device_id, location_id, last_seen, agent_version').eq('org_id', orgId),
+    admin.rpc('device_health_counts', { org_ids: scope }),
+    admin.rpc('device_version_counts', { org_ids: scope }),
+    admin.rpc('location_device_counts', { org_ids: scope }),
+    // device_ids for scoping the activity chart's agent_logs query (ids only)
+    admin.from('devices').select('device_id').eq('org_id', orgId).limit(5000),
   ])
 
-  const devList = devices ?? []
-  const totalDevices = devList.length
-
-  // Health tiers for the whole org + per location.
   const tiers: Record<HealthTier, number> = { healthy: 0, inactive: 0, warning: 0, stale: 0, lost: 0, never: 0 }
+  for (const r of (healthRows ?? []) as { tier: HealthTier; count: number }[]) tiers[r.tier] = Number(r.count)
+  const totalDevices = Object.values(tiers).reduce((a, b) => a + b, 0)
+
   const devCount = new Map<string, number>()
   const healthyByLoc = new Map<string, number>()
-  for (const d of devList) {
-    const tier = getHealthTier(d.last_seen)
-    tiers[tier]++
-    if (d.location_id) {
-      devCount.set(d.location_id, (devCount.get(d.location_id) ?? 0) + 1)
-      if (tier === 'healthy') healthyByLoc.set(d.location_id, (healthyByLoc.get(d.location_id) ?? 0) + 1)
-    }
+  for (const c of (locCountRows ?? []) as { location_id: string; total: number; healthy: number }[]) {
+    devCount.set(c.location_id, Number(c.total))
+    healthyByLoc.set(c.location_id, Number(c.healthy))
   }
-  const outdated = devList.filter(d => isVersionBehind(d.agent_version)).length
+
+  const outdated = ((versionRows ?? []) as { agent_version: string; count: number }[])
+    .filter(v => isVersionBehind(v.agent_version === 'unknown' ? null : v.agent_version))
+    .reduce((sum, v) => sum + Number(v.count), 0)
 
   // 14-day activity for this org's devices.
   const since14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-  const deviceIds = devList.map(d => d.device_id)
+  const deviceIds = ((idRows ?? []) as { device_id: string }[]).map(d => d.device_id)
   const { data: logs14d } = deviceIds.length
     ? await supabase.from('agent_logs').select('action, created_at').in('device_id', deviceIds).gte('created_at', since14d).limit(5000)
     : { data: [] }

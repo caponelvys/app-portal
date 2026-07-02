@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
-import { isOnline } from '@/lib/deviceStatus'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import CreateForm from './CreateForm'
 
@@ -16,10 +16,11 @@ export default async function OrgsPage() {
   let orgsQ = supabase.from('orgs').select('id, name').order('name')
   if (orgIds !== null) orgsQ = orgsQ.in('id', orgIds.length ? orgIds : ['00000000-0000-0000-0000-000000000000'])
 
-  const [{ data: orgs }, { data: locations }, { data: devices }] = await Promise.all([
+  const [{ data: orgs }, { data: locations }, { data: counts }] = await Promise.all([
     orgsQ,
     supabase.from('locations').select('id, org_id'),
-    supabase.from('devices').select('org_id, last_seen'),
+    // Exact per-org device/healthy counts in one grouped query (no row loading).
+    createAdminClient().rpc('org_device_counts', { org_ids: orgIds }),
   ])
 
   const locCount = new Map<string, number>()
@@ -27,14 +28,14 @@ export default async function OrgsPage() {
 
   const devCount = new Map<string, number>()
   const onlineCount = new Map<string, number>()
-  for (const d of devices ?? []) {
-    if (!d.org_id) continue
-    devCount.set(d.org_id, (devCount.get(d.org_id) ?? 0) + 1)
-    if (isOnline(d.last_seen)) onlineCount.set(d.org_id, (onlineCount.get(d.org_id) ?? 0) + 1)
+  let totalDevices = 0
+  let totalOnline = 0
+  for (const c of (counts ?? []) as { org_id: string; total: number; healthy: number }[]) {
+    devCount.set(c.org_id, Number(c.total))
+    onlineCount.set(c.org_id, Number(c.healthy))
+    totalDevices += Number(c.total)
+    totalOnline += Number(c.healthy)
   }
-
-  const totalDevices = devices?.length ?? 0
-  const totalOnline = (devices ?? []).filter(d => isOnline(d.last_seen)).length
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

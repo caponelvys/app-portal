@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
-import { getHealthTier } from '@/lib/deviceStatus'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 
 const NO_MATCH = '00000000-0000-0000-0000-000000000000'
@@ -16,27 +16,30 @@ export default async function LocationsPage() {
 
   let locsQ = supabase.from('locations').select('id, name, org_id').order('name')
   let orgsQ = supabase.from('orgs').select('id, name')
-  let devsQ = supabase.from('devices').select('location_id, last_seen')
   if (orgIds !== null) {
     const ids = orgIds.length ? orgIds : [NO_MATCH]
     locsQ = locsQ.in('org_id', ids)
     orgsQ = orgsQ.in('id', ids)
-    devsQ = devsQ.in('org_id', ids)
   }
 
-  const [{ data: locations }, { data: orgs }, { data: devices }] = await Promise.all([locsQ, orgsQ, devsQ])
+  const [{ data: locations }, { data: orgs }, { data: counts }] = await Promise.all([
+    locsQ,
+    orgsQ,
+    // Exact per-location device/healthy counts in one grouped query.
+    createAdminClient().rpc('location_device_counts', { org_ids: orgIds }),
+  ])
 
   const orgName = new Map((orgs ?? []).map(o => [o.id, o.name]))
   const devCount = new Map<string, number>()
   const healthyCount = new Map<string, number>()
-  for (const d of devices ?? []) {
-    if (!d.location_id) continue
-    devCount.set(d.location_id, (devCount.get(d.location_id) ?? 0) + 1)
-    if (getHealthTier(d.last_seen) === 'healthy') healthyCount.set(d.location_id, (healthyCount.get(d.location_id) ?? 0) + 1)
+  let totalDevices = 0
+  let totalHealthy = 0
+  for (const c of (counts ?? []) as { location_id: string; total: number; healthy: number }[]) {
+    devCount.set(c.location_id, Number(c.total))
+    healthyCount.set(c.location_id, Number(c.healthy))
+    totalDevices += Number(c.total)
+    totalHealthy += Number(c.healthy)
   }
-
-  const totalDevices = (devices ?? []).filter(d => d.location_id).length
-  const totalHealthy = (devices ?? []).filter(d => getHealthTier(d.last_seen) === 'healthy').length
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
