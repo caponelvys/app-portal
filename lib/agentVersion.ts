@@ -6,6 +6,20 @@
 
 export const AGENT_VERSION = '1.5.0'
 
+// True if a reported agent version is older than `latest` (null = never
+// reported → treated as behind). Numeric per-segment compare.
+export function isVersionBehind(version: string | null | undefined, latest: string = AGENT_VERSION): boolean {
+  if (!version) return true
+  const a = version.split('.').map(n => parseInt(n, 10) || 0)
+  const b = latest.split('.').map(n => parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] ?? 0, y = b[i] ?? 0
+    if (x < y) return true
+    if (x > y) return false
+  }
+  return false
+}
+
 export type ChangelogEntry = {
   version: string
   date: string

@@ -3,23 +3,9 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import { cleanHostname } from '@/lib/hostname'
-import { AGENT_VERSION } from '@/lib/agentVersion'
+import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import DashboardLayout from './DashboardLayout'
 import ActivityChart from './ActivityChart'
-
-// True if a reported agent version is older than `latest` (null = never
-// reported → treat as behind).
-function versionBehind(v: string | null, latest: string): boolean {
-  if (!v) return true
-  const pa = v.split('.').map(n => parseInt(n, 10) || 0)
-  const pb = latest.split('.').map(n => parseInt(n, 10) || 0)
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const a = pa[i] ?? 0, b = pb[i] ?? 0
-    if (a < b) return true
-    if (a > b) return false
-  }
-  return false
-}
 
 const HEALTHY_MS  = 2  * 60 * 1000
 const INACTIVE_MS = 14 * 24 * 60 * 60 * 1000   // 2 weeks
@@ -171,7 +157,7 @@ export default async function AdminDashboard() {
   )
 
   const outdatedAll = devList
-    .filter(d => versionBehind(d.agent_version, AGENT_VERSION))
+    .filter(d => isVersionBehind(d.agent_version, AGENT_VERSION))
     .sort((a, b) => (a.agent_version ?? '').localeCompare(b.agent_version ?? ''))
   const outdated = outdatedAll.slice(0, 6)
 
