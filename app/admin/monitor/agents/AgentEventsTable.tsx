@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import DataTable, { ColDef } from '@/app/admin/DataTable'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 
@@ -12,6 +13,9 @@ const LEVEL_OPTIONS = [
 ]
 
 export default function AgentEventsTable({ events, hostnameById, userId }: { events: Ev[]; hostnameById: Record<string, string>; userId?: string }) {
+  const [errorsOnly, setErrorsOnly] = useState(false)
+  const rows = errorsOnly ? events.filter(e => e.level === 'error') : events
+  const errorCount = events.filter(e => e.level === 'error').length
   const columns: ColDef<Ev>[] = [
     {
       id: 'device', label: 'Device', defaultWidth: 180, sortValue: r => hostnameById[r.device_id] ?? r.device_id,
@@ -46,13 +50,29 @@ export default function AgentEventsTable({ events, hostnameById, userId }: { eve
   ]
 
   return (
-    <DataTable
-      storageId="agent-events-table"
-      columns={columns}
-      rows={events}
-      rowKey={r => r.id}
-      userId={userId}
-      emptyMessage="No agent events recorded yet."
-    />
+    <div>
+      <div className="flex gap-1 mb-2">
+        <button
+          onClick={() => setErrorsOnly(false)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${!errorsOnly ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+        >
+          All events
+        </button>
+        <button
+          onClick={() => setErrorsOnly(true)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${errorsOnly ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+        >
+          Errors only{errorCount > 0 ? ` (${errorCount})` : ''}
+        </button>
+      </div>
+      <DataTable
+        storageId="agent-events-table"
+        columns={columns}
+        rows={rows}
+        rowKey={r => r.id}
+        userId={userId}
+        emptyMessage={errorsOnly ? 'No error events.' : 'No agent events recorded yet.'}
+      />
+    </div>
   )
 }
