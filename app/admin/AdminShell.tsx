@@ -32,16 +32,19 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
   ]},
   '/admin/orgs': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
+    { label: 'Locations',     href: '/admin/locations' },
     { label: 'All Devices',   href: '/admin/devices' },
     { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/locations': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
+    { label: 'Locations',     href: '/admin/locations' },
     { label: 'All Devices',   href: '/admin/devices' },
     { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/devices': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
+    { label: 'Locations',     href: '/admin/locations' },
     { label: 'All Devices',   href: '/admin/devices' },
     { label: 'Install Agent', href: '/admin/orgs' },
   ]},
