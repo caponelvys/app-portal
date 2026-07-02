@@ -38,15 +38,27 @@ export default async function AuditLogPage() {
   if (!profile) redirect('/login')
   if (!isMspStaff(profile)) redirect('/')
 
-  const [{ data: requests }, { data: logs }, { data: apps }, { data: profiles }, { data: devices }, { data: orgs }] =
-    await Promise.all([
-      supabase.from('app_requests').select('app_id, user_id, duration, status, created_at, reviewed_at, reviewed_by'),
-      supabase.from('agent_logs').select('device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(5000),
-      supabase.from('apps').select('id, name'),
-      supabase.from('profiles').select('id, email'),
-      supabase.from('devices').select('device_id, hostname, user_id'),
-      supabase.from('orgs').select('id, name').order('name'),
-    ])
+  const [{ data: requests }, { data: logs }, { data: apps }, { data: orgs }] = await Promise.all([
+    supabase.from('app_requests').select('app_id, user_id, duration, status, created_at, reviewed_at, reviewed_by').order('created_at', { ascending: false }).limit(5000),
+    supabase.from('agent_logs').select('device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(5000),
+    supabase.from('apps').select('id, name'),
+    supabase.from('orgs').select('id, name').order('name'),
+  ])
+
+  // Resolve only the devices/users referenced by the loaded rows, rather than
+  // loading (and silently truncating at 1000) the whole devices/profiles tables.
+  const deviceIds = [...new Set((logs ?? []).map(l => l.device_id).filter(Boolean))]
+  const { data: devices } = deviceIds.length
+    ? await supabase.from('devices').select('device_id, hostname, user_id').in('device_id', deviceIds)
+    : { data: [] }
+
+  const userIds = [...new Set([
+    ...(requests ?? []).flatMap(r => [r.user_id, r.reviewed_by].filter(Boolean)),
+    ...(devices ?? []).map(d => d.user_id).filter(Boolean),
+  ])] as string[]
+  const { data: profiles } = userIds.length
+    ? await supabase.from('profiles').select('id, email').in('id', userIds)
+    : { data: [] }
 
   const appName = new Map((apps ?? []).map(a => [a.id, a.name]))
   const email = new Map((profiles ?? []).map(p => [p.id, p.email]))

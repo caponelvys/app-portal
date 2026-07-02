@@ -39,7 +39,7 @@ export default async function AuditPrintPage({
     supabase.from('apps').select('id, name'),
     supabase.from('profiles').select('id, email, org_id'),
     supabase.from('devices').select('device_id, hostname, user_id, location_id'),
-    supabase.from('app_requests').select('app_id, user_id, duration, status, created_at, reviewed_at, reviewed_by'),
+    supabase.from('app_requests').select('app_id, user_id, duration, status, created_at, reviewed_at, reviewed_by').order('created_at', { ascending: false }).limit(5000),
     supabase.from('agent_logs').select('device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(5000),
     supabase.from('locations').select('id, org_id'),
   ])

@@ -11,10 +11,18 @@ export default async function MonitorPage() {
   if (!profile) redirect('/login')
   if (!isMspStaff(profile)) redirect('/')
 
-  const [{ data: logs }, { data: devices }] = await Promise.all([
-    supabase.from('agent_logs').select('id, device_id, app_name, action, created_at').order('created_at', { ascending: false }).limit(200),
-    supabase.from('devices').select('device_id, hostname'),
-  ])
+  const { data: logs } = await supabase
+    .from('agent_logs')
+    .select('id, device_id, app_name, action, created_at')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  // Only resolve hostnames for the devices actually referenced by these logs,
+  // so this doesn't load (and silently truncate) the whole devices table.
+  const deviceIds = [...new Set((logs ?? []).map(l => l.device_id).filter(Boolean))]
+  const { data: devices } = deviceIds.length
+    ? await supabase.from('devices').select('device_id, hostname').in('device_id', deviceIds)
+    : { data: [] }
 
   const hostnameById = Object.fromEntries((devices ?? []).map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
 
