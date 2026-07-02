@@ -28,7 +28,8 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
     { label: 'Add App',  href: '/admin/new' },
   ]},
   '/admin/monitor': { title: 'Monitor', items: [
-    { label: 'Activity', href: '/admin/monitor' },
+    { label: 'App Activity', href: '/admin/monitor' },
+    { label: 'Agents',       href: '/admin/monitor/agents' },
   ]},
   '/admin/orgs': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
@@ -104,9 +105,24 @@ function isNavActive(href: string, exact: boolean | undefined, pathname: string)
   return pathname.startsWith(base)
 }
 
+// The active sidebar item is the one whose href is the longest match for the
+// current path, so e.g. /admin/monitor/agents highlights "Agents", not the
+// "/admin/monitor" parent.
+function activeSidebarHref(items: { href: string }[], pathname: string): string | null {
+  let best: string | null = null
+  for (const it of items) {
+    const base = it.href.split('?')[0]
+    if (pathname === base || pathname.startsWith(base + '/')) {
+      if (!best || base.length > best.length) best = it.href
+    }
+  }
+  return best
+}
+
 export default function AdminShell({ children, roleLabel }: { children: React.ReactNode; roleLabel: string }) {
   const pathname = usePathname()
   const sidebar = getSidebar(pathname)
+  const activeSidebar = sidebar ? activeSidebarHref(sidebar.items, pathname) : null
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
 
@@ -219,7 +235,7 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-3 rounded-md text-sm transition-colors ${
-                      pathname === item.href || pathname.startsWith(item.href + '/')
+                      item.href === activeSidebar
                         ? 'bg-blue-600 text-white font-medium'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
@@ -249,7 +265,7 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
               </p>
               <nav className="flex flex-col gap-0.5">
                 {sidebar.items.map(item => {
-                  const active = pathname === item.href || pathname.startsWith(item.href + '/')
+                  const active = item.href === activeSidebar
                   return (
                     <Link
                       key={item.href}

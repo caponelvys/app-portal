@@ -7,6 +7,7 @@ import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import { cleanHostname } from '@/lib/hostname'
 import OwnerSuggestion from './OwnerSuggestion'
 import DeviceActionsMenu from '../DeviceActionsMenu'
+import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
 // username against email local-parts. Exact/starts-with only (no weak
@@ -34,23 +35,6 @@ function suggestOwner(
 }
 
 type Activity = { time: string; level: 'info' | 'warn' | 'error'; label: string; detail: string }
-
-const EVENT_LABEL: Record<string, string> = {
-  started:       'Agent started',
-  enrolled:      'Enrolled into location',
-  enroll_failed: 'Enrollment failed',
-  paired:        'Paired to user',
-  pairing:       'Awaiting user pairing',
-  update_applied:'Agent updated',
-  update_failed: 'Agent update failed',
-  error:         'Agent error',
-}
-
-const LEVEL_DOT: Record<Activity['level'], string> = {
-  info:  'bg-gray-500',
-  warn:  'bg-orange-400',
-  error: 'bg-red-500',
-}
 
 export default async function DeviceDetailPage({ params }: { params: Promise<{ deviceId: string }> }) {
   const { deviceId } = await params
@@ -105,7 +89,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     ...(events ?? []).map(e => ({
       time: e.created_at,
       level: (['info', 'warn', 'error'].includes(e.level) ? e.level : 'info') as Activity['level'],
-      label: EVENT_LABEL[e.event] ?? e.event,
+      label: agentEventLabel(e.event),
       detail: e.message ?? '',
     })),
     ...(logs ?? []).map(l => ({
