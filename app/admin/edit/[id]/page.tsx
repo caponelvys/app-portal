@@ -162,7 +162,7 @@ const KNOWN_APPS: Record<string, string> = {
 
 export default function EditAppPage() {
   const { id } = useParams()
-  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '' })
+  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '' })
   const [iconUrl, setIconUrl] = useState<string | null>(null)
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
@@ -177,7 +177,7 @@ export default function EditAppPage() {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
-        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '' })
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '' })
         setIconUrl(data.icon_url)
         const domain = KNOWN_APP_LOGOS[data.name]
         if (!data.icon_url && domain) {
@@ -253,7 +253,13 @@ export default function EditAppPage() {
       icon_url = data.publicUrl
     }
 
-    const { error } = await supabase.from('apps').update({ ...form, icon_url }).eq('id', id)
+    // Store blank overrides as null so the agent falls back to its heuristics.
+    const overrides = {
+      mac_app_path: form.mac_app_path.trim() || null,
+      windows_uninstall: form.windows_uninstall.trim() || null,
+      linux_package: form.linux_package.trim() || null,
+    }
+    const { error } = await supabase.from('apps').update({ ...form, ...overrides, icon_url }).eq('id', id)
 
     if (error) {
       setError(error.message)
@@ -352,6 +358,35 @@ export default function EditAppPage() {
               <option value="blocked">Blocked</option>
             </select>
           </div>
+
+          <details className="rounded-lg border border-gray-800 bg-gray-800/40 px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium text-gray-300 select-none">Uninstall overrides (optional)</summary>
+            <p className="text-xs text-gray-500 mt-2 mb-3">
+              For remote uninstall. Leave blank to use the agent&apos;s heuristics
+              (macOS: <code className="text-gray-400">/Applications/{form.name || 'AppName'}.app</code>;
+              Windows/Linux: match by name). Set an override only when the heuristic misses.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">macOS app path</label>
+                <input name="mac_app_path" value={form.mac_app_path} onChange={handleChange}
+                  placeholder="/Applications/Discord.app" className={inputClass} />
+                <p className="text-xs text-gray-600 mt-1">Full path to the .app bundle (must be directly under /Applications).</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Windows uninstall name</label>
+                <input name="windows_uninstall" value={form.windows_uninstall} onChange={handleChange}
+                  placeholder="Discord" className={inputClass} />
+                <p className="text-xs text-gray-600 mt-1">winget package id, or the Add/Remove Programs display name.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Linux package</label>
+                <input name="linux_package" value={form.linux_package} onChange={handleChange}
+                  placeholder="discord" className={inputClass} />
+                <p className="text-xs text-gray-600 mt-1">Package name for apt / dnf / snap / flatpak.</p>
+              </div>
+            </div>
+          </details>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
