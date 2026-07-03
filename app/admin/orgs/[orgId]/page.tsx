@@ -8,6 +8,7 @@ import CreateForm from '../CreateForm'
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import RenameForm from '@/app/admin/RenameForm'
 import ActivityChart from '@/app/admin/ActivityChart'
+import AppUninstall from '@/app/admin/AppUninstall'
 
 const TIERS: HealthTier[] = ['healthy', 'inactive', 'warning', 'stale', 'lost', 'never']
 
@@ -26,13 +27,14 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
 
   const admin = createAdminClient()
   const scope = [orgId]
-  const [{ data: locations }, { data: healthRows }, { data: versionRows }, { data: locCountRows }, { data: idRows }] = await Promise.all([
+  const [{ data: locations }, { data: healthRows }, { data: versionRows }, { data: locCountRows }, { data: idRows }, { data: appCatalog }] = await Promise.all([
     supabase.from('locations').select('id, name').eq('org_id', orgId).order('name'),
     admin.rpc('device_health_counts', { org_ids: scope }),
     admin.rpc('device_version_counts', { org_ids: scope }),
     admin.rpc('location_device_counts', { org_ids: scope }),
     // device_ids for scoping the activity chart's agent_logs query (ids only)
     admin.from('devices').select('device_id').eq('org_id', orgId).limit(5000),
+    supabase.from('apps').select('id, name').order('name'),
   ])
 
   const tiers: Record<HealthTier, number> = { healthy: 0, inactive: 0, warning: 0, stale: 0, lost: 0, never: 0 }
@@ -145,6 +147,13 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
         ) : (
           <p className="text-gray-500">No locations yet. Add one to start enrolling devices.</p>
         )}
+      </div>
+
+      {/* Mass app uninstall across the org */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-1">Remove apps</h2>
+        <p className="text-gray-500 text-sm mb-3">Uninstall a managed app from every device in {org.name}. Results appear in the Agent Monitor.</p>
+        <AppUninstall apps={appCatalog ?? []} scope="org" scopeId={org.id} targetLabel={org.name} />
       </div>
     </div>
   )

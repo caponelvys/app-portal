@@ -42,7 +42,10 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
     if (typed !== app.name) return
     setLoading(app.id)
     try {
-      const res = await fetch(`/api/apps/${app.id}/uninstall-fleet`, { method: 'POST' })
+      const res = await fetch(`/api/apps/${app.id}/uninstall`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'fleet' }),
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { alert(data.error ?? 'Failed to queue uninstall'); return }
       alert(`Uninstall queued for ${data.queued} device${data.queued === 1 ? '' : 's'}. Watch the Agent Monitor for results.`)

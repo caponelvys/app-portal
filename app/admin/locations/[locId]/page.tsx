@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import EnrollmentPanel from './EnrollmentPanel'
 import DevicesTable from './DevicesTable'
+import AppUninstall from '@/app/admin/AppUninstall'
 
 const PAGE_SIZE = 25
 
@@ -40,6 +41,8 @@ export default async function LocationDetailPage({
   const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  const { data: appCatalog } = await supabase.from('apps').select('id, name').order('name')
+
   const pageLink = (p: number) => `/admin/locations/${locId}?page=${p}`
 
   return (
@@ -75,6 +78,12 @@ export default async function LocationDetailPage({
             </div>
           </div>
         )}
+
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold text-white mb-1">Remove apps</h2>
+          <p className="text-gray-500 text-sm mb-3">Uninstall a managed app from every device in {location.name}. Results appear in the Agent Monitor.</p>
+          <AppUninstall apps={appCatalog ?? []} scope="location" scopeId={location.id} targetLabel={location.name} />
+        </section>
     </div>
   )
 }
