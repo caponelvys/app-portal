@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.5.3'
+export const AGENT_VERSION = '1.5.4'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.5.4',
+    date: '2026-07-03',
+    changes: [
+      'Windows remote uninstall now works for machine-wide apps: since winget is not usable from the SYSTEM service, the agent runs the app’s silent uninstall string from the HKLM registry. Per-user installs (Discord/Slack/Teams) still need a windows_uninstall override or a machine-wide install.',
+    ],
+  },
   {
     version: '1.5.3',
     date: '2026-07-03',

@@ -1,5 +1,15 @@
 # App Controller Agent — Changelog
 
+## v1.5.4 — 2026-07-03
+- Windows remote uninstall made functional. `winget` isn't usable from the
+  agent's SYSTEM service, so the agent now falls back to the app's registered
+  silent uninstall string: it scans the HKLM Uninstall keys (64- and 32-bit) for
+  a matching DisplayName and runs its QuietUninstallString (or the UninstallString,
+  coercing MSI `/I` → `/X /quiet /norestart`). Reliable for machine-wide installs.
+  Per-user installs (Discord/Slack/Teams register under the user's HKCU) aren't
+  visible to SYSTEM — use a `windows_uninstall` override or a machine-wide build.
+  Linux flatpak apps need their reverse-DNS id set as `linux_package`.
+
 ## v1.5.3 — 2026-07-03
 - Remote app uninstall. The agent polls a `device_commands` queue and runs
   portal-issued `uninstall_app` commands: it kills the app, then removes it —

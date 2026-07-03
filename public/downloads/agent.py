@@ -26,7 +26,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.5.3"
+AGENT_VERSION = "1.5.4"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -577,18 +577,81 @@ def _uninstall_macos(app):
             return True, f"Removed {norm}"
     return False, "No matching .app bundle found in /Applications"
 
+def _reg_uninstall_string(name):
+    """Search HKLM Uninstall keys (64- and 32-bit) for an app whose DisplayName
+    matches `name`. Returns (display_name, command, is_quiet) or None. Prefers an
+    exact DisplayName match. Windows only (winreg imported lazily)."""
+    import winreg
+    name_l = name.lower()
+    best = None
+    def val(k, n):
+        try:
+            v, _ = winreg.QueryValueEx(k, n)
+            return v
+        except OSError:
+            return None
+    roots = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+    ]
+    for hive, path in roots:
+        try:
+            root = winreg.OpenKey(hive, path)
+        except OSError:
+            continue
+        for i in range(winreg.QueryInfoKey(root)[0]):
+            try:
+                with winreg.OpenKey(root, winreg.EnumKey(root, i)) as sk:
+                    disp = val(sk, "DisplayName")
+                    if not disp:
+                        continue
+                    d = disp.lower()
+                    exact = d == name_l
+                    if not exact and name_l not in d:
+                        continue
+                    quiet = val(sk, "QuietUninstallString")
+                    cmd = quiet or val(sk, "UninstallString")
+                    if not cmd:
+                        continue
+                    entry = (disp, cmd, quiet is not None)
+                    if exact:
+                        return entry
+                    best = best or entry
+            except OSError:
+                continue
+    return best
+
 def _uninstall_windows(app):
     name = app.get("windows_uninstall") or app.get("name")
     if not name:
         return False, "No app name for uninstall"
+    # winget rarely resolves from a SYSTEM service, but try it if it's on PATH.
     if shutil.which("winget"):
         r = subprocess.run(["winget", "uninstall", "--name", name, "--silent",
                             "--accept-source-agreements", "--disable-interactivity"],
                            capture_output=True, text=True, timeout=300)
         if r.returncode == 0:
             return True, f"winget uninstalled '{name}'"
-        return False, f"winget failed ({r.returncode}): {((r.stdout or '') + (r.stderr or ''))[-200:].strip()}"
-    return False, "winget not available"
+    # Fallback: run the app's registered silent uninstall string from HKLM. Works
+    # from SYSTEM for machine-wide installs. Per-user installs (Discord/Slack/
+    # Teams) register in the user's HKCU and aren't visible here — set a
+    # windows_uninstall override or target a machine-wide install for those.
+    try:
+        found = _reg_uninstall_string(name)
+    except Exception as e:
+        return False, f"Registry lookup failed: {e}"
+    if not found:
+        return False, f"'{name}' not found in HKLM uninstall registry (per-user apps aren't visible to the SYSTEM service)"
+    disp, cmd, quiet = found
+    if not quiet and "msiexec" in cmd.lower():
+        # An MSI UninstallString may be interactive (/I) — force a silent removal.
+        cmd = cmd.replace("/I", "/X").replace("/i", "/X")
+        if "/quiet" not in cmd.lower():
+            cmd += " /quiet /norestart"
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+    if r.returncode in (0, 3010):  # 3010 = success, restart required
+        return True, f"Uninstalled '{disp}' via registry"
+    return False, f"Uninstall of '{disp}' exited {r.returncode}: {((r.stdout or '') + (r.stderr or ''))[-160:].strip()}"
 
 def _uninstall_linux(app):
     pkg = app.get("linux_package") or app.get("process_name") or app.get("name")
