@@ -1,5 +1,17 @@
 # App Controller Agent — Changelog
 
+## v1.5.3 — 2026-07-03
+- Remote app uninstall. The agent polls a `device_commands` queue and runs
+  portal-issued `uninstall_app` commands: it kills the app, then removes it —
+  macOS deletes the `/Applications/<App>.app` bundle (path-validated: only a
+  bundle directly under /Applications), Windows uses `winget uninstall`, Linux
+  uses the available package manager (apt/dnf/snap/flatpak). It writes the
+  outcome (`done`/`failed` + detail) back to the command row, logs an
+  `uninstall_app` / `uninstall_failed` event, and notifies the user. Uses the
+  optional per-app catalog overrides (`mac_app_path` / `windows_uninstall` /
+  `linux_package`) when set, otherwise best-effort heuristics from the app name.
+  Best-effort throughout — a failure never disrupts enforcement.
+
 ## v1.5.2 — 2026-07-03
 - Notifies the logged-in user when a blocked app is closed, so it doesn't just
   vanish silently: "<App> is blocked by your administrator and has been closed."

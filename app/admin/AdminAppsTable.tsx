@@ -35,6 +35,24 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
     setLoading(null)
   }
 
+  // Queue a remote uninstall of this app on every device in scope. Destructive
+  // and irreversible on the devices — require typing the app name to confirm.
+  async function uninstallFleet(app: App) {
+    const typed = prompt(`Uninstall "${app.name}" from ALL devices in your scope?\n\nThis removes the app from every machine where it is found and cannot be undone. Type the app name to confirm.`)
+    if (typed !== app.name) return
+    setLoading(app.id)
+    try {
+      const res = await fetch(`/api/apps/${app.id}/uninstall-fleet`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert(data.error ?? 'Failed to queue uninstall'); return }
+      alert(`Uninstall queued for ${data.queued} device${data.queued === 1 ? '' : 's'}. Watch the Agent Monitor for results.`)
+    } catch {
+      alert('Network error')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   const columns: ColDef<App>[] = [
     {
       id: 'app', label: 'App', defaultWidth: 240, sortable: true,
@@ -73,7 +91,7 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
       ),
     },
     {
-      id: 'actions', label: 'Actions', defaultWidth: 200, sortable: false,
+      id: 'actions', label: 'Actions', defaultWidth: 300, sortable: false,
       renderCell: app => (
         <div className="flex items-center gap-2">
           <button onClick={() => toggleStatus(app)} disabled={loading === app.id}
@@ -81,6 +99,10 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
             {app.status === 'allowed' ? 'Block' : 'Allow'}
           </button>
           <a href={`/admin/edit/${app.id}`} className="text-xs px-3 py-1 rounded-md border border-blue-700 text-blue-400 hover:bg-blue-900 font-medium">Edit</a>
+          <button onClick={() => uninstallFleet(app)} disabled={loading === app.id}
+            className="text-xs px-3 py-1 rounded-md border border-orange-700 text-orange-400 hover:bg-orange-950 disabled:opacity-50 font-medium whitespace-nowrap">
+            Uninstall from fleet
+          </button>
           <button onClick={() => deleteApp(app.id)} disabled={loading === app.id}
             className="text-xs px-3 py-1 rounded-md border border-red-800 text-red-500 hover:bg-red-900 disabled:opacity-50 font-medium">
             Delete

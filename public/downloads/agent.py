@@ -26,7 +26,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.5.2"
+AGENT_VERSION = "1.5.3"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -526,6 +526,129 @@ def handle_command(device_id, cmd):
         log_event(device_id, "warn", "command_uninstall", "Uninstall requested from portal")
         uninstall_agent()  # terminal
 
+# ── Remote app uninstall (device_commands queue) ──────────────────────────────
+def get_app_detail(app_id):
+    """Fetch one app with its uninstall override fields (not in the hot loop's
+    lean app fetch)."""
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/apps?id=eq.{app_id}"
+            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package",
+            headers=HEADERS, timeout=10)
+        if resp.status_code == 200 and resp.json():
+            return resp.json()[0]
+    except Exception:
+        pass
+    return None
+
+def update_command(cmd_id, status, result=None):
+    """Write a command's status/result back to the portal. Best-effort."""
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/device_commands?id=eq.{cmd_id}",
+            headers=HEADERS,
+            json={"status": status, "result": (result or "")[:500],
+                  "updated_at": datetime.now(timezone.utc).isoformat()},
+            timeout=10)
+    except Exception:
+        pass
+
+def _uninstall_macos(app):
+    # Prefer an explicit catalog path; else guess the bundle from the name.
+    candidates = []
+    if app.get("mac_app_path"):
+        candidates.append(app["mac_app_path"])
+    for nm in (app.get("name"), app.get("process_name")):
+        if nm:
+            candidates.append(f"/Applications/{nm}.app")
+    seen = set()
+    for p in candidates:
+        norm = os.path.normpath(p) if p else ""
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        # Safety: only ever remove a *.app bundle sitting directly under
+        # /Applications — never a nested path or anything else.
+        inner = norm[len("/Applications/"):-len(".app")] if norm.startswith("/Applications/") and norm.endswith(".app") else None
+        if not inner or "/" in inner:
+            continue
+        if os.path.isdir(norm):
+            shutil.rmtree(norm)
+            return True, f"Removed {norm}"
+    return False, "No matching .app bundle found in /Applications"
+
+def _uninstall_windows(app):
+    name = app.get("windows_uninstall") or app.get("name")
+    if not name:
+        return False, "No app name for uninstall"
+    if shutil.which("winget"):
+        r = subprocess.run(["winget", "uninstall", "--name", name, "--silent",
+                            "--accept-source-agreements", "--disable-interactivity"],
+                           capture_output=True, text=True, timeout=300)
+        if r.returncode == 0:
+            return True, f"winget uninstalled '{name}'"
+        return False, f"winget failed ({r.returncode}): {((r.stdout or '') + (r.stderr or ''))[-200:].strip()}"
+    return False, "winget not available"
+
+def _uninstall_linux(app):
+    pkg = app.get("linux_package") or app.get("process_name") or app.get("name")
+    if not pkg:
+        return False, "No package name for uninstall"
+    tried = []
+    for cmd, mgr in (["apt-get", "remove", "-y", pkg], "apt-get"), (["dnf", "remove", "-y", pkg], "dnf"), (["snap", "remove", pkg], "snap"), (["flatpak", "uninstall", "-y", pkg], "flatpak"):
+        if shutil.which(cmd[0]):
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            if r.returncode == 0:
+                return True, f"{mgr} removed '{pkg}'"
+            tried.append(mgr)
+    return False, f"Removal failed via {', '.join(tried)}" if tried else "No supported package manager found"
+
+def uninstall_app(app):
+    """Best-effort uninstall of a managed app. Returns (success, detail)."""
+    # Kill it first so files/bundles aren't locked.
+    pname = (app.get("process_name") or "").lower()
+    if pname:
+        actual = pname + ".exe" if (OS == "Windows" and not pname.endswith(".exe")) else pname
+        kill_process(actual)
+    try:
+        if OS == "Darwin":  return _uninstall_macos(app)
+        if OS == "Windows": return _uninstall_windows(app)
+        if OS == "Linux":   return _uninstall_linux(app)
+        return False, f"Unsupported OS: {OS}"
+    except Exception as e:
+        return False, f"Uninstall error: {e}"
+
+def process_app_commands(device_id):
+    """Run any pending portal-issued app commands for this device, writing the
+    result back. Best-effort — a failure must never disrupt enforcement."""
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/device_commands"
+            f"?device_id=eq.{device_id}&status=eq.pending&order=created_at.asc&select=id,type,app_id",
+            headers=HEADERS, timeout=10)
+        if resp.status_code != 200:
+            return
+        commands = resp.json()
+    except Exception:
+        return
+    for cmd in commands:
+        cid = cmd.get("id")
+        if cmd.get("type") != "uninstall_app":
+            update_command(cid, "failed", f"Unknown command type: {cmd.get('type')}")
+            continue
+        app = get_app_detail(cmd.get("app_id")) if cmd.get("app_id") else None
+        if not app:
+            update_command(cid, "failed", "App not found in catalog")
+            continue
+        update_command(cid, "running")
+        ok, detail = uninstall_app(app)
+        update_command(cid, "done" if ok else "failed", detail)
+        log_event(device_id, "info" if ok else "error",
+                  "uninstall_app" if ok else "uninstall_failed",
+                  f"{app.get('name', 'App')}: {detail}")
+        if ok:
+            notify_user("App Controller", f"{app.get('name', 'An app')} was uninstalled by your administrator.")
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 def main():
     device_id = get_device_id()
@@ -568,6 +691,9 @@ def main():
             # terminate the process, so handle it before enforcement.
             if ctx.get("pending_command"):
                 handle_command(device_id, ctx.get("pending_command"))
+
+            # App operations queued from the portal (e.g. remote uninstall).
+            process_app_commands(device_id)
 
             owner_id = ctx.get("user_id")
             all_apps = get_all_apps()

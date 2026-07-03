@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.5.2'
+export const AGENT_VERSION = '1.5.3'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.5.3',
+    date: '2026-07-03',
+    changes: [
+      'Executes remote app-uninstall commands queued from the portal: kills the app, removes it (macOS deletes the /Applications bundle; Windows via winget; Linux via the package manager), reports success/failure back, and notifies the user. Uses optional per-app catalog overrides when set, otherwise best-effort heuristics.',
+    ],
+  },
   {
     version: '1.5.2',
     date: '2026-07-03',
