@@ -13,6 +13,18 @@ type App = {
   icon: string
   icon_url: string | null
   status: 'allowed' | 'blocked'
+  mac_app_path: string | null
+  windows_uninstall: string | null
+  linux_package: string | null
+}
+
+// Which OS-specific uninstall overrides an app has set (empty = heuristics).
+function overrideTags(app: App): string[] {
+  return [
+    app.mac_app_path && 'macOS',
+    app.windows_uninstall && 'Windows',
+    app.linux_package && 'Linux',
+  ].filter(Boolean) as string[]
 }
 
 export default function AdminAppsTable({ apps: initial, userId }: { apps: App[]; userId?: string }) {
@@ -92,6 +104,21 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
           {app.status}
         </span>
       ),
+    },
+    {
+      id: 'uninstall', label: 'Uninstall', defaultWidth: 150, sortable: false,
+      filter: { type: 'select', value: (r: App) => overrideTags(r).length ? 'set' : 'heuristics', options: [{ label: 'Override set', value: 'set' }, { label: 'Heuristics only', value: 'heuristics' }] },
+      renderCell: app => {
+        const tags = overrideTags(app)
+        if (tags.length === 0) return <span className="text-xs text-gray-600">Heuristics</span>
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.map(t => (
+              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-950 text-orange-300 border border-orange-800">{t}</span>
+            ))}
+          </div>
+        )
+      },
     },
     {
       id: 'actions', label: 'Actions', defaultWidth: 300, sortable: false,
