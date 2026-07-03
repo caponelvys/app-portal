@@ -35,19 +35,16 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
     { label: 'Organizations', href: '/admin/orgs' },
     { label: 'Locations',     href: '/admin/locations' },
     { label: 'All Devices',   href: '/admin/devices' },
-    { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/locations': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
     { label: 'Locations',     href: '/admin/locations' },
     { label: 'All Devices',   href: '/admin/devices' },
-    { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/devices': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
     { label: 'Locations',     href: '/admin/locations' },
     { label: 'All Devices',   href: '/admin/devices' },
-    { label: 'Install Agent', href: '/admin/orgs' },
   ]},
   '/admin/requests': { title: 'Requests', items: [
     { label: 'Access Requests', href: '/admin/requests' },
@@ -65,25 +62,7 @@ function getSidebar(pathname: string) {
   const keys = Object.keys(SIDEBARS).sort((a, b) => b.length - a.length)
   for (const key of keys) {
     if (pathname === key || pathname.startsWith(key + '/') || pathname.startsWith(key + '?')) {
-      const sidebar = SIDEBARS[key]
-      const orgMatch = pathname.match(/\/admin\/orgs\/([^/]+)/)
-      if (orgMatch) {
-        // Inside a specific org — resolve Install Agent to that org's install page
-        const orgId = orgMatch[1]
-        return {
-          ...sidebar,
-          items: sidebar.items.map(item =>
-            item.label === 'Install Agent'
-              ? { ...item, href: `/admin/orgs/${orgId}/install` }
-              : item
-          ),
-        }
-      }
-      // On the orgs list or devices pages without an org context — hide Install Agent
-      return {
-        ...sidebar,
-        items: sidebar.items.filter(item => item.label !== 'Install Agent'),
-      }
+      return SIDEBARS[key]
     }
   }
   return null

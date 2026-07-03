@@ -76,6 +76,9 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
       <div className="flex flex-wrap items-center justify-between gap-3">
         <RenameForm kind="org" id={org.id} currentName={org.name} />
         <div className="flex items-center gap-2">
+          <a href={`/admin/orgs/${org.id}/install`} className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
+            Install Agent
+          </a>
           <a href={`/admin/orgs/${org.id}/policies`} className="bg-gray-800 text-gray-200 border border-gray-700 px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium">
             Policies
           </a>
