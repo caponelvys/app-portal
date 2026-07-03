@@ -6,14 +6,16 @@ import { cleanHostname } from '@/lib/hostname'
 import { getHealthTier, TIER_LABEL, INACTIVE_MS } from '@/lib/deviceStatus'
 import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import { agentEventLabel } from '@/lib/agentEvents'
-import AgentEventsTable from './AgentEventsTable'
+import { parseTableState, timeRangeSince, DEFAULT_PAGE_SIZE } from '@/lib/tableParams'
+import AgentEventsTableServer from './AgentEventsTableServer'
 
 const NO_MATCH = '00000000-0000-0000-0000-000000000000'
 const CMD_LABEL: Record<string, string> = { restart: 'Restart', update: 'Update', uninstall: 'Uninstall' }
-const EVENT_LIMIT = 200          // recent events pulled for the stream + previews
+const EVENT_PAGE_SIZE = DEFAULT_PAGE_SIZE
+const EV_SORT: Record<string, string> = { level: 'level', event: 'event', message: 'message', time: 'created_at' }
 const ATTENTION_TIERS = ['warning', 'stale', 'lost', 'never'] as const  // offline long enough to matter
 
-export default async function AgentMonitorPage() {
+export default async function AgentMonitorPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const supabase = await createClient()
   const profile = await getCallerProfile(supabase)
   if (!profile) redirect('/login')
@@ -23,6 +25,7 @@ export default async function AgentMonitorPage() {
   const admin = createAdminClient()
   const scopeIds = orgIds === null ? null : (orgIds.length ? orgIds : [NO_MATCH])
   const inactiveBefore = new Date(Date.now() - INACTIVE_MS).toISOString()  // offline 14+ days = attention
+  const evState = parseTableState(await searchParams)
 
   // Exact fleet aggregates (grouped-count RPCs) + bounded preview queries.
   let offlineQ = admin.from('devices').select('device_id, hostname, last_seen')
@@ -38,12 +41,40 @@ export default async function AgentMonitorPage() {
   ])
 
   // agent_events carries org_id (populated by a DB trigger from the device row,
-  // migration 0011), so org-scoping is a direct indexed filter — no need to load
-  // every scoped device_id first.
-  let evQ = admin.from('agent_events').select('id, device_id, level, event, message, created_at').order('created_at', { ascending: false }).limit(EVENT_LIMIT)
+  // migration 0011), so org-scoping is a direct indexed filter. The event stream
+  // below is server-paginated (URL params); the "needs attention" errors are a
+  // separate bounded query so they don't depend on the current page.
+  const ef = evState.filters
+  // The device filter matches by hostname; agent_events only has device_id, so
+  // resolve matching device ids first (bounded).
+  let deviceFilterIds: string[] | null = null
+  if (ef.device) {
+    let dq = admin.from('devices').select('device_id').ilike('hostname', `%${ef.device}%`).limit(1000)
+    if (scopeIds) dq = dq.in('org_id', scopeIds)
+    const { data: dm } = await dq
+    deviceFilterIds = (dm ?? []).map(d => d.device_id)
+  }
+  const evFrom = (evState.page - 1) * EVENT_PAGE_SIZE
+  let evQ = admin.from('agent_events').select('id, device_id, level, event, message, created_at', { count: 'exact' })
   if (scopeIds) evQ = evQ.in('org_id', scopeIds)
-  const { data: events } = await evQ
+  if (ef.level) evQ = evQ.eq('level', ef.level)
+  if (ef.event) evQ = evQ.eq('event', ef.event)
+  if (ef.message) evQ = evQ.ilike('message', `%${ef.message}%`)
+  if (ef.time) { const since = timeRangeSince(ef.time); if (since) evQ = evQ.gte('created_at', since) }
+  if (deviceFilterIds !== null) evQ = evQ.in('device_id', deviceFilterIds.length ? deviceFilterIds : [NO_MATCH])
+  if (evState.sort && EV_SORT[evState.sort]) evQ = evQ.order(EV_SORT[evState.sort], { ascending: evState.dir === 'asc' })
+  else evQ = evQ.order('created_at', { ascending: false })
+  const { data: events, count: evCount } = await evQ.range(evFrom, evFrom + EVENT_PAGE_SIZE - 1)
   const evList = events ?? []
+
+  // Recent error events (24h) for the attention section — independent of the
+  // paginated stream above so it stays accurate regardless of page/filters.
+  const dayAgoIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  let errQ = admin.from('agent_events').select('device_id, event, message, created_at')
+    .eq('level', 'error').gte('created_at', dayAgoIso).order('created_at', { ascending: false }).limit(50)
+  if (scopeIds) errQ = errQ.in('org_id', scopeIds)
+  const { data: recentErrorRows } = await errQ
+  const recentErrors = recentErrorRows ?? []
 
   // ── Aggregates ────────────────────────────────────────────────────────────
   const tierCounts: Record<string, number> = {}
@@ -61,16 +92,15 @@ export default async function AgentMonitorPage() {
   const pending = ((pendingRows ?? []) as { device_id: string; hostname: string; pending_command: string }[])
     .map(d => ({ hostname: cleanHostname(d.hostname) || d.device_id, command: CMD_LABEL[d.pending_command] ?? d.pending_command }))
 
-  // Hostname map for the event stream — only devices referenced by these events.
-  const evDeviceIds = [...new Set(evList.map(e => e.device_id).filter(Boolean))]
+  // Hostname map — only devices referenced by the current event page + the
+  // recent-error attention rows.
+  const evDeviceIds = [...new Set([...evList, ...recentErrors].map(e => e.device_id).filter(Boolean))]
   const { data: evDevices } = evDeviceIds.length
     ? await admin.from('devices').select('device_id, hostname').in('device_id', evDeviceIds)
     : { data: [] }
   const hostnameById = Object.fromEntries((evDevices ?? []).map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
 
   // Needs attention: recent error events (24h) + a preview of long-offline devices.
-  const dayAgo = Date.now() - 24 * 60 * 60 * 1000
-  const recentErrors = evList.filter(e => e.level === 'error' && new Date(e.created_at).getTime() >= dayAgo)
   const attention: { hostname: string; issue: string; time: string | null; level: 'error' | 'warn' }[] = [
     ...recentErrors.map(e => ({ hostname: hostnameById[e.device_id] ?? e.device_id, issue: `${agentEventLabel(e.event)}${e.message ? ' — ' + e.message : ''}`, time: e.created_at, level: 'error' as const })),
     ...((offlineRows ?? []) as { device_id: string; hostname: string; last_seen: string | null }[])
@@ -168,13 +198,20 @@ export default async function AgentMonitorPage() {
         </div>
       </div>
 
-      {/* Event stream — the drill-down (recent only; filter to find a specific agent) */}
+      {/* Event stream — the drill-down (server-paginated; filter to find a specific agent) */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-white">Agent events</h2>
-          <span className="text-xs text-gray-500">most recent {evList.length}{evList.length >= EVENT_LIMIT ? '+' : ''} — filter to find a specific agent</span>
+          <span className="text-xs text-gray-500">{evCount ?? 0} total — filter to find a specific agent</span>
         </div>
-        <AgentEventsTable events={evList} hostnameById={hostnameById} userId={profile.id} />
+        <AgentEventsTableServer
+          events={evList}
+          total={evCount ?? 0}
+          state={evState}
+          pageSize={EVENT_PAGE_SIZE}
+          hostnameById={hostnameById}
+          userId={profile.id}
+        />
       </div>
     </div>
   )
