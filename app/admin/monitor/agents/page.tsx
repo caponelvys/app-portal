@@ -37,15 +37,11 @@ export default async function AgentMonitorPage() {
     pendingQ,
   ])
 
-  // agent_events has no org_id, so org-scoping needs the device id set (weak
-  // point noted in scale memory — deferred: add org_id to agent_events).
-  let scopedDeviceIds: string[] | null = null
-  if (scopeIds) {
-    const { data: idRows } = await admin.from('devices').select('device_id').in('org_id', scopeIds).limit(5000)
-    scopedDeviceIds = (idRows ?? []).map(d => d.device_id)
-  }
+  // agent_events carries org_id (populated by a DB trigger from the device row,
+  // migration 0011), so org-scoping is a direct indexed filter — no need to load
+  // every scoped device_id first.
   let evQ = admin.from('agent_events').select('id, device_id, level, event, message, created_at').order('created_at', { ascending: false }).limit(EVENT_LIMIT)
-  if (scopedDeviceIds !== null) evQ = evQ.in('device_id', scopedDeviceIds.length ? scopedDeviceIds : [NO_MATCH])
+  if (scopeIds) evQ = evQ.in('org_id', scopeIds)
   const { data: events } = await evQ
   const evList = events ?? []
 
