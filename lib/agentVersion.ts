@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.5.0'
+export const AGENT_VERSION = '1.5.1'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.5.1',
+    date: '2026-07-03',
+    changes: [
+      'Transient network blips (a single failed poll that recovers next cycle) are no longer logged as errors — only a sustained outage (3+ consecutive failed checks) is surfaced, so the Agent Monitor stops flagging normal connectivity hiccups',
+    ],
+  },
   {
     version: '1.5.0',
     date: '2026-07-01',

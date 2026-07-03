@@ -24,7 +24,8 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
-AGENT_VERSION = "1.5.0"
+NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
+AGENT_VERSION = "1.5.1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -511,6 +512,7 @@ def main():
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
     last_error = {"msg": None, "ts": 0.0}  # throttle repeated error events
     last_update_check = 0.0  # 0 → check for updates on the first iteration
+    consecutive_net_fails = 0  # run of back-to-back poll failures (network)
 
     while True:
         try:
@@ -573,7 +575,27 @@ def main():
                     if killed:
                         log_action(device_id, app["name"], "killed")
 
+            # Full cycle succeeded — clear any network-failure streak.
+            consecutive_net_fails = 0
+
+        except requests.exceptions.RequestException as e:
+            # Transient connectivity blip (timeout / reset / DNS). A single failed
+            # poll is normal and self-heals next cycle, so it is NOT logged as an
+            # event — only a sustained outage (NET_FAIL_ESCALATE consecutive
+            # failures) is worth an operator's attention. Blips still print to the
+            # local log for on-device debugging.
+            consecutive_net_fails += 1
+            msg = str(e)
+            print(f"[agent] Network issue ({consecutive_net_fails} in a row): {msg}")
+            now_err = time.time()
+            if consecutive_net_fails >= NET_FAIL_ESCALATE and (msg != last_error["msg"] or now_err - last_error["ts"] >= 300):
+                log_event(device_id, "error", "error",
+                          f"Portal unreachable for {consecutive_net_fails} consecutive checks: {msg}")
+                last_error = {"msg": msg, "ts": now_err}
+
         except Exception as e:
+            # Genuine (non-network) fault — surface immediately at error severity.
+            consecutive_net_fails = 0
             print(f"[agent] Error during check: {e}")
             # Throttle: only record a new error event when the message changes
             # or 5 minutes have passed, so a persistent failure can't spam the log.

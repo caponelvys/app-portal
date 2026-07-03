@@ -1,5 +1,13 @@
 # App Controller Agent — Changelog
 
+## v1.5.1 — 2026-07-03
+- Transient network blips no longer create error events. A single failed poll
+  (timeout / connection reset) self-heals on the next 5s cycle, so it's printed
+  to the local log but not reported. Only a sustained outage — `NET_FAIL_ESCALATE`
+  (3) consecutive failed checks — is logged as an error (still throttled). Real,
+  non-network faults are unchanged (reported immediately). Stops the Agent
+  Monitor from flagging normal connectivity hiccups as problems.
+
 ## v1.5.0 — 2026-07-01
 - Executes portal-issued commands polled from `devices.pending_command` each
   cycle: `restart` (re-exec), `update` (self-update to latest), `uninstall`
