@@ -265,7 +265,12 @@ export default function ServerDataTable<T>({
     )
   }
 
-  const anyFilter = Object.keys(state.filters).length > 0
+  // Only column-backed filters count toward the "Clear filters" affordance;
+  // pages may keep other filter keys in the URL (e.g. a date range) that this
+  // table doesn't own and shouldn't wipe.
+  const colFilterIds = new Set(columns.filter(c => c.filter).map(c => c.id))
+  const anyFilter = Object.keys(state.filters).some(k => colFilterIds.has(k))
+  const clearedFilters = Object.fromEntries(Object.entries(state.filters).filter(([k]) => !colFilterIds.has(k)))
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const firstRow = total === 0 ? 0 : (state.page - 1) * pageSize + 1
   const lastRow = Math.min(state.page * pageSize, total)
@@ -321,7 +326,7 @@ export default function ServerDataTable<T>({
       <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
         <span>
           {total === 0 ? 'No rows' : `${firstRow}–${lastRow} of ${total}`}
-          {anyFilter && <> · <button className="text-blue-400 hover:text-blue-300" onClick={() => go(tableHref(basePath, { ...state, filters: {} }, { sort: state.sort }))}>Clear filters</button></>}
+          {anyFilter && <> · <button className="text-blue-400 hover:text-blue-300" onClick={() => go(tableHref(basePath, { ...state, filters: clearedFilters }))}>Clear filters</button></>}
         </span>
         {totalPages > 1 && (
           <span className="flex items-center gap-2">
