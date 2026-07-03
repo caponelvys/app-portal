@@ -25,7 +25,8 @@ POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
-AGENT_VERSION = "1.5.1"
+NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
+AGENT_VERSION = "1.5.2"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -361,6 +362,36 @@ def kill_process(process_name):
         print(f"[error] Could not kill {process_name}: {e}")
         return False
 
+def notify_user(title, message):
+    """Show a native notification banner to the logged-in user explaining why an
+    app was closed. The agent runs as root/SYSTEM, so the notification must be
+    dispatched into the console user's GUI session. Best-effort — a failure here
+    must never disrupt enforcement. Windows has no reliable toast from the SYSTEM
+    session, so it falls back to a msg.exe message box."""
+    user = get_device_user()
+    if not user:
+        return  # no interactive user logged in — nobody to notify
+    # Quotes would break the osascript string; app names are admin-controlled but
+    # sanitize anyway.
+    title = title.replace('"', "'")
+    message = message.replace('"', "'")
+    try:
+        if OS == "Darwin":
+            uid = subprocess.check_output(["id", "-u", user], text=True).strip()
+            script = f'display notification "{message}" with title "{title}"'
+            subprocess.run(["launchctl", "asuser", uid, "osascript", "-e", script],
+                           capture_output=True, timeout=5)
+        elif OS == "Linux":
+            uid = subprocess.check_output(["id", "-u", user], text=True).strip()
+            env = {**os.environ, "DISPLAY": ":0",
+                   "DBUS_SESSION_BUS_ADDRESS": f"unix:path=/run/user/{uid}/bus"}
+            subprocess.run(["sudo", "-u", user, "notify-send", title, message],
+                           capture_output=True, timeout=5, env=env)
+        elif OS == "Windows":
+            subprocess.run(["msg", user, f"{title}: {message}"], capture_output=True, timeout=5)
+    except Exception as e:
+        print(f"[agent] Could not notify user: {e}")
+
 def log_action(device_id, app_name, action):
     """Write a log entry to Supabase."""
     requests.post(
@@ -510,6 +541,7 @@ def main():
     setup_pairing(device_id)
 
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
+    last_notify = {}  # app_id -> last time we notified the user about a block
     last_error = {"msg": None, "ts": 0.0}  # throttle repeated error events
     last_update_check = 0.0  # 0 → check for updates on the first iteration
     consecutive_net_fails = 0  # run of back-to-back poll failures (network)
@@ -574,6 +606,12 @@ def main():
                     killed = kill_process(actual_name)
                     if killed:
                         log_action(device_id, app["name"], "killed")
+                        # Tell the user why it closed — throttled per app so a
+                        # relaunch loop doesn't spam banners.
+                        now_n = time.time()
+                        if now_n - last_notify.get(app["id"], 0) >= NOTIFY_INTERVAL:
+                            notify_user("App Controller", f"{app['name']} is blocked by your administrator and has been closed.")
+                            last_notify[app["id"]] = now_n
 
             # Full cycle succeeded — clear any network-failure streak.
             consecutive_net_fails = 0

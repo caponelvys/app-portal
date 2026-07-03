@@ -1,5 +1,15 @@
 # App Controller Agent — Changelog
 
+## v1.5.2 — 2026-07-03
+- Notifies the logged-in user when a blocked app is closed, so it doesn't just
+  vanish silently: "<App> is blocked by your administrator and has been closed."
+  The agent runs as root/SYSTEM, so the notification is dispatched into the
+  console user's session (macOS `launchctl asuser … osascript`, Linux
+  `sudo -u … notify-send`, Windows `msg`). Throttled per app (`NOTIFY_INTERVAL`,
+  60s) so a relaunch loop can't spam banners. macOS/Linux show a banner; Windows
+  shows a message box (no reliable toast from session 0). Best-effort — a
+  notification failure never disrupts enforcement.
+
 ## v1.5.1 — 2026-07-03
 - Transient network blips no longer create error events. A single failed poll
   (timeout / connection reset) self-heals on the next 5s cycle, so it's printed
