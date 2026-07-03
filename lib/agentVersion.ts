@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.5.4'
+export const AGENT_VERSION = '1.5.5'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.5.5',
+    date: '2026-07-03',
+    changes: [
+      'Windows remote uninstall now also handles per-user apps (Discord/Slack/Teams). When an app isn’t a machine-wide install, the agent runs the uninstall in the logged-in user’s session via a one-shot scheduled task (interactive token), reading its result back. Machine-wide installs still go through the registry.',
+    ],
+  },
   {
     version: '1.5.4',
     date: '2026-07-03',

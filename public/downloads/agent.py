@@ -26,7 +26,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.5.4"
+AGENT_VERSION = "1.5.5"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -621,6 +621,81 @@ def _reg_uninstall_string(name):
                 continue
     return best
 
+def _uninstall_windows_peruser(name):
+    """Uninstall a per-user Windows app (Discord/Slack/Teams etc.). These install
+    into the user's profile and register in the user's HKCU, which the SYSTEM
+    service can't act on directly. Run the uninstall in the logged-in user's own
+    session via a one-shot scheduled task with an interactive token (no stored
+    password), and read the result the task writes. Best-effort.
+
+    NOTE: untested on real Windows hardware — the /IT (interactive-token, no
+    password) task creation is the key assumption to validate."""
+    user = get_device_user()
+    if not user:
+        return False, "No interactive user logged in for a per-user uninstall"
+    base = r"C:\ProgramData\AppController"
+    script_path = base + r"\uninstall.ps1"
+    result_path = base + r"\uninstall_result.txt"
+    task = "AppController_Uninstall"
+    safe = name.replace("'", "''")
+    ps = (
+        "$ErrorActionPreference='SilentlyContinue'\n"
+        f"$target='{safe}'\n"
+        f"$result='{result_path}'\n"
+        "$app = Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' | "
+        "ForEach-Object { Get-ItemProperty $_.PSPath } | "
+        "Where-Object { $_.DisplayName -and ($_.DisplayName -eq $target -or $_.DisplayName -like \"*$target*\") } | "
+        "Select-Object -First 1\n"
+        "if (-not $app) { Set-Content -Path $result -Value 'NOTFOUND'; return }\n"
+        "$cmd = if ($app.QuietUninstallString) { $app.QuietUninstallString } else { $app.UninstallString }\n"
+        "if (-not $cmd) { Set-Content -Path $result -Value 'NOCMD'; return }\n"
+        "try { $p = Start-Process -FilePath cmd.exe -ArgumentList '/c', $cmd -Wait -PassThru; "
+        "Set-Content -Path $result -Value ('DONE ' + $p.ExitCode) } "
+        "catch { Set-Content -Path $result -Value ('ERROR ' + $_.Exception.Message) }\n"
+    )
+    try:
+        os.makedirs(base, exist_ok=True)
+        with open(script_path, "w") as f:
+            f.write(ps)
+        if os.path.exists(result_path):
+            os.remove(result_path)
+        # One-shot task that runs as the logged-on user with an interactive token
+        # (no stored password) so the uninstaller runs in the user's context.
+        subprocess.run(["schtasks", "/create", "/tn", task, "/f", "/sc", "ONCE", "/st", "00:00",
+                        "/ru", user, "/it", "/tr",
+                        f'powershell -NoProfile -ExecutionPolicy Bypass -File "{script_path}"'],
+                       capture_output=True, text=True, timeout=30)
+        run = subprocess.run(["schtasks", "/run", "/tn", task], capture_output=True, text=True, timeout=30)
+        if run.returncode != 0:
+            subprocess.run(["schtasks", "/delete", "/tn", task, "/f"], capture_output=True, timeout=15)
+            return False, f"Could not launch per-user uninstall task: {((run.stdout or '') + (run.stderr or ''))[-160:].strip()}"
+        # Poll for the result the script writes (uninstallers can take a while).
+        content = None
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            if os.path.exists(result_path):
+                time.sleep(1)  # let the write finish
+                with open(result_path) as f:
+                    content = f.read().strip()
+                break
+            time.sleep(2)
+        subprocess.run(["schtasks", "/delete", "/tn", task, "/f"], capture_output=True, timeout=15)
+        if content is None:
+            return False, "Per-user uninstall task did not report a result in time"
+        if content == "NOTFOUND":
+            return False, f"'{name}' not found in the user's installed apps"
+        if content == "NOCMD":
+            return False, f"'{name}' has no registered uninstall command"
+        if content.startswith("DONE"):
+            parts = content.split()
+            code = parts[1] if len(parts) > 1 else "?"
+            return (True, f"Uninstalled '{name}' (per-user)") if code == "0" else (False, f"Per-user uninstall exited {code}")
+        if content.startswith("ERROR"):
+            return False, f"Per-user uninstall error: {content[6:][:160]}"
+        return False, f"Per-user uninstall: {content[:160]}"
+    except Exception as e:
+        return False, f"Per-user uninstall failed: {e}"
+
 def _uninstall_windows(app):
     name = app.get("windows_uninstall") or app.get("name")
     if not name:
@@ -638,20 +713,21 @@ def _uninstall_windows(app):
     # windows_uninstall override or target a machine-wide install for those.
     try:
         found = _reg_uninstall_string(name)
-    except Exception as e:
-        return False, f"Registry lookup failed: {e}"
-    if not found:
-        return False, f"'{name}' not found in HKLM uninstall registry (per-user apps aren't visible to the SYSTEM service)"
-    disp, cmd, quiet = found
-    if not quiet and "msiexec" in cmd.lower():
-        # An MSI UninstallString may be interactive (/I) — force a silent removal.
-        cmd = cmd.replace("/I", "/X").replace("/i", "/X")
-        if "/quiet" not in cmd.lower():
-            cmd += " /quiet /norestart"
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
-    if r.returncode in (0, 3010):  # 3010 = success, restart required
-        return True, f"Uninstalled '{disp}' via registry"
-    return False, f"Uninstall of '{disp}' exited {r.returncode}: {((r.stdout or '') + (r.stderr or ''))[-160:].strip()}"
+    except Exception:
+        found = None
+    if found:
+        disp, cmd, quiet = found
+        if not quiet and "msiexec" in cmd.lower():
+            # An MSI UninstallString may be interactive (/I) — force a silent removal.
+            cmd = cmd.replace("/I", "/X").replace("/i", "/X")
+            if "/quiet" not in cmd.lower():
+                cmd += " /quiet /norestart"
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+        if r.returncode in (0, 3010):  # 3010 = success, restart required
+            return True, f"Uninstalled '{disp}' via registry"
+        return False, f"Uninstall of '{disp}' exited {r.returncode}: {((r.stdout or '') + (r.stderr or ''))[-160:].strip()}"
+    # Not a machine-wide install — try the logged-in user's per-user apps.
+    return _uninstall_windows_peruser(name)
 
 def _uninstall_linux(app):
     pkg = app.get("linux_package") or app.get("process_name") or app.get("name")

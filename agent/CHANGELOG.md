@@ -1,5 +1,15 @@
 # App Controller Agent — Changelog
 
+## v1.5.5 — 2026-07-03
+- Windows remote uninstall handles per-user apps (Discord/Slack/Teams). These
+  install into the user's profile and register in the user's HKCU, invisible to
+  the SYSTEM service. When the machine-wide (HKLM) lookup misses, the agent runs
+  the uninstall in the logged-in user's own session via a one-shot scheduled task
+  with an interactive token (no stored password): a PowerShell script finds the
+  app in HKCU and runs its QuietUninstallString, writing a result the agent reads
+  back, then the task is deleted. Best-effort; requires validation on real
+  Windows hardware (the /IT no-password task creation is the key assumption).
+
 ## v1.5.4 — 2026-07-03
 - Windows remote uninstall made functional. `winget` isn't usable from the
   agent's SYSTEM service, so the agent now falls back to the app's registered
