@@ -162,7 +162,7 @@ const KNOWN_APPS: Record<string, string> = {
 
 export default function EditAppPage() {
   const { id } = useParams()
-  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '' })
+  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '', mac_install_url: '' })
   const [iconUrl, setIconUrl] = useState<string | null>(null)
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
@@ -177,7 +177,7 @@ export default function EditAppPage() {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
-        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '' })
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? '' })
         setIconUrl(data.icon_url)
         const domain = KNOWN_APP_LOGOS[data.name]
         if (!data.icon_url && domain) {
@@ -258,6 +258,7 @@ export default function EditAppPage() {
       mac_app_path: form.mac_app_path.trim() || null,
       windows_uninstall: form.windows_uninstall.trim() || null,
       linux_package: form.linux_package.trim() || null,
+      mac_install_url: form.mac_install_url.trim() || null,
     }
     const { error } = await supabase.from('apps').update({ ...form, ...overrides, icon_url }).eq('id', id)
 
@@ -358,6 +359,19 @@ export default function EditAppPage() {
               <option value="blocked">Blocked</option>
             </select>
           </div>
+
+          <details className="rounded-lg border border-gray-800 bg-gray-800/40 px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium text-gray-300 select-none">Install source (optional)</summary>
+            <p className="text-xs text-gray-500 mt-2 mb-3">
+              For remote install. Required for the &ldquo;Install&rdquo; action to work on that OS.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-1">macOS installer URL (.pkg)</label>
+              <input name="mac_install_url" value={form.mac_install_url} onChange={handleChange}
+                placeholder="https://example.com/App.pkg" className={inputClass} />
+              <p className="text-xs text-gray-600 mt-1">Direct HTTPS link to a signed .pkg. The agent downloads and installs it silently.</p>
+            </div>
+          </details>
 
           <details className="rounded-lg border border-gray-800 bg-gray-800/40 px-4 py-3">
             <summary className="cursor-pointer text-sm font-medium text-gray-300 select-none">Uninstall overrides (optional)</summary>

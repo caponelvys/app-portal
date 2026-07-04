@@ -1,5 +1,13 @@
 # App Controller Agent — Changelog
 
+## v1.6.0 — 2026-07-03
+- Remote app install (macOS). The agent handles a new `install_app` command from
+  the device_commands queue: it downloads the app's admin-provided `mac_install_url`,
+  validates it's a real flat package (xar magic bytes, not an HTML error page),
+  installs it silently with `installer -pkg <file> -target /` (runs as root),
+  writes the result back, logs `install_app`/`install_failed`, and notifies the
+  user. v1 is macOS .pkg only; Windows (.msi) and Linux install come later.
+
 ## v1.5.5 — 2026-07-03
 - Windows remote uninstall handles per-user apps (Discord/Slack/Teams). These
   install into the user's profile and register in the user's HKCU, invisible to

@@ -8,7 +8,7 @@ import CreateForm from '../CreateForm'
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import RenameForm from '@/app/admin/RenameForm'
 import ActivityChart from '@/app/admin/ActivityChart'
-import AppUninstall from '@/app/admin/AppUninstall'
+import AppCommand from '@/app/admin/AppCommand'
 
 const TIERS: HealthTier[] = ['healthy', 'inactive', 'warning', 'stale', 'lost', 'never']
 
@@ -152,11 +152,14 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
         )}
       </div>
 
-      {/* Mass app uninstall across the org */}
+      {/* Mass app install / uninstall across the org */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-1">Remove apps</h2>
-        <p className="text-gray-500 text-sm mb-3">Uninstall a managed app from every device in {org.name}. Results appear in the Agent Monitor.</p>
-        <AppUninstall apps={appCatalog ?? []} scope="org" scopeId={org.id} targetLabel={org.name} />
+        <h2 className="text-lg font-semibold text-white mb-1">Manage apps</h2>
+        <p className="text-gray-500 text-sm mb-3">Install or uninstall a managed app across every device in {org.name}. Results appear in the Agent Monitor.</p>
+        <div className="space-y-3">
+          <AppCommand apps={appCatalog ?? []} action="install" scope="org" scopeId={org.id} targetLabel={org.name} />
+          <AppCommand apps={appCatalog ?? []} action="uninstall" scope="org" scopeId={org.id} targetLabel={org.name} />
+        </div>
       </div>
     </div>
   )

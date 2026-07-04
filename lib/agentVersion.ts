@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.5.5'
+export const AGENT_VERSION = '1.6.0'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6.0',
+    date: '2026-07-03',
+    changes: [
+      'Remote app install (macOS). Admins can push an install from the portal: the agent downloads the app’s configured .pkg installer URL, verifies it’s a real package, installs it silently (installer -pkg), reports the result, and notifies the user. Set mac_install_url on the app. Windows/Linux install coming later.',
+    ],
+  },
   {
     version: '1.5.5',
     date: '2026-07-03',

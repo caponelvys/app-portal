@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import { redirect, notFound } from 'next/navigation'
 import EnrollmentPanel from './EnrollmentPanel'
 import DevicesTable from './DevicesTable'
-import AppUninstall from '@/app/admin/AppUninstall'
+import AppCommand from '@/app/admin/AppCommand'
 
 const PAGE_SIZE = 25
 
@@ -80,9 +80,12 @@ export default async function LocationDetailPage({
         )}
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold text-white mb-1">Remove apps</h2>
-          <p className="text-gray-500 text-sm mb-3">Uninstall a managed app from every device in {location.name}. Results appear in the Agent Monitor.</p>
-          <AppUninstall apps={appCatalog ?? []} scope="location" scopeId={location.id} targetLabel={location.name} />
+          <h2 className="text-lg font-semibold text-white mb-1">Manage apps</h2>
+          <p className="text-gray-500 text-sm mb-3">Install or uninstall a managed app across every device in {location.name}. Results appear in the Agent Monitor.</p>
+          <div className="space-y-3">
+            <AppCommand apps={appCatalog ?? []} action="install" scope="location" scopeId={location.id} targetLabel={location.name} />
+            <AppCommand apps={appCatalog ?? []} action="uninstall" scope="location" scopeId={location.id} targetLabel={location.name} />
+          </div>
         </section>
     </div>
   )

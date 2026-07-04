@@ -7,7 +7,7 @@ import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import { cleanHostname } from '@/lib/hostname'
 import OwnerSuggestion from './OwnerSuggestion'
 import DeviceActionsMenu from '../DeviceActionsMenu'
-import AppUninstall from '@/app/admin/AppUninstall'
+import AppCommand from '@/app/admin/AppCommand'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
@@ -174,14 +174,12 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-white mb-1">Remove apps</h2>
-          <p className="text-gray-500 text-sm mb-3">Uninstall a managed app from this device. The result appears in Activity below.</p>
-          <AppUninstall
-            apps={appCatalog ?? []}
-            scope="device"
-            scopeId={device.device_id}
-            targetLabel={cleanHostname(device.hostname) || device.device_id}
-          />
+          <h2 className="text-lg font-semibold text-white mb-1">Manage apps</h2>
+          <p className="text-gray-500 text-sm mb-3">Install or uninstall a managed app on this device. The result appears in Activity below.</p>
+          <div className="space-y-3">
+            <AppCommand apps={appCatalog ?? []} action="install" scope="device" scopeId={device.device_id} targetLabel={cleanHostname(device.hostname) || device.device_id} />
+            <AppCommand apps={appCatalog ?? []} action="uninstall" scope="device" scopeId={device.device_id} targetLabel={cleanHostname(device.hostname) || device.device_id} />
+          </div>
         </section>
 
         <section>

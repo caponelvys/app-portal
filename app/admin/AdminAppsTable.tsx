@@ -47,6 +47,26 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
     setLoading(null)
   }
 
+  // Queue a remote install of this app on every device in scope. Devices whose
+  // OS installer isn't configured (e.g. no mac_install_url) report a failure.
+  async function installFleet(app: App) {
+    if (!confirm(`Install "${app.name}" on ALL devices in your scope?\n\nDevices without an installer configured for their OS will report a failure.`)) return
+    setLoading(app.id)
+    try {
+      const res = await fetch(`/api/apps/${app.id}/install`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'fleet' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert(data.error ?? 'Failed to queue install'); return }
+      alert(`Install queued for ${data.queued} device${data.queued === 1 ? '' : 's'}. Watch the Agent Monitor for results.`)
+    } catch {
+      alert('Network error')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   // Queue a remote uninstall of this app on every device in scope. Destructive
   // and irreversible on the devices — require typing the app name to confirm.
   async function uninstallFleet(app: App) {
@@ -121,7 +141,7 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
       },
     },
     {
-      id: 'actions', label: 'Actions', defaultWidth: 300, sortable: false,
+      id: 'actions', label: 'Actions', defaultWidth: 400, sortable: false,
       renderCell: app => (
         <div className="flex items-center gap-2">
           <button onClick={() => toggleStatus(app)} disabled={loading === app.id}
@@ -129,6 +149,10 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
             {app.status === 'allowed' ? 'Block' : 'Allow'}
           </button>
           <a href={`/admin/edit/${app.id}`} className="text-xs px-3 py-1 rounded-md border border-blue-700 text-blue-400 hover:bg-blue-900 font-medium">Edit</a>
+          <button onClick={() => installFleet(app)} disabled={loading === app.id}
+            className="text-xs px-3 py-1 rounded-md border border-green-700 text-green-400 hover:bg-green-950 disabled:opacity-50 font-medium whitespace-nowrap">
+            Install to fleet
+          </button>
           <button onClick={() => uninstallFleet(app)} disabled={loading === app.id}
             className="text-xs px-3 py-1 rounded-md border border-orange-700 text-orange-400 hover:bg-orange-950 disabled:opacity-50 font-medium whitespace-nowrap">
             Uninstall from fleet

@@ -26,7 +26,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.5.5"
+AGENT_VERSION = "1.6.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -528,12 +528,12 @@ def handle_command(device_id, cmd):
 
 # ── Remote app uninstall (device_commands queue) ──────────────────────────────
 def get_app_detail(app_id):
-    """Fetch one app with its uninstall override fields (not in the hot loop's
+    """Fetch one app with its install/uninstall metadata (not in the hot loop's
     lean app fetch)."""
     try:
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/apps?id=eq.{app_id}"
-            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package",
+            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,mac_install_url",
             headers=HEADERS, timeout=10)
         if resp.status_code == 200 and resp.json():
             return resp.json()[0]
@@ -757,9 +757,50 @@ def uninstall_app(app):
     except Exception as e:
         return False, f"Uninstall error: {e}"
 
+def _install_macos(app):
+    url = app.get("mac_install_url")
+    if not url:
+        return False, "No macOS installer URL set (configure mac_install_url)"
+    import tempfile
+    path = None
+    try:
+        r = requests.get(url, timeout=180)
+        if r.status_code != 200:
+            return False, f"Download failed: HTTP {r.status_code}"
+        data = r.content
+        # A flat .pkg is a xar archive ("xar!"); reject HTML error pages / wrong files.
+        if data[:4] != b"xar!":
+            return False, "Downloaded file is not a .pkg installer"
+        fd, path = tempfile.mkstemp(suffix=".pkg")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        p = subprocess.run(["installer", "-pkg", path, "-target", "/"],
+                           capture_output=True, text=True, timeout=600)
+        if p.returncode == 0:
+            return True, f"Installed from {url}"
+        return False, f"installer exited {p.returncode}: {((p.stdout or '') + (p.stderr or ''))[-160:].strip()}"
+    except Exception as e:
+        return False, f"Install error: {e}"
+    finally:
+        if path:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+def install_app(app):
+    """Best-effort install from an admin-provided installer URL. v1: macOS .pkg
+    only. Returns (success, detail)."""
+    try:
+        if OS == "Darwin":
+            return _install_macos(app)
+        return False, f"Install not supported on {OS} yet"
+    except Exception as e:
+        return False, f"Install error: {e}"
+
 def process_app_commands(device_id):
-    """Run any pending portal-issued app commands for this device, writing the
-    result back. Best-effort — a failure must never disrupt enforcement."""
+    """Run any pending portal-issued app commands (install/uninstall) for this
+    device, writing the result back. Best-effort — never disrupts enforcement."""
     try:
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/device_commands"
@@ -772,21 +813,27 @@ def process_app_commands(device_id):
         return
     for cmd in commands:
         cid = cmd.get("id")
-        if cmd.get("type") != "uninstall_app":
-            update_command(cid, "failed", f"Unknown command type: {cmd.get('type')}")
+        ctype = cmd.get("type")
+        if ctype not in ("uninstall_app", "install_app"):
+            update_command(cid, "failed", f"Unknown command type: {ctype}")
             continue
         app = get_app_detail(cmd.get("app_id")) if cmd.get("app_id") else None
         if not app:
             update_command(cid, "failed", "App not found in catalog")
             continue
         update_command(cid, "running")
-        ok, detail = uninstall_app(app)
+        if ctype == "install_app":
+            ok, detail = install_app(app)
+            ev_ok, ev_fail, verb = "install_app", "install_failed", "installed"
+        else:
+            ok, detail = uninstall_app(app)
+            ev_ok, ev_fail, verb = "uninstall_app", "uninstall_failed", "uninstalled"
         update_command(cid, "done" if ok else "failed", detail)
         log_event(device_id, "info" if ok else "error",
-                  "uninstall_app" if ok else "uninstall_failed",
+                  ev_ok if ok else ev_fail,
                   f"{app.get('name', 'App')}: {detail}")
         if ok:
-            notify_user("App Controller", f"{app.get('name', 'An app')} was uninstalled by your administrator.")
+            notify_user("App Controller", f"{app.get('name', 'An app')} was {verb} by your administrator.")
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 def main():

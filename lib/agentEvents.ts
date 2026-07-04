@@ -13,6 +13,8 @@ export const AGENT_EVENT_LABEL: Record<string, string> = {
   command_uninstall: 'Uninstall command',
   uninstall_app:     'App uninstalled',
   uninstall_failed:  'App uninstall failed',
+  install_app:       'App installed',
+  install_failed:    'App install failed',
   error:             'Agent error',
 }
 
