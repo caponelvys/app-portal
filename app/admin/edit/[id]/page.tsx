@@ -371,9 +371,9 @@ export default function EditAppPage() {
             </p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">macOS installer URL (.pkg)</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">macOS installer URL (.pkg or .dmg)</label>
                 <input name="mac_install_url" value={form.mac_install_url} onChange={handleChange}
-                  placeholder="https://example.com/App.pkg" className={inputClass} />
+                  placeholder="https://example.com/App.pkg or .dmg" className={inputClass} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1">macOS SHA-256 (optional)</label>

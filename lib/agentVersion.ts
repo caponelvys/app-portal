@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.6.1'
+export const AGENT_VERSION = '1.6.2'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6.2',
+    date: '2026-07-04',
+    changes: [
+      'macOS remote install now supports .dmg (drag-to-Applications apps like Notion) in addition to .pkg: the agent mounts the image, copies the .app into /Applications, and unmounts. Checksum verification still applies.',
+    ],
+  },
   {
     version: '1.6.1',
     date: '2026-07-03',

@@ -1,5 +1,12 @@
 # App Controller Agent — Changelog
 
+## v1.6.2 — 2026-07-04
+- macOS remote install supports .dmg in addition to .pkg. For a drag-to-
+  Applications image (Notion, etc.) the agent mounts it (`hdiutil attach`), copies
+  the first .app bundle into /Applications (`ditto`, replacing any existing one),
+  and unmounts. Format is auto-detected (xar → .pkg, koly trailer or .dmg URL →
+  .dmg); checksum verification still applies before anything is mounted.
+
 ## v1.6.1 — 2026-07-03
 - Remote install extended to Windows .msi (`msiexec /i /quiet /norestart`,
   installs machine-wide as SYSTEM) alongside macOS .pkg, and now verifies an

@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.6.1"
+AGENT_VERSION = "1.6.2"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -773,16 +773,7 @@ def _download_installer(url, expected_sha256):
             return None, f"Checksum mismatch (expected {expected_sha256.strip()[:12]}…, got {actual[:12]}…)"
     return data, None
 
-def _install_macos(app):
-    url = app.get("mac_install_url")
-    if not url:
-        return False, "No macOS installer URL set (configure mac_install_url)"
-    data, err = _download_installer(url, app.get("mac_install_sha256"))
-    if err:
-        return False, err
-    # A flat .pkg is a xar archive ("xar!"); reject HTML error pages / wrong files.
-    if data[:4] != b"xar!":
-        return False, "Downloaded file is not a .pkg installer"
+def _install_macos_pkg(data, url):
     import tempfile
     path = None
     try:
@@ -800,6 +791,60 @@ def _install_macos(app):
                 os.remove(path)
             except Exception:
                 pass
+
+def _install_macos_dmg(data):
+    """Mount a drag-to-Applications .dmg, copy the .app into /Applications, unmount."""
+    import tempfile
+    dmg_path = None
+    mount = None
+    try:
+        fd, dmg_path = tempfile.mkstemp(suffix=".dmg")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        mount = tempfile.mkdtemp(prefix="ac_dmg_")
+        # Mount quietly; feed 'Y' in case the image carries a license agreement.
+        att = subprocess.run(["hdiutil", "attach", dmg_path, "-nobrowse", "-noautoopen", "-mountpoint", mount],
+                             input="Y\n", capture_output=True, text=True, timeout=120)
+        if att.returncode != 0:
+            return False, f"Could not mount .dmg: {((att.stdout or '') + (att.stderr or ''))[-160:].strip()}"
+        apps = [e for e in os.listdir(mount) if e.endswith(".app")]
+        if not apps:
+            return False, "No .app bundle found inside the .dmg"
+        src = os.path.join(mount, apps[0])
+        dest = os.path.join("/Applications", apps[0])
+        if os.path.isdir(dest):
+            shutil.rmtree(dest)
+        # ditto preserves bundle permissions/metadata better than cp -R.
+        cp = subprocess.run(["ditto", src, dest], capture_output=True, text=True, timeout=300)
+        if cp.returncode != 0:
+            return False, f"Copy failed: {((cp.stdout or '') + (cp.stderr or ''))[-160:].strip()}"
+        return True, f"Installed {apps[0]} to /Applications"
+    finally:
+        if mount:
+            subprocess.run(["hdiutil", "detach", mount, "-quiet", "-force"], capture_output=True, timeout=60)
+            try:
+                os.rmdir(mount)
+            except Exception:
+                pass
+        if dmg_path:
+            try:
+                os.remove(dmg_path)
+            except Exception:
+                pass
+
+def _install_macos(app):
+    url = app.get("mac_install_url")
+    if not url:
+        return False, "No macOS installer URL set (configure mac_install_url)"
+    data, err = _download_installer(url, app.get("mac_install_sha256"))
+    if err:
+        return False, err
+    # A flat .pkg is a xar archive ("xar!"); a UDIF .dmg has a "koly" trailer.
+    if data[:4] == b"xar!":
+        return _install_macos_pkg(data, url)
+    if url.lower().endswith(".dmg") or (len(data) >= 512 and data[-512:-508] == b"koly"):
+        return _install_macos_dmg(data)
+    return False, "Downloaded file is not a .pkg or .dmg installer"
 
 def _install_windows(app):
     url = app.get("windows_install_url")
