@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.6.3"
+AGENT_VERSION = "1.7.0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -66,7 +66,12 @@ PAIRING_URL = "https://appcontroller.vercel.app/devices"
 # Auto-update: poll the portal for the latest published version and self-update.
 DOWNLOAD_BASE = "https://appcontroller.vercel.app/downloads"
 VERSION_URL   = f"{PORTAL_URL}/api/agent/version"
-AGENT_FILE    = os.path.abspath(__file__)
+# When packaged as a Windows .exe (PyInstaller), we run "frozen": there's no
+# agent.py to swap and sys.executable is the bundled exe itself. Updates then
+# pull a new .exe from the GitHub release instead of agent.py from the portal.
+IS_FROZEN     = getattr(sys, "frozen", False)
+AGENT_FILE    = sys.executable if IS_FROZEN else os.path.abspath(__file__)
+EXE_URL       = "https://github.com/caponelvys/app-portal/releases/download/agent-latest/AppControllerAgent.exe"
 
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -433,10 +438,62 @@ def get_latest_version():
         pass
     return None
 
+def restart_agent():
+    """Restart the process into the current (possibly just-updated) binary. On a
+    frozen Windows exe, os.execv is unreliable, so spawn a detached copy and exit
+    — the new process keeps running after this one goes away."""
+    if IS_FROZEN and OS == "Windows":
+        DETACHED = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        subprocess.Popen([sys.executable] + sys.argv[1:], creationflags=DETACHED, close_fds=True)
+        os._exit(0)
+    if IS_FROZEN:
+        os.execv(sys.executable, [sys.executable] + sys.argv[1:])
+    os.execv(sys.executable, [sys.executable, AGENT_FILE] + sys.argv[1:])
+
+def _self_update_exe(device_id, latest):
+    """Frozen (.exe) update: download the latest release exe, rename the running
+    exe aside, move the new one into place, and restart. Windows lets you rename a
+    running exe, so this is safe; a bad/identical download is rejected first."""
+    try:
+        r = requests.get(EXE_URL, timeout=180)
+        if r.status_code != 200:
+            return
+        data = r.content
+        if data[:2] != b"MZ":  # PE executables start with "MZ"
+            log_event(device_id, "error", "update_failed", f"Update to {latest} rejected: download was not an .exe")
+            return
+        # Skip if the release exe is byte-identical to what we're running — avoids
+        # an update loop during the window where CI hasn't published the new build.
+        try:
+            with open(sys.executable, "rb") as f:
+                if hashlib.sha256(f.read()).digest() == hashlib.sha256(data).digest():
+                    return
+        except Exception:
+            pass
+        cur = sys.executable
+        newp = os.path.join(os.path.dirname(cur), "agent.new.exe")
+        oldp = cur + ".old"
+        with open(newp, "wb") as f:
+            f.write(data)
+        try:
+            if os.path.exists(oldp):
+                os.remove(oldp)
+        except Exception:
+            pass
+        os.replace(cur, oldp)   # rename the running exe out of the way
+        os.replace(newp, cur)   # put the new exe at the original path
+        print(f"[agent] Updated exe -> {latest}; restarting")
+        log_event(device_id, "info", "update_applied", f"Updated {AGENT_VERSION} -> {latest}; restarting")
+        restart_agent()
+    except Exception as e:
+        log_event(device_id, "error", "update_failed", f"Update to {latest} error: {e}")
+
 def self_update(device_id, latest):
     """Download, validate, and swap in the latest agent, then re-exec into it.
     A bad download (HTML error page, wrong version, non-compiling code) is
     rejected before the running agent is touched — it can never brick itself."""
+    if IS_FROZEN:
+        return _self_update_exe(device_id, latest)
     try:
         r = requests.get(f"{DOWNLOAD_BASE}/agent.py", timeout=30)
         if r.status_code != 200:
@@ -465,7 +522,7 @@ def self_update(device_id, latest):
             f.write(source)
         print(f"[agent] Updated {AGENT_VERSION} -> {latest}; restarting")
         log_event(device_id, "info", "update_applied", f"Updated {AGENT_VERSION} -> {latest}; restarting")
-        os.execv(sys.executable, [sys.executable, AGENT_FILE] + sys.argv[1:])
+        restart_agent()
     except Exception as e:
         log_event(device_id, "error", "update_failed", f"Update to {latest} error: {e}")
 
@@ -517,7 +574,7 @@ def handle_command(device_id, cmd):
         return
     if cmd == "restart":
         log_event(device_id, "info", "command_restart", "Restart requested from portal")
-        os.execv(sys.executable, [sys.executable, AGENT_FILE] + sys.argv[1:])
+        restart_agent()
     elif cmd == "update":
         log_event(device_id, "info", "command_update", "Update requested from portal")
         latest = get_latest_version()
@@ -974,6 +1031,13 @@ def main():
     print(f"[agent] Starting — device ID: {device_id}")
     print(f"[agent] OS: {OS} | Polling every {POLL_INTERVAL}s")
     log_event(device_id, "info", "started", f"Agent v{AGENT_VERSION} started on {OS_LABEL}")
+
+    # Remove the previous exe left behind by a frozen self-update.
+    if IS_FROZEN and OS == "Windows":
+        try:
+            os.remove(sys.executable + ".old")
+        except Exception:
+            pass
 
     try:
         register_device(device_id)

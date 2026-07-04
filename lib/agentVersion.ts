@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.6.3'
+export const AGENT_VERSION = '1.7.0'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.0',
+    date: '2026-07-04',
+    changes: [
+      'Windows agent can now ship as a standalone .exe (PyInstaller, built in CI) so no Python install is needed on the machine. The agent detects when it runs frozen and self-updates by swapping the .exe from the GitHub release instead of pulling agent.py. macOS/Linux are unchanged.',
+    ],
+  },
   {
     version: '1.6.3',
     date: '2026-07-04',

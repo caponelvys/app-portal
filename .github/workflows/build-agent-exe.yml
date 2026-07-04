@@ -1,0 +1,40 @@
+name: Build Windows agent .exe
+
+# Builds a standalone Windows executable of the agent (no Python needed on the
+# target) and publishes it to the rolling "agent-latest" release, where the
+# installer and the agent's self-updater fetch it from.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent/agent.py'
+      - '.github/workflows/build-agent-exe.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build deps
+        run: pip install pyinstaller requests
+
+      - name: Build AppControllerAgent.exe
+        run: pyinstaller --onefile --name AppControllerAgent --collect-all certifi agent/agent.py
+
+      - name: Publish to agent-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: agent-latest
+          name: Agent (latest build)
+          prerelease: true
+          files: dist/AppControllerAgent.exe

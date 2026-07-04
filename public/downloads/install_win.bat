@@ -1,21 +1,23 @@
 @echo off
-:: App Controller Agent — Windows Installer
-:: Run as Administrator
+:: App Controller Agent - Windows Installer (standalone .exe, no Python needed)
 :: Usage: install_win.bat [--token <enrollment_token>]
 
-setlocal enabledelayedexpansion
+:: Self-elevate to Administrator if we aren't already.
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+  echo [install] Requesting administrator privileges...
+  powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -ArgumentList '%*' -Verb RunAs"
+  exit /b
+)
 
+setlocal enabledelayedexpansion
 set "AGENT_DIR=C:\AppController"
-set "BASE_URL=https://appcontroller.vercel.app/downloads"
+set "EXE_URL=https://github.com/caponelvys/app-portal/releases/download/agent-latest/AppControllerAgent.exe"
 set "TOKEN="
 
-:: Parse --token argument
 :parse_args
 if "%~1"=="" goto done_args
-if /i "%~1"=="--token" (
-  set "TOKEN=%~2"
-  shift
-)
+if /i "%~1"=="--token" ( set "TOKEN=%~2" & shift )
 shift
 goto parse_args
 :done_args
@@ -23,34 +25,24 @@ goto parse_args
 echo [install] Creating agent directory...
 mkdir "%AGENT_DIR%" 2>nul
 
-echo [install] Downloading agent files...
-:: Download to a temp file and validate before installing, so a bad response
-:: (HTML error page, deploy race) can never overwrite the agent with garbage.
-curl -fsSL "%BASE_URL%/agent.py" -o "%AGENT_DIR%\agent.py.new"
-python -c "import py_compile,sys; py_compile.compile(r'%AGENT_DIR%\agent.py.new', doraise=True)" 2>nul
-if errorlevel 1 (
-  echo [install] ERROR: downloaded agent.py is invalid (not Python^). Aborting.
-  del "%AGENT_DIR%\agent.py.new" 2>nul
+echo [install] Downloading agent...
+curl -fsSL "%EXE_URL%" -o "%AGENT_DIR%\AppControllerAgent.exe"
+if not exist "%AGENT_DIR%\AppControllerAgent.exe" (
+  echo [install] ERROR: could not download the agent. Check the internet connection and try again.
+  pause
   exit /b 1
 )
-if exist "%AGENT_DIR%\agent.py" copy /y "%AGENT_DIR%\agent.py" "%AGENT_DIR%\agent.py.bak" >nul
-move /y "%AGENT_DIR%\agent.py.new" "%AGENT_DIR%\agent.py" >nul
-curl -fsSL "%BASE_URL%/requirements.txt" -o "%AGENT_DIR%\requirements.txt"
 
-:: Save enrollment token if provided
 if not "%TOKEN%"=="" (
-  echo %TOKEN% > "%AGENT_DIR%\.enrollment_token"
+  echo %TOKEN%> "%AGENT_DIR%\.enrollment_token"
   echo [install] Enrollment token saved.
 )
 
-echo [install] Installing Python dependencies...
-pip install -r "%AGENT_DIR%\requirements.txt" --quiet
-
-echo [install] Registering as a Windows scheduled task...
-schtasks /create /tn "AppControllerAgent" /tr "python \"%AGENT_DIR%\agent.py\"" /sc onlogon /ru SYSTEM /rl HIGHEST /f
+echo [install] Registering scheduled task (runs as SYSTEM at boot)...
+schtasks /create /tn "AppControllerAgent" /tr "\"%AGENT_DIR%\AppControllerAgent.exe\"" /sc onstart /ru SYSTEM /rl HIGHEST /f
 
 echo [install] Starting agent...
 schtasks /run /tn "AppControllerAgent"
 
-echo [install] Done! Agent is running.
+echo [install] Done! The agent is installed and running.
 pause

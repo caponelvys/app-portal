@@ -1,5 +1,15 @@
 # App Controller Agent — Changelog
 
+## v1.7.0 — 2026-07-04
+- Windows agent can be packaged as a standalone .exe (PyInstaller) so target
+  machines need no Python. The agent detects `sys.frozen` and, when frozen,
+  self-updates by downloading the latest AppControllerAgent.exe from the GitHub
+  release, renaming the running exe aside, swapping the new one in, and restarting
+  (Windows allows renaming a running exe). A byte-identical release is skipped to
+  avoid an update loop while CI is still publishing. macOS/Linux keep the agent.py
+  swap path unchanged. The .exe is built by a GitHub Actions workflow
+  (.github/workflows/build-agent-exe.yml).
+
 ## v1.6.3 — 2026-07-04
 - macOS install is now format-detected by content, not URL/extension (installer
   URLs are usually redirects that don't end in .pkg/.dmg). xar → .pkg; PK → .zip
