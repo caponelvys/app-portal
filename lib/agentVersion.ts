@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.4'
+export const AGENT_VERSION = '1.7.5'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.5',
+    date: '2026-07-04',
+    changes: [
+      'On self-uninstall the agent now removes its own device record from the portal (calls /api/devices/<id>/self-remove) so the device disappears from the UI automatically instead of lingering as a stale entry.',
+    ],
+  },
   {
     version: '1.7.4',
     date: '2026-07-04',

@@ -19,6 +19,7 @@ export default function DeviceActionsMenu({
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmingUninstall, setConfirmingUninstall] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [status, setStatus] = useState<{ text: string; error?: boolean } | null>(null)
   const [coords, setCoords] = useState<{ top: number; right: number }>({ top: 0, right: 0 })
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -48,6 +49,7 @@ export default function DeviceActionsMenu({
     if (r) setCoords({ top: r.bottom + 4, right: window.innerWidth - r.right })
     setStatus(null)
     setConfirmingUninstall(false)
+    setConfirmingDelete(false)
     setOpen(true)
   }
 
@@ -85,6 +87,24 @@ export default function DeviceActionsMenu({
     post(`/api/devices/${deviceId}/owner`, 'PATCH', { user_id: null }, 'Owner released', true)
   }
 
+  async function deleteDevice() {
+    // Remove the device record from the portal (for decommissioned machines).
+    setBusy(true)
+    setStatus(null)
+    try {
+      const res = await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setStatus({ text: data.error ?? 'Failed', error: true }); setConfirmingDelete(false); return }
+      setOpen(false)
+      router.push('/admin/devices')
+      router.refresh()
+    } catch {
+      setStatus({ text: 'Network error', error: true })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const item = 'block w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-md disabled:opacity-50'
 
   return (
@@ -118,6 +138,15 @@ export default function DeviceActionsMenu({
           ) : (
             <button onClick={() => setConfirmingUninstall(true)} disabled={busy} className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950 rounded-md disabled:opacity-50">
               Uninstall agent
+            </button>
+          )}
+          {confirmingDelete ? (
+            <button onClick={deleteDevice} disabled={busy} className="block w-full text-left px-3 py-2 text-sm font-medium text-white bg-red-800 hover:bg-red-700 rounded-md disabled:opacity-50">
+              Click again to delete from portal
+            </button>
+          ) : (
+            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-950 rounded-md disabled:opacity-50" title="Remove this device's record from the portal">
+              Delete from portal
             </button>
           )}
           {status && <p className={`px-3 py-1.5 text-xs ${status.error ? 'text-red-400' : 'text-green-400'}`}>{status.text}</p>}

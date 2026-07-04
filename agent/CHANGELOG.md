@@ -1,5 +1,10 @@
 # App Controller Agent — Changelog
 
+## v1.7.5 — 2026-07-04
+- On self-uninstall the agent deletes its own device record from the portal
+  (POST /api/devices/<id>/self-remove) so the device auto-disappears from the UI
+  instead of lingering as a stale entry. Best-effort; audit history is kept.
+
 ## v1.7.4 — 2026-07-04
 - Verification build to confirm the Windows .exe self-update end-to-end with the
   new self-restarting watchdog task (install_win.bat fix). No functional change.

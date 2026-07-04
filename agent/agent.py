@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.4"
+AGENT_VERSION = "1.7.5"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -539,8 +539,15 @@ def clear_command(device_id):
     except Exception:
         return False
 
-def uninstall_agent():
-    """Remove the service and installed files, then stop. Best-effort per OS."""
+def uninstall_agent(device_id=None):
+    """Remove our portal record, then the service + installed files, then stop.
+    Best-effort per OS."""
+    # Delete our device record so it disappears from the portal automatically.
+    if device_id:
+        try:
+            requests.post(f"{PORTAL_URL}/api/devices/{device_id}/self-remove", timeout=10)
+        except Exception:
+            pass
     try:
         if OS == "Darwin":
             plist = "/Library/LaunchDaemons/com.appcontroller.agent.plist"
@@ -581,7 +588,7 @@ def handle_command(device_id, cmd):
             self_update(device_id, latest)  # re-execs on success
     elif cmd == "uninstall":
         log_event(device_id, "warn", "command_uninstall", "Uninstall requested from portal")
-        uninstall_agent()  # terminal
+        uninstall_agent(device_id)  # terminal
 
 # ── Remote app uninstall (device_commands queue) ──────────────────────────────
 def get_app_detail(app_id):
