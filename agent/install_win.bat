@@ -38,8 +38,8 @@ if not "%TOKEN%"=="" (
   echo [install] Enrollment token saved.
 )
 
-echo [install] Registering scheduled task (runs as SYSTEM at boot)...
-schtasks /create /tn "AppControllerAgent" /tr "\"%AGENT_DIR%\AppControllerAgent.exe\"" /sc onstart /ru SYSTEM /rl HIGHEST /f
+echo [install] Registering scheduled task (SYSTEM at boot, restart on failure)...
+powershell -NoProfile -Command "$a=New-ScheduledTaskAction -Execute 'C:\AppController\AppControllerAgent.exe'; $t=New-ScheduledTaskTrigger -AtStartup; $p=New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest; $s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew; Register-ScheduledTask -TaskName 'AppControllerAgent' -Action $a -Trigger $t -Principal $p -Settings $s -Force | Out-Null"
 
 echo [install] Starting agent...
 schtasks /run /tn "AppControllerAgent"

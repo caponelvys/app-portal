@@ -1,5 +1,16 @@
 # App Controller Agent — Changelog
 
+## v1.7.2 — 2026-07-04
+- Fix Windows frozen (.exe) self-update restart. The previous approach (spawn a
+  detached replacement, then exit) didn't survive: Task Scheduler runs the agent
+  in a job object that terminates child processes when the parent exits, so the
+  agent went silent after swapping the exe (seen on the Win11 VM: "update_applied"
+  logged, then no heartbeats). Now the scheduled task is created with
+  restart-on-failure (Register-ScheduledTask, RestartCount/RestartInterval, no
+  execution time limit), and on update the agent exits non-zero so Task Scheduler
+  relaunches it into the swapped exe. Reinstall the Windows agent to pick up the
+  new task settings.
+
 ## v1.7.1 — 2026-07-04
 - Windows remote install handles .exe installers in addition to .msi. The agent
   detects the format by magic bytes: an OLE .msi installs machine-wide via

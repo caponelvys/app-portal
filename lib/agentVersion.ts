@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.1'
+export const AGENT_VERSION = '1.7.2'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.2',
+    date: '2026-07-04',
+    changes: [
+      'Fix Windows .exe self-update restart. Spawning a replacement process didn’t survive (Task Scheduler kills it with the parent’s job object), so the agent went silent after swapping the exe. The scheduled task is now created with restart-on-failure and the agent exits non-zero to trigger it — Task Scheduler relaunches the swapped exe. Requires reinstalling the Windows agent to pick up the new task settings.',
+    ],
+  },
   {
     version: '1.7.1',
     date: '2026-07-04',
