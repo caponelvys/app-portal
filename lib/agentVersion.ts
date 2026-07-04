@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.2'
+export const AGENT_VERSION = '1.7.3'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.3',
+    date: '2026-07-04',
+    changes: [
+      'Verification build to exercise the Windows .exe self-update end-to-end (no functional change).',
+    ],
+  },
   {
     version: '1.7.2',
     date: '2026-07-04',

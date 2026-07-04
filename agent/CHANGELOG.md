@@ -1,5 +1,9 @@
 # App Controller Agent — Changelog
 
+## v1.7.3 — 2026-07-04
+- Verification build to exercise the Windows .exe self-update end-to-end (no
+  functional change).
+
 ## v1.7.2 — 2026-07-04
 - Fix Windows frozen (.exe) self-update restart. The previous approach (spawn a
   detached replacement, then exit) didn't survive: Task Scheduler runs the agent
