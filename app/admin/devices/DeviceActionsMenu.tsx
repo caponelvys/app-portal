@@ -18,6 +18,7 @@ export default function DeviceActionsMenu({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [confirmingUninstall, setConfirmingUninstall] = useState(false)
   const [status, setStatus] = useState<{ text: string; error?: boolean } | null>(null)
   const [coords, setCoords] = useState<{ top: number; right: number }>({ top: 0, right: 0 })
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -46,6 +47,7 @@ export default function DeviceActionsMenu({
     const r = btnRef.current?.getBoundingClientRect()
     if (r) setCoords({ top: r.bottom + 4, right: window.innerWidth - r.right })
     setStatus(null)
+    setConfirmingUninstall(false)
     setOpen(true)
   }
 
@@ -72,9 +74,10 @@ export default function DeviceActionsMenu({
   }
 
   function uninstall() {
-    const typed = prompt(`This removes the agent from ${hostname} and stops enforcement. Type UNINSTALL to confirm.`)
-    if (typed !== 'UNINSTALL') return
+    // Inline two-click confirm — no native prompt()/confirm() (browsers can
+    // silently suppress those, which made this action look dead).
     post(`/api/devices/${deviceId}/command`, 'POST', { command: 'uninstall' }, 'Uninstall queued')
+    setConfirmingUninstall(false)
   }
 
   function releaseOwner() {
@@ -108,7 +111,15 @@ export default function DeviceActionsMenu({
           <div className="my-1 border-t border-gray-800" />
           <button onClick={() => command('update', `Force ${hostname} to update to the latest agent now?`, 'Update queued')} disabled={busy} className={item}>Force update now</button>
           <button onClick={() => command('restart', `Restart the agent on ${hostname}?`, 'Restart queued')} disabled={busy} className={item}>Restart agent</button>
-          <button onClick={uninstall} disabled={busy} className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950 rounded-md disabled:opacity-50">Uninstall agent</button>
+          {confirmingUninstall ? (
+            <button onClick={uninstall} disabled={busy} className="block w-full text-left px-3 py-2 text-sm font-medium text-white bg-red-700 hover:bg-red-600 rounded-md disabled:opacity-50">
+              Click again to remove the agent
+            </button>
+          ) : (
+            <button onClick={() => setConfirmingUninstall(true)} disabled={busy} className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950 rounded-md disabled:opacity-50">
+              Uninstall agent
+            </button>
+          )}
           {status && <p className={`px-3 py-1.5 text-xs ${status.error ? 'text-red-400' : 'text-green-400'}`}>{status.text}</p>}
         </div>
       )}
