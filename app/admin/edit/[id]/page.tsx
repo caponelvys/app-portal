@@ -199,6 +199,26 @@ const KNOWN_MAC_INSTALLERS: Record<string, string> = {
   'Figma': 'https://desktop.figma.com/mac/Figma.zip',
 }
 
+// Known-good Windows installers (URL + silent args). .msi needs no args (installs
+// machine-wide); .exe args are the installer's silent flag and may need per-app
+// tweaking. All URLs verified to resolve to a real .exe/.msi.
+const CHROME_MSI = 'https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi'
+const VSCODE_WIN = { url: 'https://update.code.visualstudio.com/latest/win32-x64-user/stable', args: '/VERYSILENT /NORESTART /MERGETASKS=!runcode' }
+const KNOWN_WINDOWS_INSTALLERS: Record<string, { url: string; args: string }> = {
+  'Discord': { url: 'https://discord.com/api/download?platform=win', args: '-s' },
+  'Chrome': { url: CHROME_MSI, args: '' },
+  'Google Chrome': { url: CHROME_MSI, args: '' },
+  'Firefox': { url: 'https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US', args: '/S' },
+  'Zoom': { url: 'https://zoom.us/client/latest/ZoomInstallerFull.msi', args: '' },
+  'Slack': { url: 'https://slack.com/ssb/download-win64', args: '-s' },
+  'Telegram': { url: 'https://telegram.org/dl/desktop/win64', args: '/VERYSILENT' },
+  'Visual Studio Code': VSCODE_WIN,
+  'VS Code': VSCODE_WIN,
+  '1Password': { url: 'https://downloads.1password.com/win/1PasswordSetup-latest.exe', args: '--silent' },
+  'Steam': { url: 'https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe', args: '/S' },
+  'NordVPN': { url: 'https://downloads.nordcdn.com/apps/windows/NordVPN/latest/NordVPNSetup.exe', args: '/S' },
+}
+
 export default function EditAppPage() {
   const { id } = useParams()
   const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '', mac_install_url: '', mac_install_sha256: '', windows_install_url: '', windows_install_sha256: '', windows_install_args: '' })
@@ -216,7 +236,7 @@ export default function EditAppPage() {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
-        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? KNOWN_MAC_INSTALLERS[data.name] ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '', windows_install_args: data.windows_install_args ?? '' })
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? KNOWN_MAC_INSTALLERS[data.name] ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '', windows_install_args: data.windows_install_args ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.args ?? '' })
         setIconUrl(data.icon_url)
         const domain = KNOWN_APP_LOGOS[data.name]
         if (!data.icon_url && domain) {
@@ -236,6 +256,10 @@ export default function EditAppPage() {
     if (exact !== undefined) {
       if (exact) updated.process_name = exact
       if (!updated.mac_install_url && KNOWN_MAC_INSTALLERS[value]) updated.mac_install_url = KNOWN_MAC_INSTALLERS[value]
+      if (!updated.windows_install_url && KNOWN_WINDOWS_INSTALLERS[value]) {
+        updated.windows_install_url = KNOWN_WINDOWS_INSTALLERS[value].url
+        updated.windows_install_args = KNOWN_WINDOWS_INSTALLERS[value].args
+      }
       const domain = KNOWN_APP_LOGOS[value]
       setAutoIconUrl(domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null)
     } else {
@@ -251,7 +275,10 @@ export default function EditAppPage() {
   }
 
   function selectSuggestion(name: string) {
-    setForm({ ...form, name, process_name: KNOWN_APPS[name], mac_install_url: form.mac_install_url || KNOWN_MAC_INSTALLERS[name] || '' })
+    setForm({ ...form, name, process_name: KNOWN_APPS[name],
+      mac_install_url: form.mac_install_url || KNOWN_MAC_INSTALLERS[name] || '',
+      windows_install_url: form.windows_install_url || KNOWN_WINDOWS_INSTALLERS[name]?.url || '',
+      windows_install_args: form.windows_install_args || KNOWN_WINDOWS_INSTALLERS[name]?.args || '' })
     setSuggestions([])
     setShowSuggestions(false)
     const domain = KNOWN_APP_LOGOS[name]
