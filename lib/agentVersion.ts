@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.0'
+export const AGENT_VERSION = '1.7.1'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.1',
+    date: '2026-07-04',
+    changes: [
+      'Windows remote install now supports .exe installers (Discord/Slack/etc.), not just .msi. Since .exe installers have no common silent flag, set windows_install_args per app (default /S). Per-user installers run in the logged-in user’s session so they land in the right profile; .msi still installs machine-wide.',
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-07-04',

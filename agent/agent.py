@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.0"
+AGENT_VERSION = "1.7.1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -592,7 +592,7 @@ def get_app_detail(app_id):
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/apps?id=eq.{app_id}"
             "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,"
-            "mac_install_url,mac_install_sha256,windows_install_url,windows_install_sha256",
+            "mac_install_url,mac_install_sha256,windows_install_url,windows_install_sha256,windows_install_args",
             headers=HEADERS, timeout=10)
         if resp.status_code == 200 and resp.json():
             return resp.json()[0]
@@ -948,6 +948,61 @@ def _install_macos(app):
         return False, "Download was an HTML page, not an installer"
     return _install_macos_dmg(data)
 
+def _install_windows_exe(data, args):
+    """Run a downloaded .exe installer in the logged-in user's session — per-user
+    installers (Discord/Slack/Teams) install into the user's profile, so running
+    them as SYSTEM would put them in the wrong place. Uses a one-shot scheduled
+    task with an interactive token and reads the installer's exit code back.
+    UNTESTED on real Windows hardware."""
+    user = get_device_user()
+    if not user:
+        return False, "No interactive user logged in to run the installer"
+    args = (args or "/S").strip()  # sensible default; NSIS/Squirrel-common
+    base = r"C:\ProgramData\AppController"
+    exe_path = base + r"\installer.exe"
+    bat_path = base + r"\run_installer.bat"
+    result_path = base + r"\install_result.txt"
+    task = "AppController_Install"
+    try:
+        os.makedirs(base, exist_ok=True)
+        with open(exe_path, "wb") as f:
+            f.write(data)
+        with open(bat_path, "w") as f:
+            f.write("@echo off\r\n")
+            f.write(f'"{exe_path}" {args}\r\n')
+            f.write(f'echo %errorlevel%> "{result_path}"\r\n')
+        if os.path.exists(result_path):
+            os.remove(result_path)
+        subprocess.run(["schtasks", "/create", "/tn", task, "/f", "/sc", "ONCE", "/st", "00:00",
+                        "/ru", user, "/it", "/tr", f'"{bat_path}"'],
+                       capture_output=True, text=True, timeout=30)
+        run = subprocess.run(["schtasks", "/run", "/tn", task], capture_output=True, text=True, timeout=30)
+        if run.returncode != 0:
+            subprocess.run(["schtasks", "/delete", "/tn", task, "/f"], capture_output=True, timeout=15)
+            return False, f"Could not launch installer task: {((run.stdout or '') + (run.stderr or ''))[-160:].strip()}"
+        content = None
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            if os.path.exists(result_path):
+                time.sleep(1)
+                with open(result_path) as f:
+                    content = f.read().strip()
+                break
+            time.sleep(3)
+        subprocess.run(["schtasks", "/delete", "/tn", task, "/f"], capture_output=True, timeout=15)
+        if content is None:
+            return False, "Installer did not report a result in time"
+        code = content.split()[0] if content.split() else content
+        return (True, f"Installed (exit {code})") if code in ("0", "3010") else (False, f"Installer exited {code}")
+    except Exception as e:
+        return False, f"Install error: {e}"
+    finally:
+        for p in (exe_path, bat_path):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+
 def _install_windows(app):
     url = app.get("windows_install_url")
     if not url:
@@ -955,26 +1010,29 @@ def _install_windows(app):
     data, err = _download_installer(url, app.get("windows_install_sha256"))
     if err:
         return False, err
-    # An .msi is an OLE compound document (magic D0 CF 11 E0 A1 B1 1A E1).
-    if data[:8] != b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
-        return False, "Downloaded file is not a .msi installer"
-    import tempfile
-    path = None
-    try:
-        fd, path = tempfile.mkstemp(suffix=".msi")
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        p = subprocess.run(["msiexec", "/i", path, "/quiet", "/norestart"],
-                           capture_output=True, text=True, timeout=600)
-        if p.returncode in (0, 3010):  # 3010 = success, restart required
-            return True, f"Installed from {url}"
-        return False, f"msiexec exited {p.returncode}: {((p.stdout or '') + (p.stderr or ''))[-160:].strip()}"
-    finally:
-        if path:
-            try:
-                os.remove(path)
-            except Exception:
-                pass
+    # .msi (OLE compound doc) installs machine-wide as SYSTEM; .exe (PE "MZ")
+    # installers run in the user's session (below).
+    if data[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+        import tempfile
+        path = None
+        try:
+            fd, path = tempfile.mkstemp(suffix=".msi")
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            p = subprocess.run(["msiexec", "/i", path, "/quiet", "/norestart"],
+                               capture_output=True, text=True, timeout=600)
+            if p.returncode in (0, 3010):  # 3010 = success, restart required
+                return True, f"Installed from {url}"
+            return False, f"msiexec exited {p.returncode}: {((p.stdout or '') + (p.stderr or ''))[-160:].strip()}"
+        finally:
+            if path:
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
+    if data[:2] == b"MZ":
+        return _install_windows_exe(data, app.get("windows_install_args"))
+    return False, "Downloaded file is not a .msi or .exe installer"
 
 def install_app(app):
     """Best-effort install from an admin-provided installer URL. macOS .pkg and

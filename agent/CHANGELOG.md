@@ -1,5 +1,14 @@
 # App Controller Agent — Changelog
 
+## v1.7.1 — 2026-07-04
+- Windows remote install handles .exe installers in addition to .msi. The agent
+  detects the format by magic bytes: an OLE .msi installs machine-wide via
+  `msiexec /i /quiet /norestart` (as SYSTEM); a PE .exe runs in the logged-in
+  user's session via a one-shot scheduled task (interactive token) so per-user
+  installers (Discord/Slack/Teams) land in the user's profile. .exe installers
+  have no common silent flag, so `windows_install_args` is set per app (defaults
+  to `/S`). UNTESTED on real Windows hardware.
+
 ## v1.7.0 — 2026-07-04
 - Windows agent can be packaged as a standalone .exe (PyInstaller) so target
   machines need no Python. The agent detects `sys.frozen` and, when frozen,
