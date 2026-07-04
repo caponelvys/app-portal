@@ -1,5 +1,9 @@
 # App Controller Agent — Changelog
 
+## v1.7.4 — 2026-07-04
+- Verification build to confirm the Windows .exe self-update end-to-end with the
+  new self-restarting watchdog task (install_win.bat fix). No functional change.
+
 ## v1.7.3 — 2026-07-04
 - Verification build to exercise the Windows .exe self-update end-to-end (no
   functional change).
