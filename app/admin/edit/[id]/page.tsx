@@ -160,6 +160,18 @@ const KNOWN_APPS: Record<string, string> = {
   'Tower': 'Tower',
 }
 
+// Known-good macOS installer URLs (stable "latest" links that redirect to the
+// current .pkg/.dmg — the agent follows redirects). Auto-filled for recognized
+// apps so admins don't hunt for them; still editable. Don't pair these with a
+// checksum since "latest" changes each release.
+const KNOWN_MAC_INSTALLERS: Record<string, string> = {
+  'Notion': 'https://www.notion.so/desktop/mac/download',
+  'Zoom': 'https://zoom.us/client/latest/zoomusInstallerFull.pkg',
+  'Chrome': 'https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg',
+  'Google Chrome': 'https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg',
+  'Discord': 'https://discord.com/api/download?platform=osx&format=dmg',
+}
+
 export default function EditAppPage() {
   const { id } = useParams()
   const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '', mac_install_url: '', mac_install_sha256: '', windows_install_url: '', windows_install_sha256: '' })
@@ -177,7 +189,7 @@ export default function EditAppPage() {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
-        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '' })
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? KNOWN_MAC_INSTALLERS[data.name] ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '' })
         setIconUrl(data.icon_url)
         const domain = KNOWN_APP_LOGOS[data.name]
         if (!data.icon_url && domain) {
@@ -196,6 +208,7 @@ export default function EditAppPage() {
     const exact = KNOWN_APPS[value]
     if (exact !== undefined) {
       if (exact) updated.process_name = exact
+      if (!updated.mac_install_url && KNOWN_MAC_INSTALLERS[value]) updated.mac_install_url = KNOWN_MAC_INSTALLERS[value]
       const domain = KNOWN_APP_LOGOS[value]
       setAutoIconUrl(domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : null)
     } else {
@@ -211,7 +224,7 @@ export default function EditAppPage() {
   }
 
   function selectSuggestion(name: string) {
-    setForm({ ...form, name, process_name: KNOWN_APPS[name] })
+    setForm({ ...form, name, process_name: KNOWN_APPS[name], mac_install_url: form.mac_install_url || KNOWN_MAC_INSTALLERS[name] || '' })
     setSuggestions([])
     setShowSuggestions(false)
     const domain = KNOWN_APP_LOGOS[name]
