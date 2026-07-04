@@ -1,5 +1,14 @@
 # App Controller Agent — Changelog
 
+## v1.6.3 — 2026-07-04
+- macOS install is now format-detected by content, not URL/extension (installer
+  URLs are usually redirects that don't end in .pkg/.dmg). xar → .pkg; PK → .zip
+  app bundle (unpacked with `ditto -x -k`, which preserves perms/symlinks, then
+  the .app is copied to /Applications); an HTML body is rejected; anything else
+  is handed to `hdiutil` to mount as a disk image (.dmg/.iso/UDIF, any layout).
+  This covers many more apps (Firefox's ISO image, VS Code/iTerm zips, etc.). The
+  portal now auto-fills installer URLs for ~25 recognized apps.
+
 ## v1.6.2 — 2026-07-04
 - macOS remote install supports .dmg in addition to .pkg. For a drag-to-
   Applications image (Notion, etc.) the agent mounts it (`hdiutil attach`), copies

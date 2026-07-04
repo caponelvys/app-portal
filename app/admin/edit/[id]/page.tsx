@@ -164,12 +164,39 @@ const KNOWN_APPS: Record<string, string> = {
 // current .pkg/.dmg — the agent follows redirects). Auto-filled for recognized
 // apps so admins don't hunt for them; still editable. Don't pair these with a
 // checksum since "latest" changes each release.
+const CHROME_DMG = 'https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg'
+const VSCODE_ZIP = 'https://update.code.visualstudio.com/latest/darwin-universal/stable'
+const TEAMS_PKG = 'https://go.microsoft.com/fwlink/?linkid=869428'
 const KNOWN_MAC_INSTALLERS: Record<string, string> = {
+  // All verified to resolve to a real .pkg/.dmg/.zip the agent handles.
   'Notion': 'https://www.notion.so/desktop/mac/download',
   'Zoom': 'https://zoom.us/client/latest/zoomusInstallerFull.pkg',
-  'Chrome': 'https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg',
-  'Google Chrome': 'https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg',
+  'Chrome': CHROME_DMG,
+  'Google Chrome': CHROME_DMG,
   'Discord': 'https://discord.com/api/download?platform=osx&format=dmg',
+  'Slack': 'https://slack.com/ssb/download-osx-universal',
+  'Telegram': 'https://telegram.org/dl/macos',
+  'Firefox': 'https://download.mozilla.org/?product=firefox-latest-ssl&os=osx&lang=en-US',
+  'Brave': 'https://laptop-updates.brave.com/latest/osx',
+  'Arc': 'https://releases.arc.net/release/Arc-latest.dmg',
+  'Google Drive': 'https://dl.google.com/drive-file-stream/GoogleDrive.dmg',
+  'Grammarly': 'https://download-mac.grammarly.com/Grammarly.dmg',
+  'Steam': 'https://cdn.cloudflare.steamstatic.com/client/installer/steam.dmg',
+  'Minecraft': 'https://launcher.mojang.com/download/Minecraft.dmg',
+  'NordVPN': 'https://downloads.nordcdn.com/apps/macos/generic/NordVPN/latest/NordVPN.pkg',
+  '1Password': 'https://downloads.1password.com/mac/1Password.pkg',
+  'Word': 'https://go.microsoft.com/fwlink/?linkid=525134',
+  'Excel': 'https://go.microsoft.com/fwlink/?linkid=525135',
+  'PowerPoint': 'https://go.microsoft.com/fwlink/?linkid=525136',
+  'Outlook': 'https://go.microsoft.com/fwlink/?linkid=525137',
+  'OneNote': 'https://go.microsoft.com/fwlink/?linkid=820886',
+  'OneDrive': 'https://go.microsoft.com/fwlink/?linkid=823060',
+  'Microsoft Teams': TEAMS_PKG,
+  'Teams': TEAMS_PKG,
+  'Visual Studio Code': VSCODE_ZIP,
+  'VS Code': VSCODE_ZIP,
+  'iTerm': 'https://iterm2.com/downloads/stable/latest',
+  'Figma': 'https://desktop.figma.com/mac/Figma.zip',
 }
 
 export default function EditAppPage() {

@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.6.2"
+AGENT_VERSION = "1.6.3"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -832,6 +832,46 @@ def _install_macos_dmg(data):
             except Exception:
                 pass
 
+def _install_macos_zip(data):
+    """Install a .zip'd app bundle (many dev/media apps ship this way). ditto -x -k
+    unpacks a PKZip preserving the bundle's perms/symlinks (Python's zipfile does
+    not), then the .app is copied into /Applications."""
+    import tempfile
+    zpath = None
+    tmpdir = None
+    try:
+        fd, zpath = tempfile.mkstemp(suffix=".zip")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        tmpdir = tempfile.mkdtemp(prefix="ac_zip_")
+        ex = subprocess.run(["ditto", "-x", "-k", zpath, tmpdir], capture_output=True, text=True, timeout=300)
+        if ex.returncode != 0:
+            return False, f"Could not unzip: {((ex.stdout or '') + (ex.stderr or ''))[-160:].strip()}"
+        app_path = None
+        for root, dirs, _ in os.walk(tmpdir):
+            hit = next((d for d in dirs if d.endswith(".app")), None)
+            if hit:
+                app_path = os.path.join(root, hit)
+                break
+        if not app_path:
+            return False, "No .app bundle found inside the .zip"
+        name = os.path.basename(app_path)
+        dest = os.path.join("/Applications", name)
+        if os.path.isdir(dest):
+            shutil.rmtree(dest)
+        cp = subprocess.run(["ditto", app_path, dest], capture_output=True, text=True, timeout=300)
+        if cp.returncode != 0:
+            return False, f"Copy failed: {((cp.stdout or '') + (cp.stderr or ''))[-160:].strip()}"
+        return True, f"Installed {name} to /Applications"
+    finally:
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        if zpath:
+            try:
+                os.remove(zpath)
+            except Exception:
+                pass
+
 def _install_macos(app):
     url = app.get("mac_install_url")
     if not url:
@@ -839,12 +879,17 @@ def _install_macos(app):
     data, err = _download_installer(url, app.get("mac_install_sha256"))
     if err:
         return False, err
-    # A flat .pkg is a xar archive ("xar!"); a UDIF .dmg has a "koly" trailer.
+    # Detect by content, not URL/extension (installer URLs are often redirects):
+    # xar → .pkg, PK → .zip, HTML → reject, anything else → let hdiutil try to
+    # mount it as a disk image (.dmg / .iso / UDIF, in any layout).
     if data[:4] == b"xar!":
         return _install_macos_pkg(data, url)
-    if url.lower().endswith(".dmg") or (len(data) >= 512 and data[-512:-508] == b"koly"):
-        return _install_macos_dmg(data)
-    return False, "Downloaded file is not a .pkg or .dmg installer"
+    if data[:4] == b"PK\x03\x04":
+        return _install_macos_zip(data)
+    head = data[:200].lstrip().lower()
+    if head.startswith(b"<!doctype") or head.startswith(b"<html") or b"<head" in head[:80]:
+        return False, "Download was an HTML page, not an installer"
+    return _install_macos_dmg(data)
 
 def _install_windows(app):
     url = app.get("windows_install_url")
