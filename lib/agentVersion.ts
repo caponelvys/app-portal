@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.6.0'
+export const AGENT_VERSION = '1.6.1'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6.1',
+    date: '2026-07-03',
+    changes: [
+      'Remote install now covers Windows .msi (msiexec, machine-wide) in addition to macOS .pkg, and verifies an optional SHA-256 checksum on the downloaded installer before running it — a configured checksum that doesn’t match is a hard failure.',
+    ],
+  },
   {
     version: '1.6.0',
     date: '2026-07-03',

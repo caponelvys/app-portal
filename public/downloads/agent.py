@@ -12,6 +12,7 @@ import shutil
 import socket
 import string
 import secrets
+import hashlib
 import platform
 import subprocess
 import requests
@@ -26,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.6.0"
+AGENT_VERSION = "1.6.1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -533,7 +534,8 @@ def get_app_detail(app_id):
     try:
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/apps?id=eq.{app_id}"
-            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,mac_install_url",
+            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,"
+            "mac_install_url,mac_install_sha256,windows_install_url,windows_install_sha256",
             headers=HEADERS, timeout=10)
         if resp.status_code == 200 and resp.json():
             return resp.json()[0]
@@ -757,20 +759,33 @@ def uninstall_app(app):
     except Exception as e:
         return False, f"Uninstall error: {e}"
 
+def _download_installer(url, expected_sha256):
+    """Download an installer and, if a checksum is configured, verify it before
+    use. Returns (data, error). A configured-but-mismatched checksum is a hard
+    failure — we never run an installer whose digest doesn't match."""
+    r = requests.get(url, timeout=180)
+    if r.status_code != 200:
+        return None, f"Download failed: HTTP {r.status_code}"
+    data = r.content
+    if expected_sha256:
+        actual = hashlib.sha256(data).hexdigest()
+        if actual.lower() != expected_sha256.strip().lower():
+            return None, f"Checksum mismatch (expected {expected_sha256.strip()[:12]}…, got {actual[:12]}…)"
+    return data, None
+
 def _install_macos(app):
     url = app.get("mac_install_url")
     if not url:
         return False, "No macOS installer URL set (configure mac_install_url)"
+    data, err = _download_installer(url, app.get("mac_install_sha256"))
+    if err:
+        return False, err
+    # A flat .pkg is a xar archive ("xar!"); reject HTML error pages / wrong files.
+    if data[:4] != b"xar!":
+        return False, "Downloaded file is not a .pkg installer"
     import tempfile
     path = None
     try:
-        r = requests.get(url, timeout=180)
-        if r.status_code != 200:
-            return False, f"Download failed: HTTP {r.status_code}"
-        data = r.content
-        # A flat .pkg is a xar archive ("xar!"); reject HTML error pages / wrong files.
-        if data[:4] != b"xar!":
-            return False, "Downloaded file is not a .pkg installer"
         fd, path = tempfile.mkstemp(suffix=".pkg")
         with os.fdopen(fd, "wb") as f:
             f.write(data)
@@ -779,8 +794,34 @@ def _install_macos(app):
         if p.returncode == 0:
             return True, f"Installed from {url}"
         return False, f"installer exited {p.returncode}: {((p.stdout or '') + (p.stderr or ''))[-160:].strip()}"
-    except Exception as e:
-        return False, f"Install error: {e}"
+    finally:
+        if path:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+
+def _install_windows(app):
+    url = app.get("windows_install_url")
+    if not url:
+        return False, "No Windows installer URL set (configure windows_install_url)"
+    data, err = _download_installer(url, app.get("windows_install_sha256"))
+    if err:
+        return False, err
+    # An .msi is an OLE compound document (magic D0 CF 11 E0 A1 B1 1A E1).
+    if data[:8] != b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+        return False, "Downloaded file is not a .msi installer"
+    import tempfile
+    path = None
+    try:
+        fd, path = tempfile.mkstemp(suffix=".msi")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        p = subprocess.run(["msiexec", "/i", path, "/quiet", "/norestart"],
+                           capture_output=True, text=True, timeout=600)
+        if p.returncode in (0, 3010):  # 3010 = success, restart required
+            return True, f"Installed from {url}"
+        return False, f"msiexec exited {p.returncode}: {((p.stdout or '') + (p.stderr or ''))[-160:].strip()}"
     finally:
         if path:
             try:
@@ -789,11 +830,13 @@ def _install_macos(app):
                 pass
 
 def install_app(app):
-    """Best-effort install from an admin-provided installer URL. v1: macOS .pkg
-    only. Returns (success, detail)."""
+    """Best-effort install from an admin-provided installer URL. macOS .pkg and
+    Windows .msi. Returns (success, detail)."""
     try:
         if OS == "Darwin":
             return _install_macos(app)
+        if OS == "Windows":
+            return _install_windows(app)
         return False, f"Install not supported on {OS} yet"
     except Exception as e:
         return False, f"Install error: {e}"

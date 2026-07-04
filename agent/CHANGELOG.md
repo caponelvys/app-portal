@@ -1,5 +1,13 @@
 # App Controller Agent — Changelog
 
+## v1.6.1 — 2026-07-03
+- Remote install extended to Windows .msi (`msiexec /i /quiet /norestart`,
+  installs machine-wide as SYSTEM) alongside macOS .pkg, and now verifies an
+  optional SHA-256 checksum on the downloaded installer before running it. A
+  configured checksum that doesn't match is a hard failure — the installer is
+  never run. Set `windows_install_url` / `windows_install_sha256` /
+  `mac_install_sha256` on the app. Windows .msi path untested on real hardware.
+
 ## v1.6.0 — 2026-07-03
 - Remote app install (macOS). The agent handles a new `install_app` command from
   the device_commands queue: it downloads the app's admin-provided `mac_install_url`,
