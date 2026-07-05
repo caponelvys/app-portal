@@ -206,6 +206,7 @@ const CHROME_MSI = 'https://dl.google.com/dl/chrome/install/googlechromestandalo
 const VSCODE_WIN = { url: 'https://update.code.visualstudio.com/latest/win32-x64-user/stable', args: '/VERYSILENT /NORESTART /MERGETASKS=!runcode' }
 const KNOWN_WINDOWS_INSTALLERS: Record<string, { url: string; args: string }> = {
   'Discord': { url: 'https://discord.com/api/download?platform=win', args: '-s' },
+  'Notion': { url: 'https://www.notion.so/desktop/windows/download', args: '/S' },
   'Chrome': { url: CHROME_MSI, args: '' },
   'Google Chrome': { url: CHROME_MSI, args: '' },
   'Firefox': { url: 'https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US', args: '/S' },
