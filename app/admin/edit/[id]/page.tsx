@@ -205,7 +205,7 @@ const KNOWN_MAC_INSTALLERS: Record<string, string> = {
 const CHROME_MSI = 'https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi'
 const VSCODE_WIN = { url: 'https://update.code.visualstudio.com/latest/win32-x64-user/stable', args: '/VERYSILENT /NORESTART /MERGETASKS=!runcode' }
 const KNOWN_WINDOWS_INSTALLERS: Record<string, { url: string; args: string }> = {
-  'Discord': { url: 'https://discord.com/api/download?platform=win', args: '-s' },
+  'Discord': { url: 'https://discord.com/api/download?platform=win', args: '--silent' },
   'Notion': { url: 'https://www.notion.so/desktop/windows/download', args: '/S' },
   'Chrome': { url: CHROME_MSI, args: '' },
   'Google Chrome': { url: CHROME_MSI, args: '' },

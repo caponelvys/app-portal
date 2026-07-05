@@ -1,5 +1,14 @@
 # App Controller Agent — Changelog
 
+## v1.7.6 — 2026-07-05
+- Windows per-user app installs (Discord/Slack/Teams etc.) now kill the running
+  app and its Squirrel updater (Update.exe) before installing. These installers
+  replace the app's install directory wholesale, so a running process locked the
+  files and the install failed — Squirrel exited -1 behind a blocking dialog that
+  hung the unattended install task. Mirrors uninstall, which already kills first.
+  Fixes Discord installs that failed whenever it was already running (the common
+  case, since Discord auto-launches and registers a Run entry after install).
+
 ## v1.7.5 — 2026-07-04
 - On self-uninstall the agent deletes its own device record from the portal
   (POST /api/devices/<id>/self-remove) so the device auto-disappears from the UI

@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.5"
+AGENT_VERSION = "1.7.6"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -1037,6 +1037,16 @@ def _install_windows(app):
                 except Exception:
                     pass
     if data[:2] == b"MZ":
+        # Per-user .exe installers (Squirrel/NSIS) replace the app's install
+        # directory wholesale; if the app or its Squirrel updater is running the
+        # files are locked and the install fails (Squirrel exits -1 behind a
+        # blocking dialog that hangs the unattended task). Kill them first —
+        # mirrors uninstall_app, which kills before removing for the same reason.
+        pname = (app.get("process_name") or "").lower()
+        if pname:
+            kill_process(pname + ".exe" if not pname.endswith(".exe") else pname)
+        kill_process("Update.exe")  # Squirrel per-user updater holds a lock in the app dir
+        time.sleep(1)  # let file handles release before the installer wipes the dir
         return _install_windows_exe(data, app.get("windows_install_args"))
     return False, "Downloaded file is not a .msi or .exe installer"
 

@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.5'
+export const AGENT_VERSION = '1.7.6'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.6',
+    date: '2026-07-05',
+    changes: [
+      'Windows per-user app installs (Discord/Slack/Teams etc.) now kill the running app and its Squirrel updater before installing. These installers replace the app directory wholesale, so a running process locked the files and the install failed (Squirrel exited -1 behind a blocking dialog). Fixes Discord installs that failed when it was already running.',
+    ],
+  },
   {
     version: '1.7.5',
     date: '2026-07-04',
