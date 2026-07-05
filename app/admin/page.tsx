@@ -26,7 +26,7 @@ function getHealth(lastSeen: string | null): HealthTier {
 
 const HEALTH_META: Record<HealthTier, { label: string; dot: string; bar: string; text: string }> = {
   healthy:  { label: 'Healthy',    dot: 'bg-green-500',  bar: 'bg-green-500',  text: 'text-green-400'  },
-  inactive: { label: 'Inactive',   dot: 'bg-blue-400',   bar: 'bg-blue-400',   text: 'text-blue-400'   },
+  inactive: { label: 'Inactive',   dot: 'bg-[#60a5fa]',  bar: 'bg-[#60a5fa]',  text: 'text-[#60a5fa]'  },
   warning:  { label: 'Warning',    dot: 'bg-yellow-500', bar: 'bg-yellow-400', text: 'text-yellow-400' },
   stale:    { label: 'Stale',      dot: 'bg-orange-500', bar: 'bg-orange-500', text: 'text-orange-400' },
   lost:     { label: 'Lost',       dot: 'bg-red-600',    bar: 'bg-red-600',    text: 'text-red-400'    },
