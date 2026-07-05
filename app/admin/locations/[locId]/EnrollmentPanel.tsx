@@ -13,6 +13,19 @@ function installCommandsFor(token: string): Record<string, string> {
   }
 }
 
+// Render a command as neutral code with only the enrollment token (the secret)
+// tinted violet, so green is reserved for the Healthy status elsewhere.
+function renderWithToken(cmd: string, token: string) {
+  if (!token || !cmd.includes(token)) return cmd
+  const parts = cmd.split(token)
+  return parts.map((part, i) => (
+    <span key={i}>
+      {part}
+      {i < parts.length - 1 && <span className="text-[#B9A8FF]">{token}</span>}
+    </span>
+  ))
+}
+
 const updateCommands: Record<string, string> = {
   'Mac Terminal':   `curl -fsSL ${BASE}/update_mac.sh | sudo bash`,
   'Linux Terminal': `curl -fsSL ${BASE}/update_linux.sh | sudo bash`,
@@ -82,7 +95,7 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
       <div>
         <p className="text-xs text-gray-500 mb-1">Enrollment token</p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs text-green-400 font-mono break-all bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+          <code className="flex-1 text-xs text-[#B9A8FF] font-mono break-all bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
             {token || '—'}
           </code>
           <button onClick={() => copy('token', token)}
@@ -144,7 +157,7 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
         </select>
 
         <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3">
-          <code className="flex-1 text-xs text-green-400 font-mono break-all">{commands[activeOs]}</code>
+          <code className="flex-1 text-xs text-gray-300 font-mono break-all">{renderWithToken(commands[activeOs], token)}</code>
           <button onClick={() => copy('cmd', commands[activeOs])}
             className="shrink-0 text-xs text-gray-400 hover:text-white border border-gray-600 rounded px-2 py-1">
             {copied === 'cmd' ? 'Copied!' : 'Copy'}

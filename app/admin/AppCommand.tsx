@@ -74,11 +74,11 @@ export default function AppCommand({
   }
 
   const baseColor = action === 'install'
-    ? 'border-green-700 text-green-300 hover:bg-green-950'
-    : 'border-orange-700 text-orange-300 hover:bg-orange-950'
+    ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+    : 'border-red-700 text-red-300 hover:bg-red-950'
   const confirmColor = action === 'install'
-    ? 'border-green-700 bg-green-700 text-white hover:bg-green-600'
-    : 'border-orange-700 bg-orange-700 text-white hover:bg-orange-600'
+    ? 'border-blue-700 bg-blue-700 text-white hover:bg-blue-600'
+    : 'border-red-700 bg-red-700 text-white hover:bg-red-600'
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
@@ -97,9 +97,9 @@ export default function AppCommand({
         )}
       </div>
       {confirming && destructiveBulk && app && (
-        <p className="mt-2 text-xs text-orange-300">Removes {app.name} from every device in {targetLabel} where it&apos;s found. This can&apos;t be undone.</p>
+        <p className="mt-2 text-xs text-red-300">Removes {app.name} from every device in {targetLabel} where it&apos;s found. This can&apos;t be undone.</p>
       )}
-      {status && <p className={`mt-2 text-xs ${status.error ? 'text-red-400' : 'text-green-400'}`}>{status.text}</p>}
+      {status && <p className={`mt-2 text-xs ${status.error ? 'text-red-400' : 'text-blue-400'}`}>{status.text}</p>}
     </div>
   )
 }
