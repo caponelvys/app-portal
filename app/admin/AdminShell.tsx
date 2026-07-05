@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import GlobalSearch from './GlobalSearch'
+import BrandLockup from '../BrandLockup'
 
 const PRIMARY_NAV = [
   { label: 'Dashboard',     href: '/admin', exact: true },
@@ -128,9 +129,8 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
       {/* ── Top Nav ── */}
       <nav className="fixed top-0 left-0 right-0 h-14 z-50 bg-gray-900 border-b border-gray-800 flex items-center px-4 gap-4">
         {/* Logo */}
-        <Link href="/admin" className="flex items-center gap-2 shrink-0 mr-2">
-          <span className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center text-white text-xs font-bold">AC</span>
-          <span className="text-white font-semibold text-sm hidden sm:block">App Controller</span>
+        <Link href="/admin" className="flex items-center shrink-0 mr-2">
+          <BrandLockup markSize={24} />
         </Link>
 
         {/* Primary nav — desktop */}

@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import BrandLockup from '../BrandLockup'
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_authorized: "This account isn't authorized. Ask your administrator to invite you first.",
@@ -63,6 +64,7 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
       <div className="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-md w-full max-w-md">
+        <BrandLockup markSize={30} className="mb-6" />
         <h1 className="text-2xl font-bold mb-6 text-white">Sign in</h1>
 
         {notice && (

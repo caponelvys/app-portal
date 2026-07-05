@@ -1,26 +1,77 @@
 @import "tailwindcss";
 
+/* ── Corvex brand tokens ─────────────────────────────────────────────
+   Source: public/brand/tokens.css. Fonts are injected as CSS vars by
+   next/font in app/layout.tsx. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cx-violet-tint: #B9A8FF;
+  --cx-violet:      #7C5CFF;
+  --cx-violet-deep: #5B3FF0;
+  --cx-violet-wash: #1C1633;
+
+  --cx-base:    #0B0E13;
+  --cx-raised:  #0E1219;
+  --cx-surface: #141922;
+  --cx-border:  #262D38;
+  --cx-muted:   #8A92A0;
+  --cx-text:    #E7EAF0;
+
+  --cx-healthy: #22C55E;
+  --cx-warning: #EAB308;
+  --cx-blocked: #EF4444;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* App base surfaces */
+  --color-background: var(--cx-base);
+  --color-foreground: var(--cx-text);
+
+  /* Fonts (vars set by next/font in layout.tsx) */
+  --font-sans:    var(--font-body), 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:    var(--font-mono-plex), 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: var(--font-display), 'Space Grotesk', system-ui, sans-serif;
+
+  /* ── Palette remap ────────────────────────────────────────────────
+     The UI hardcodes gray and blue utilities across many files. Rather
+     than rewrite them, remap the scales to the Corvex identity here so
+     every existing utility re-skins to the brand at once. Status colors
+     (green, yellow, red) already match Corvex and are left untouched. */
+
+  /* Neutrals — cool, faintly violet-tinted dark ramp */
+  --color-gray-50:  #F3F5F8;
+  --color-gray-100: #E7EAF0; /* primary text */
+  --color-gray-200: #CDD3DC;
+  --color-gray-300: #AEB6C2;
+  --color-gray-400: #8A92A0; /* muted / secondary text */
+  --color-gray-500: #6B7480;
+  --color-gray-600: #3A424F;
+  --color-gray-700: #262D38; /* borders, hairlines */
+  --color-gray-800: #141922; /* cards, inputs */
+  --color-gray-900: #0E1219; /* nav, headers */
+  --color-gray-950: #0B0E13; /* app background */
+
+  /* Accent — Corvex Violet (maps the existing blue-* accent) */
+  --color-blue-300: #CDBEFF;
+  --color-blue-400: #B9A8FF; /* links on dark */
+  --color-blue-500: #9B82FF;
+  --color-blue-600: #7C5CFF; /* primary actions, active nav */
+  --color-blue-700: #5B3FF0; /* hover / pressed */
+  --color-blue-800: #4A32C8;
+  --color-blue-900: #1C1633; /* tinted active surfaces */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--cx-base);
+  color: var(--cx-text);
+  font-family: var(--font-sans);
+}
+
+/* Display type for headings — Space Grotesk, tightened tracking */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }

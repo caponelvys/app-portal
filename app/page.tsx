@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getAppLogoUrl } from '@/lib/appLogos'
 import { isGrantActive, expiresInLabel } from '@/lib/durations'
 import RequestAccess, { type RequestableApp } from './RequestAccess'
+import BrandLockup from './BrandLockup'
 
 type App = {
   id: string
@@ -85,7 +86,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950">
       <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">App Portal</h1>
+        <BrandLockup markSize={26} />
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{user.email}</span>
           <a href="/devices" className="text-sm text-gray-400 hover:text-gray-200 font-medium whitespace-nowrap">
