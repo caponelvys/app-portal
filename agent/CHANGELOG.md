@@ -1,5 +1,11 @@
 # Ravyn Agent — Changelog
 
+## v1.7.9 — 2026-07-05
+- Report a stable, user-recognizable device name. On macOS the agent now uses
+  the ComputerName (from System Settings) instead of `socket.gethostname()`,
+  which can return a transient DHCP/mDNS name (sometimes a UUID). Windows uses
+  `COMPUTERNAME`; Linux is unchanged.
+
 ## v1.7.8 — 2026-07-05
 - Rebrand: the agent is now "Ravyn Agent". The systemd service (`ravyn-agent`),
   launchd daemon (`com.ravyn.agent`), Windows scheduled task + executable

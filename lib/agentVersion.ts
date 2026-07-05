@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.8'
+export const AGENT_VERSION = '1.7.9'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.9',
+    date: '2026-07-05',
+    changes: [
+      'Report a stable, user-recognizable device name. On macOS the agent now uses the ComputerName (from System Settings) instead of socket.gethostname(), which can return a transient DHCP/mDNS name (sometimes a UUID). Windows uses COMPUTERNAME; Linux is unchanged.',
+    ],
+  },
   {
     version: '1.7.8',
     date: '2026-07-05',

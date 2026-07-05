@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.8"
+AGENT_VERSION = "1.7.9"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -56,6 +56,29 @@ def get_os_label():
     return OS
 
 OS_LABEL = get_os_label()  # e.g. "macOS 14.5"
+
+def get_hostname():
+    """The user-recognizable device name reported to the portal. On macOS
+    socket.gethostname() often returns a transient DHCP/mDNS name (sometimes a
+    UUID), so prefer the stable ComputerName set in System Settings. Windows'
+    computer name is stable; Linux uses the system hostname."""
+    if OS == "Darwin":
+        try:
+            name = subprocess.check_output(
+                ["scutil", "--get", "ComputerName"], text=True, stderr=subprocess.DEVNULL
+            ).strip()
+            if name:
+                return name
+        except Exception:
+            pass
+    elif OS == "Windows":
+        name = os.environ.get("COMPUTERNAME")
+        if name:
+            return name
+    try:
+        return socket.gethostname()
+    except Exception:
+        return "unknown"
 
 # Data dir holding device identity/state. The dir was renamed AppController ->
 # Ravyn in v1.7.8; _migrate_state_dir() carries an existing install's identity
@@ -135,7 +158,7 @@ def register_device(device_id):
     never needs to be readable by the anon key."""
     payload = {
         "device_id": device_id,
-        "hostname":  socket.gethostname(),
+        "hostname":  get_hostname(),
         "os":        OS_LABEL,
     }
     token = get_enrollment_token()
