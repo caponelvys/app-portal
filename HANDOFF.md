@@ -53,10 +53,12 @@ Migration `0010_device_count_rpcs.sql` IS committed (the count RPCs).
 - **`app_requests` and `agent_events` MUST be read with the service-role client** (`createAdminClient()`), not the authenticated client — RLS/grants otherwise silently return empty/partial (this bit us: dashboard undercount, "permission denied for table", enroll 405 masked). See `lib/supabase-admin.ts`.
 - The agent writes `agent_logs`/`agent_events`/heartbeats with the **anon** key directly; enrollment goes through `POST /api/enroll`.
 
-## The agent (`agent/`, current **v1.5.0**)
+## The agent (`agent/`, current **v1.7.5**)
 Polls Supabase every 5s: heartbeat (`last_seen`, `agent_version`, `ip_address`, `device_user`), resolves effective blocked apps (policy inheritance + per-user grants), kills blocked processes, logs to `agent_logs`, emits lifecycle to `agent_events`.
-- **Auto-update:** polls `GET /api/agent/version` (returns deployed `AGENT_VERSION`); if behind, downloads `agent.py`, validates (reject HTML, `py_compile`, version-match), backs up, replaces, re-execs. Can't brick itself.
-- **Remote commands:** reads `devices.pending_command` each cycle — `restart` (re-exec), `update` (self-update), `uninstall` (remove service+files). Queued via `POST /api/devices/[deviceId]/command`. Cleared before running.
+- **Auto-update:** polls `GET /api/agent/version` (returns deployed `AGENT_VERSION`); if behind, downloads `agent.py`, validates (reject HTML, `py_compile`, version-match), backs up, replaces, re-execs. Can't brick itself. A **frozen Windows .exe** (PyInstaller, built in CI) self-updates by swapping the .exe from the GitHub release instead; its scheduled task is created with restart-on-failure and the agent exits non-zero so Task Scheduler relaunches the swapped exe.
+- **Remote commands:** reads `devices.pending_command` each cycle — `restart` (re-exec), `update` (self-update), `uninstall` (remove service+files, and self-remove the device record via `/api/devices/<id>/self-remove` so it disappears from the UI). Queued via `POST /api/devices/[deviceId]/command`. Cleared before running.
+- **Remote app install/uninstall:** admins push installs/uninstalls from the portal. Install: macOS `.pkg`/`.dmg`/`.zip` (detected by content), Windows `.msi` (machine-wide) and `.exe` (per-user in the logged-in session, silent flag via `windows_install_args`, default `/S`); optional SHA-256 checksum is a hard gate. Uninstall: macOS bundle removal, Windows machine-wide via HKLM silent uninstall string and per-user apps (Discord/Slack/Teams) via a one-shot interactive scheduled task. User is notified on both.
+- **User notifications:** shows a native banner (macOS/Linux) or message box (Windows) when a blocked app is closed, throttled per app.
 - **Enrollment:** installers bake the location token; `register_device` → `/api/enroll` (validates token server-side). `PORTAL_URL` (API base) is kept separate from `PAIRING_URL`.
 - **Detects the logged-in OS user** (console user) → `device_user`; portal suggests a matching portal account as owner.
 
