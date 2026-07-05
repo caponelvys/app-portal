@@ -58,11 +58,10 @@ that runs in the user's session. This one app delivers:
 Two processes, one device. They talk through a **file spool** (simple, robust
 across the SYSTEM↔user session boundary) rather than sockets/pipes.
 
-**Recommended stack: Python + `pystray` + a small UI, PyInstaller-packaged.**
-Rationale: reuses the agent's language and the existing PyInstaller/CI setup; one
-codebase for all three OSes. Trade-off: tray/UX is more basic than native
-(Swift/WinUI), and macOS `.app` packaging + signing needs care. Native is the
-alternative if we want best-in-class UX later.
+**Chosen stack: native per-OS** (see §10) — SwiftUI menu-bar app on macOS, C#/.NET
+tray app on Windows, for best-in-class UX and first-class notification APIs
+(`UNUserNotificationCenter`, WinRT toasts). Trade-off: two codebases and two build
+toolchains in CI. (Python + `pystray` was the single-codebase alternative.)
 
 ## 4. Identity & auth — **KEY DECISION**
 
@@ -147,11 +146,39 @@ endpoint(s).
 - **Phase 3 — Polish.** "My requests" status view, self-update, full CI signing +
   notarization, Linux autostart.
 
-## 10. Open decisions (need input)
+## 10. Decisions (locked 2026-07-05)
 
-1. **Identity model** — device-owner (A, recommended) vs user sign-in (B)?
-2. **Stack** — Python + pystray (recommended, reuses everything) vs native?
-3. **Scope of the first build** — ship **Phase 1 (notifications) first**, or build
-   tray + notifications together?
-4. **macOS signing** — set up notarization in CI now (needs secrets), or
-   build/sign locally on your Mac to start?
+1. **Identity** — **device-owner, no sign-in** (Option A). New `/api/device-request`
+   endpoint maps `device_id → owner`.
+2. **Stack** — **native per-OS**: Swift/SwiftUI menu-bar app (macOS), C#/.NET (WinUI 3
+   or WPF) tray app (Windows). Two codebases, best-in-class UX.
+3. **Scope** — build **tray + request-access + notifications together** as v1 (not
+   notifications-first).
+4. **macOS signing** — **CI signing from the start**: a `macos` GitHub Actions job
+   that builds, `codesign`s (Developer ID), and `notarytool`-notarizes.
+
+## 11. Build order & status
+
+- [x] **Portal backend** — `POST/GET /api/device-request` (device-authenticated,
+      maps device → owner, lists requestable apps). *Done + deployed + tested.*
+- [ ] **macOS app** — SwiftUI menu-bar app: tray menu, request window,
+      `UNUserNotificationCenter`, spool watcher, `/api/device-request` client.
+- [ ] **Windows app** — C#/.NET tray app: NotifyIcon, request window, toast via
+      AUMID + Ravyn icon, spool watcher, API client.
+- [ ] **Agent** — write notification requests to the spool; keep osascript/msg
+      fallback when the companion isn't present.
+- [ ] **CI** — macOS job (xcodebuild → codesign → notarytool → staple) + Windows
+      job (dotnet publish → sign). Installers place the companion + autostart
+      (LaunchAgent / logon task) and register the Windows AUMID shortcut.
+
+## 12. What's needed from you (unblocks native + CI)
+
+- **macOS "Developer ID Application" certificate** (run `security find-identity -v
+  -p codesigning`; if absent, create in Xcode → Settings → Accounts → Manage
+  Certificates → + → Developer ID Application — needs the paid program + Account
+  Holder/Admin role).
+- **App Store Connect API key** (Issuer ID, Key ID, `.p8`) for `notarytool`, stored
+  as GitHub Actions secrets — plus the Developer ID cert + its password exported as
+  a `.p12` secret.
+- *(Optional, Windows)* a code-signing certificate to avoid SmartScreen; we can
+  ship unsigned to start.
