@@ -1,11 +1,11 @@
 @echo off
-:: App Controller Agent — Windows Updater
+:: Ravyn Agent — Windows Updater
 :: Safely replaces agent.py with the latest version and restarts the task.
 :: Run as Administrator
 
 setlocal enabledelayedexpansion
 
-set "AGENT_DIR=C:\AppController"
+set "AGENT_DIR=C:\Ravyn"
 set "BASE_URL=https://appcontroller.vercel.app/downloads"
 
 if not exist "%AGENT_DIR%\agent.py" (
@@ -29,12 +29,12 @@ copy /y "%AGENT_DIR%\agent.py" "%AGENT_DIR%\agent.py.bak" >nul
 move /y "%AGENT_DIR%\agent.py.new" "%AGENT_DIR%\agent.py" >nul
 
 echo [update] Restarting agent...
-schtasks /end /tn "AppControllerAgent" >nul 2>nul
-schtasks /run /tn "AppControllerAgent"
+schtasks /end /tn "RavynAgent" >nul 2>nul
+schtasks /run /tn "RavynAgent"
 if errorlevel 1 (
   echo [update] Restart failed — rolling back to previous agent.
   move /y "%AGENT_DIR%\agent.py.bak" "%AGENT_DIR%\agent.py" >nul
-  schtasks /run /tn "AppControllerAgent"
+  schtasks /run /tn "RavynAgent"
   exit /b 1
 )
 

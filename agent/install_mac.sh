@@ -1,12 +1,12 @@
 #!/bin/bash
-# App Controller Agent — Mac Installer
+# Ravyn Agent — Mac Installer
 # Run with: sudo bash install_mac.sh [--token <enrollment_token>]
 
 set -e
 
-AGENT_DIR="/usr/local/appcontroller"
+AGENT_DIR="/usr/local/ravyn"
 VENV_DIR="$AGENT_DIR/venv"
-PLIST="/Library/LaunchDaemons/com.appcontroller.agent.plist"
+PLIST="/Library/LaunchDaemons/com.ravyn.agent.plist"
 BASE_URL="https://appcontroller.vercel.app/downloads"
 
 # Optional: --token <enrollment-token> places this device into a location.
@@ -47,6 +47,11 @@ echo "[install] Creating Python virtual environment..."
 python3 -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install -r "$AGENT_DIR/requirements.txt" --quiet
 
+# Remove any prior "App Controller" daemon (pre-rebrand) so we don't run two
+# agents. The old data dir is left in place so the agent can migrate its identity.
+launchctl bootout system/com.appcontroller.agent 2>/dev/null || true
+rm -f /Library/LaunchDaemons/com.appcontroller.agent.plist
+
 echo "[install] Creating launch daemon..."
 cat > "$PLIST" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -54,7 +59,7 @@ cat > "$PLIST" << EOF
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.appcontroller.agent</string>
+  <string>com.ravyn.agent</string>
   <key>ProgramArguments</key>
   <array>
     <string>$VENV_DIR/bin/python3</string>
@@ -65,9 +70,9 @@ cat > "$PLIST" << EOF
   <key>KeepAlive</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>/var/log/appcontroller.log</string>
+  <string>/var/log/ravyn-agent.log</string>
   <key>StandardErrorPath</key>
-  <string>/var/log/appcontroller.log</string>
+  <string>/var/log/ravyn-agent.log</string>
 </dict>
 </plist>
 EOF
@@ -77,4 +82,4 @@ launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
 
 echo "[install] Done! Agent is running."
-echo "[install] Logs: tail -f /var/log/appcontroller.log"
+echo "[install] Logs: tail -f /var/log/ravyn-agent.log"

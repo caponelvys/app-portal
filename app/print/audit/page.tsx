@@ -206,7 +206,7 @@ export default async function AuditPrintPage({
         )}
 
         <div className="footer">
-          <span>App Controller — Confidential</span>
+          <span>Ravyn — Confidential</span>
           <span>Generated {reportDate}</span>
         </div>
 

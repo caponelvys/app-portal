@@ -1,11 +1,11 @@
 #!/bin/bash
-# App Controller Agent — Linux Updater
+# Ravyn Agent — Linux Updater
 # Safely replaces agent.py with the latest version and restarts the service.
 # Run with: sudo bash update_linux.sh
 
 set -e
 
-AGENT_DIR="/usr/local/appcontroller"
+AGENT_DIR="/usr/local/ravyn"
 BASE_URL="https://appcontroller.vercel.app/downloads"
 
 if [ ! -f "$AGENT_DIR/agent.py" ]; then
@@ -33,10 +33,10 @@ cp "$AGENT_DIR/agent.py" "$AGENT_DIR/agent.py.bak"
 mv "$TMP_AGENT" "$AGENT_DIR/agent.py"
 
 echo "[update] Restarting agent..."
-if ! systemctl restart appcontroller; then
+if ! systemctl restart ravyn-agent; then
   echo "[update] Restart failed — rolling back to previous agent."
   mv "$AGENT_DIR/agent.py.bak" "$AGENT_DIR/agent.py"
-  systemctl restart appcontroller || true
+  systemctl restart ravyn-agent || true
   exit 1
 fi
 

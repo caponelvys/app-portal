@@ -1,11 +1,11 @@
 #!/bin/bash
-# App Controller Agent — Mac Updater
+# Ravyn Agent — Mac Updater
 # Safely replaces agent.py with the latest version and restarts the service.
 # Run with: sudo bash update_mac.sh
 
 set -e
 
-AGENT_DIR="/usr/local/appcontroller"
+AGENT_DIR="/usr/local/ravyn"
 BASE_URL="https://appcontroller.vercel.app/downloads"
 
 if [ ! -f "$AGENT_DIR/agent.py" ]; then
@@ -33,10 +33,10 @@ cp "$AGENT_DIR/agent.py" "$AGENT_DIR/agent.py.bak"
 mv "$TMP_AGENT" "$AGENT_DIR/agent.py"
 
 echo "[update] Restarting agent..."
-if ! launchctl kickstart -k system/com.appcontroller.agent 2>/dev/null; then
+if ! launchctl kickstart -k system/com.ravyn.agent 2>/dev/null; then
   echo "[update] Restart failed — rolling back to previous agent."
   mv "$AGENT_DIR/agent.py.bak" "$AGENT_DIR/agent.py"
-  launchctl kickstart -k system/com.appcontroller.agent || true
+  launchctl kickstart -k system/com.ravyn.agent || true
   exit 1
 fi
 

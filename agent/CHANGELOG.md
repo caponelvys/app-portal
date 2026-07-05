@@ -1,4 +1,12 @@
-# App Controller Agent — Changelog
+# Ravyn Agent — Changelog
+
+## v1.7.8 — 2026-07-05
+- Rebrand: the agent is now "Ravyn Agent". The systemd service (`ravyn-agent`),
+  launchd daemon (`com.ravyn.agent`), Windows scheduled task + executable
+  (`RavynAgent.exe`), data directory (`/usr/local/ravyn`, `C:\Ravyn`), and logs
+  are renamed to Ravyn. Existing devices keep their identity via a one-time state
+  migration; installers remove the old service so two agents never run at once.
+  Devices must be **reinstalled** to adopt the new service names.
 
 ## v1.7.7 — 2026-07-05
 - Rebrand: on-device notifications (app blocked / installed / uninstalled) are

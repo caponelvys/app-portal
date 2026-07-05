@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.7'
+export const AGENT_VERSION = '1.7.8'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.8',
+    date: '2026-07-05',
+    changes: [
+      'Rebrand: the agent is now "Ravyn Agent". Service/task, launch daemon, Windows scheduled task + executable (RavynAgent.exe), data directory, and logs are renamed to Ravyn. Existing devices keep their identity via a one-time migration, but must be reinstalled to pick up the new service names.',
+    ],
+  },
   {
     version: '1.7.7',
     date: '2026-07-05',

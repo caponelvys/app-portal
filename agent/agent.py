@@ -1,5 +1,5 @@
 """
-App Controller Agent
+Ravyn Agent
 Runs as a background service on Mac, Linux, and Windows.
 Polls Supabase every 5 seconds, kills any blocked apps that are running.
 """
@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.7"
+AGENT_VERSION = "1.7.8"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -56,9 +56,31 @@ def get_os_label():
     return OS
 
 OS_LABEL = get_os_label()  # e.g. "macOS 14.5"
-DEVICE_ID_FILE = "C:\\AppController\\.device_id" if OS == "Windows" else "/usr/local/appcontroller/.device_id"
-PAIRING_CODE_FILE = "C:\\AppController\\.pairing_code" if OS == "Windows" else "/usr/local/appcontroller/.pairing_code"
-ENROLLMENT_TOKEN_FILE = "C:\\AppController\\.enrollment_token" if OS == "Windows" else "/usr/local/appcontroller/.enrollment_token"
+
+# Data dir holding device identity/state. The dir was renamed AppController ->
+# Ravyn in v1.7.8; _migrate_state_dir() carries an existing install's identity
+# across so an updated agent keeps its device record instead of re-enrolling.
+DATA_DIR = "C:\\Ravyn" if OS == "Windows" else "/usr/local/ravyn"
+OLD_DATA_DIR = "C:\\AppController" if OS == "Windows" else "/usr/local/appcontroller"
+
+def _migrate_state_dir():
+    try:
+        if os.path.exists(os.path.join(DATA_DIR, ".device_id")):
+            return  # already on the new dir
+        if not os.path.exists(os.path.join(OLD_DATA_DIR, ".device_id")):
+            return  # fresh install — nothing to migrate
+        os.makedirs(DATA_DIR, exist_ok=True)
+        for name in (".device_id", ".pairing_code", ".enrollment_token"):
+            src, dst = os.path.join(OLD_DATA_DIR, name), os.path.join(DATA_DIR, name)
+            if os.path.exists(src) and not os.path.exists(dst):
+                shutil.copy2(src, dst)
+    except Exception:
+        pass
+
+_migrate_state_dir()
+DEVICE_ID_FILE = os.path.join(DATA_DIR, ".device_id")
+PAIRING_CODE_FILE = os.path.join(DATA_DIR, ".pairing_code")
+ENROLLMENT_TOKEN_FILE = os.path.join(DATA_DIR, ".enrollment_token")
 # User-facing page where a device owner enters their pairing code. Kept separate
 # from PORTAL_URL (the API base) so it can't break the /api/enroll endpoint.
 PAIRING_URL = "https://appcontroller.vercel.app/devices"
@@ -71,7 +93,7 @@ VERSION_URL   = f"{PORTAL_URL}/api/agent/version"
 # pull a new .exe from the GitHub release instead of agent.py from the portal.
 IS_FROZEN     = getattr(sys, "frozen", False)
 AGENT_FILE    = sys.executable if IS_FROZEN else os.path.abspath(__file__)
-EXE_URL       = "https://github.com/caponelvys/app-portal/releases/download/agent-latest/AppControllerAgent.exe"
+EXE_URL       = "https://github.com/caponelvys/app-portal/releases/download/agent-latest/RavynAgent.exe"
 
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -526,7 +548,7 @@ def self_update(device_id, latest):
         log_event(device_id, "error", "update_failed", f"Update to {latest} error: {e}")
 
 # ── Remote commands ───────────────────────────────────────────────────────────
-INSTALL_DIR = "C:\\AppController" if OS == "Windows" else "/usr/local/appcontroller"
+INSTALL_DIR = DATA_DIR
 
 def clear_command(device_id):
     """Clear the device's pending_command. Returns True on success."""
@@ -549,21 +571,24 @@ def uninstall_agent(device_id=None):
         except Exception:
             pass
     try:
+        # Remove both the current (Ravyn) and legacy (AppController) service names
+        # and data dirs, so uninstall fully cleans up regardless of install vintage.
         if OS == "Darwin":
-            plist = "/Library/LaunchDaemons/com.appcontroller.agent.plist"
-            try: os.remove(plist)
-            except Exception: pass
-            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
-            subprocess.run(["launchctl", "bootout", "system/com.appcontroller.agent"], capture_output=True)
+            for label in ("com.ravyn.agent", "com.appcontroller.agent"):
+                try: os.remove(f"/Library/LaunchDaemons/{label}.plist")
+                except Exception: pass
+                subprocess.run(["launchctl", "bootout", f"system/{label}"], capture_output=True)
         elif OS == "Linux":
-            subprocess.run(["systemctl", "disable", "--now", "appcontroller"], capture_output=True)
-            try: os.remove("/etc/systemd/system/appcontroller.service")
-            except Exception: pass
+            for svc in ("ravyn-agent", "appcontroller"):
+                subprocess.run(["systemctl", "disable", "--now", svc], capture_output=True)
+                try: os.remove(f"/etc/systemd/system/{svc}.service")
+                except Exception: pass
             subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
-            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
         elif OS == "Windows":
-            subprocess.run(["schtasks", "/delete", "/tn", "AppControllerAgent", "/f"], capture_output=True)
-            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
+            for tn in ("RavynAgent", "AppControllerAgent"):
+                subprocess.run(["schtasks", "/delete", "/tn", tn, "/f"], capture_output=True)
+        shutil.rmtree(INSTALL_DIR, ignore_errors=True)
+        shutil.rmtree(OLD_DATA_DIR, ignore_errors=True)
     except Exception as e:
         print(f"[agent] Uninstall error: {e}")
     finally:
@@ -698,10 +723,10 @@ def _uninstall_windows_peruser(name):
     user = get_device_user()
     if not user:
         return False, "No interactive user logged in for a per-user uninstall"
-    base = r"C:\ProgramData\AppController"
+    base = r"C:\ProgramData\Ravyn"
     script_path = base + r"\uninstall.ps1"
     result_path = base + r"\uninstall_result.txt"
-    task = "AppController_Uninstall"
+    task = "Ravyn_Uninstall"
     safe = name.replace("'", "''")
     ps = (
         "$ErrorActionPreference='SilentlyContinue'\n"
@@ -964,11 +989,11 @@ def _install_windows_exe(data, args):
     if not user:
         return False, "No interactive user logged in to run the installer"
     args = (args or "/S").strip()  # sensible default; NSIS/Squirrel-common
-    base = r"C:\ProgramData\AppController"
+    base = r"C:\ProgramData\Ravyn"
     exe_path = base + r"\installer.exe"
     bat_path = base + r"\run_installer.bat"
     result_path = base + r"\install_result.txt"
-    task = "AppController_Install"
+    task = "Ravyn_Install"
     try:
         os.makedirs(base, exist_ok=True)
         with open(exe_path, "wb") as f:
