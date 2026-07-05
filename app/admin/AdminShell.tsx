@@ -126,10 +126,11 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
-      {/* ── Top Nav ── */}
-      <nav className="fixed top-0 left-0 right-0 h-14 z-50 bg-gray-900 border-b border-gray-800 flex items-center px-4 gap-4">
+      {/* ── Top Nav (floating card) ── */}
+      <nav className="fixed top-0 inset-x-0 z-50 p-3">
+        <div className="mx-auto flex h-14 items-center gap-4 rounded-2xl border border-gray-800 bg-gray-900/80 backdrop-blur px-4">
         {/* Logo */}
-        <Link href="/admin" className="flex items-center shrink-0 mr-2">
+        <Link href="/admin" className="flex items-center shrink-0 mr-1">
           <BrandLockup markSize={24} />
         </Link>
 
@@ -141,9 +142,9 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center ${
                   active
-                    ? 'bg-gray-800 text-white'
+                    ? 'bg-blue-600/15 text-blue-300'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
@@ -182,11 +183,12 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
             </svg>
           </button>
         </div>
+        </div>
       </nav>
 
       {/* Mobile nav drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 pt-14 bg-gray-900 md:hidden overflow-y-auto">
+        <div className="fixed inset-0 z-40 pt-20 bg-gray-900 md:hidden overflow-y-auto">
           <div className="p-4 flex flex-col gap-1">
             {PRIMARY_NAV.map(item => (
               <Link
@@ -234,10 +236,10 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
       )}
 
       {/* ── Body ── */}
-      <div className="flex flex-1 pt-14">
+      <div className="flex flex-1 pt-20">
         {/* Sidebar */}
         {sidebar && (
-          <aside className="hidden md:flex flex-col fixed top-14 left-0 bottom-0 w-52 bg-gray-900 border-r border-gray-800 overflow-y-auto z-30">
+          <aside className="hidden md:flex flex-col fixed top-20 left-0 bottom-0 w-52 bg-gray-900 border-r border-gray-800 overflow-y-auto z-30">
             <div className="px-3 pt-5 pb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
                 {sidebar.title}
@@ -265,7 +267,7 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
         )}
 
         {/* Main content */}
-        <main className={`flex-1 overflow-y-auto min-h-[calc(100vh-3.5rem)] ${sidebar ? 'md:ml-52' : ''}`}>
+        <main className={`flex-1 overflow-y-auto min-h-[calc(100vh-5rem)] ${sidebar ? 'md:ml-52' : ''}`}>
           {children}
         </main>
       </div>

@@ -62,77 +62,88 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950">
-      <div className="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-md w-full max-w-md">
-        <BrandLockup markSize={30} className="mb-6" />
-        <h1 className="text-2xl font-bold mb-6 text-white">Sign in</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4 py-10">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-8 sm:p-10 shadow-xl">
+        {/* Brand glow */}
+        <div aria-hidden className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-blue-600/20 blur-3xl" />
 
-        {notice && (
-          <p className="mb-4 text-sm text-amber-300 bg-amber-950/40 border border-amber-900/60 rounded-lg px-3 py-2">
-            {notice}
-          </p>
-        )}
+        <div className="relative">
+          <div className="flex justify-center mb-5">
+            <BrandLockup markSize={44} wordmark={false} />
+          </div>
+          <h1 className="text-3xl font-bold text-white text-center">Sign in to Corvex</h1>
+          <p className="mt-2 mb-8 text-center text-gray-400">Control plane for every endpoint</p>
 
-        <div className="space-y-2 mb-4">
-          <button
-            onClick={() => signInWith('azure')}
-            className="w-full flex items-center justify-center gap-2 border border-gray-700 bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 font-medium"
-          >
-            <MicrosoftIcon />
-            Continue with Microsoft
-          </button>
-          <button
-            onClick={() => signInWith('google')}
-            className="w-full flex items-center justify-center gap-2 border border-gray-700 bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 font-medium"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-        </div>
+          {notice && (
+            <p className="mb-5 text-sm text-amber-300 bg-amber-950/40 border border-amber-900/60 rounded-lg px-3 py-2">
+              {notice}
+            </p>
+          )}
 
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-xs text-gray-500">or</span>
-          <div className="flex-1 h-px bg-gray-800" />
-        </div>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="you@company.com"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+              />
+            </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="w-full border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-800"
-            />
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-300">Password</label>
+                <a href="/reset-password" className="text-xs text-blue-400 hover:underline">Forgot password?</a>
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+              />
+            </div>
+
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-blue-600 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-gray-800" />
+            <span className="text-xs text-gray-500">or continue with</span>
+            <div className="flex-1 h-px bg-gray-800" />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              className="w-full border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-800"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => signInWith('azure')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              <MicrosoftIcon />
+              Microsoft
+            </button>
+            <button
+              onClick={() => signInWith('google')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              <GoogleIcon />
+              Google
+            </button>
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-
-        <p className="mt-4 text-sm text-gray-400 text-center">
-          <a href="/reset-password" className="text-blue-400 hover:underline">Forgot password?</a>
-        </p>
+          <p className="mt-8 text-center text-xs text-gray-500">SSO · SAML · one lightweight agent</p>
+        </div>
       </div>
     </div>
   )
