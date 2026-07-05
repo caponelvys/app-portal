@@ -211,7 +211,7 @@ export default async function AdminDashboard() {
           <p className="text-xs text-gray-500 mt-1">Apps blocked</p>
         </div>
         <div>
-          <p className="text-3xl font-bold text-blue-400">{accessedToday}</p>
+          <p className="text-3xl font-bold text-[#60a5fa]">{accessedToday}</p>
           <p className="text-xs text-gray-500 mt-1">Granted apps accessed</p>
         </div>
       </div>

@@ -14,7 +14,7 @@ export type AuditEvent = {
 const KIND_STYLES: Record<AuditEvent['kind'], string> = {
   request: 'bg-yellow-900 text-yellow-400', approved: 'bg-green-950 text-green-400',
   denied: 'bg-red-950 text-red-400', revoked: 'bg-red-950 text-red-400',
-  accessed: 'bg-blue-950 text-blue-300', killed: 'bg-gray-800 text-gray-400',
+  accessed: 'bg-[#172554] text-[#93c5fd]', killed: 'bg-gray-800 text-gray-400',
 }
 const KIND_LABELS: Record<AuditEvent['kind'], string> = {
   request: 'Requested', approved: 'Approved', denied: 'Denied',

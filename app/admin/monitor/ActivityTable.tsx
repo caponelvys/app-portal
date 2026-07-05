@@ -20,7 +20,7 @@ export default function ActivityTable({ logs, hostnameById, userId }: { logs: Lo
       id: 'action', label: 'Action', defaultWidth: 120, sortValue: r => r.action,
       filter: { type: 'select', value: (r: Log) => r.action, options: ACTION_OPTIONS },
       renderCell: r => (
-        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${r.action === 'killed' ? 'bg-red-900 text-red-400' : r.action === 'accessed' ? 'bg-blue-900 text-blue-300' : 'bg-gray-800 text-gray-400'}`}>
+        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${r.action === 'killed' ? 'bg-red-900 text-red-400' : r.action === 'accessed' ? 'bg-[#1e3a8a] text-[#93c5fd]' : 'bg-gray-800 text-gray-400'}`}>
           {r.action === 'killed' ? 'Blocked' : r.action === 'accessed' ? 'Accessed' : r.action}
         </span>
       ),

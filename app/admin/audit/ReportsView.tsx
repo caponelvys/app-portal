@@ -97,7 +97,7 @@ export default function ReportsView({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard label="Total Events" value={stats.total} color="text-white" />
         <StatCard label="Blocked" value={stats.blocked} color="text-red-400" />
-        <StatCard label="Accessed" value={stats.accessed} color="text-blue-400" />
+        <StatCard label="Accessed" value={stats.accessed} color="text-[#60a5fa]" />
         <StatCard label="Requests" value={stats.requests} color="text-yellow-400" />
         <StatCard label="Approved" value={stats.approved} color="text-green-400" />
         <StatCard label="Denied" value={stats.denied} color="text-red-400" />
