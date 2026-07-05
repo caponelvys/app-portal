@@ -22,11 +22,11 @@ const monoFont = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Corvex",
-  description: "Corvex — cross-platform app control for managed fleets.",
+  title: "Ravyn",
+  description: "Ravyn — cross-platform app control for managed fleets.",
   icons: {
     icon: [
-      { url: "/brand/corvex-mark-primary.svg", type: "image/svg+xml" },
+      { url: "/brand/ravyn-mark-primary.svg", type: "image/svg+xml" },
       { url: "/brand/png/favicon-32.png", type: "image/png", sizes: "32x32" },
     ],
     apple: [{ url: "/brand/png/appicon-180.png", sizes: "180x180" }],

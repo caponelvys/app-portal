@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.6'
+export const AGENT_VERSION = '1.7.7'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.7',
+    date: '2026-07-05',
+    changes: [
+      'Rebrand: on-device notifications (app blocked / installed / uninstalled) are now titled "Ravyn" instead of "App Controller".',
+    ],
+  },
   {
     version: '1.7.6',
     date: '2026-07-05',

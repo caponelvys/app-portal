@@ -1,5 +1,9 @@
 # App Controller Agent — Changelog
 
+## v1.7.7 — 2026-07-05
+- Rebrand: on-device notifications (app blocked / installed / uninstalled) are
+  now titled "Ravyn" instead of "App Controller".
+
 ## v1.7.6 — 2026-07-05
 - Windows per-user app installs (Discord/Slack/Teams etc.) now kill the running
   app and its Squirrel updater (Update.exe) before installing. These installers

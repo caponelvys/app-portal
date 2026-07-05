@@ -1,9 +1,9 @@
-/* Corvex — design tokens
+/* Ravyn — design tokens
    Fonts: Space Grotesk (display/wordmark), IBM Plex Sans (body/UI), IBM Plex Mono (labels/metrics)
    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"> */
 
 :root {
-  /* Brand — Corvex Violet */
+  /* Brand — Ravyn Violet */
   --cx-violet-tint: #B9A8FF;   /* hovers, halos, focus rings */
   --cx-violet:      #7C5CFF;   /* primary: actions, brand, active nav */
   --cx-violet-deep: #5B3FF0;   /* pressed states, gradients */

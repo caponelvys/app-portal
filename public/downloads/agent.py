@@ -27,7 +27,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.6"
+AGENT_VERSION = "1.7.7"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -1097,7 +1097,7 @@ def process_app_commands(device_id):
                   ev_ok if ok else ev_fail,
                   f"{app.get('name', 'App')}: {detail}")
         if ok:
-            notify_user("App Controller", f"{app.get('name', 'An app')} was {verb} by your administrator.")
+            notify_user("Ravyn", f"{app.get('name', 'An app')} was {verb} by your administrator.")
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 def main():
@@ -1193,7 +1193,7 @@ def main():
                         # relaunch loop doesn't spam banners.
                         now_n = time.time()
                         if now_n - last_notify.get(app["id"], 0) >= NOTIFY_INTERVAL:
-                            notify_user("App Controller", f"{app['name']} is blocked by your administrator and has been closed.")
+                            notify_user("Ravyn", f"{app['name']} is blocked by your administrator and has been closed.")
                             last_notify[app["id"]] = now_n
 
             # Full cycle succeeded — clear any network-failure streak.

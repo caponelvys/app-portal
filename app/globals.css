@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── Corvex brand tokens ─────────────────────────────────────────────
+/* ── Ravyn brand tokens ─────────────────────────────────────────────
    Source: public/brand/tokens.css. Fonts are injected as CSS vars by
    next/font in app/layout.tsx. */
 :root {
@@ -33,9 +33,9 @@
 
   /* ── Palette remap ────────────────────────────────────────────────
      The UI hardcodes gray and blue utilities across many files. Rather
-     than rewrite them, remap the scales to the Corvex identity here so
+     than rewrite them, remap the scales to the Ravyn identity here so
      every existing utility re-skins to the brand at once. Status colors
-     (green, yellow, red) already match Corvex and are left untouched. */
+     (green, yellow, red) already match Ravyn and are left untouched. */
 
   /* Neutrals — cool, faintly violet-tinted dark ramp */
   --color-gray-50:  #F3F5F8;
@@ -50,7 +50,7 @@
   --color-gray-900: #0E1219; /* nav, headers */
   --color-gray-950: #0B0E13; /* app background */
 
-  /* Accent — Corvex Violet (maps the existing blue-* accent) */
+  /* Accent — Ravyn Violet (maps the existing blue-* accent) */
   --color-blue-300: #CDBEFF;
   --color-blue-400: #B9A8FF; /* links on dark */
   --color-blue-500: #9B82FF;
@@ -66,7 +66,7 @@ html {
 
 body {
   background-color: var(--cx-base);
-  /* Ambient Corvex violet bloom from the top — fixed so it reads as page
+  /* Ambient Ravyn violet bloom from the top — fixed so it reads as page
      lighting on every route. Page wrappers are transparent so this shows. */
   background-image:
     /* Top bloom — anchored at the top edge, fading down from the bar */

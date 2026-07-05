@@ -68,7 +68,7 @@ function LoginForm() {
           <div className="flex justify-center mb-5">
             <BrandLockup markSize={44} wordmark={false} />
           </div>
-          <h1 className="text-3xl font-bold text-white text-center">Sign in to Corvex</h1>
+          <h1 className="text-3xl font-bold text-white text-center">Sign in to Ravyn</h1>
           <p className="mt-2 mb-8 text-center text-gray-400">Control plane for every endpoint</p>
 
           {notice && (
