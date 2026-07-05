@@ -27,9 +27,25 @@ function overrideTags(app: App): string[] {
   ].filter(Boolean) as string[]
 }
 
+type ActKind = 'install' | 'uninstall' | 'delete'
+
 export default function AdminAppsTable({ apps: initial, userId }: { apps: App[]; userId?: string }) {
   const [apps, setApps] = useState(initial)
   const [loading, setLoading] = useState<string | null>(null)
+  // Inline two-click confirm + per-row status (no native confirm/prompt/alert,
+  // which browsers can silently suppress).
+  const [armed, setArmed] = useState<{ id: string; kind: ActKind } | null>(null)
+  const [status, setStatus] = useState<{ id: string; text: string; error?: boolean } | null>(null)
+
+  const isArmed = (app: App, kind: ActKind) => armed?.id === app.id && armed.kind === kind
+
+  // First click on a destructive action arms it; second click runs it.
+  function clickAction(app: App, kind: ActKind, run: () => void) {
+    setStatus(null)
+    if (!isArmed(app, kind)) { setArmed({ id: app.id, kind }); return }
+    setArmed(null)
+    run()
+  }
 
   async function toggleStatus(app: App) {
     setLoading(app.id)
@@ -39,50 +55,29 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
     setLoading(null)
   }
 
-  async function deleteApp(id: string) {
-    if (!confirm('Delete this app?')) return
-    setLoading(id)
-    const { error } = await supabase.from('apps').delete().eq('id', id)
-    if (!error) setApps(apps.filter(a => a.id !== id))
+  async function deleteApp(app: App) {
+    setLoading(app.id)
+    setStatus(null)
+    const { error } = await supabase.from('apps').delete().eq('id', app.id)
+    if (error) setStatus({ id: app.id, text: error.message, error: true })
+    else setApps(apps.filter(a => a.id !== app.id))
     setLoading(null)
   }
 
-  // Queue a remote install of this app on every device in scope. Devices whose
-  // OS installer isn't configured (e.g. no mac_install_url) report a failure.
-  async function installFleet(app: App) {
-    if (!confirm(`Install "${app.name}" on ALL devices in your scope?\n\nDevices without an installer configured for their OS will report a failure.`)) return
+  async function fleetCommand(app: App, action: 'install' | 'uninstall') {
     setLoading(app.id)
+    setStatus(null)
     try {
-      const res = await fetch(`/api/apps/${app.id}/install`, {
+      const res = await fetch(`/api/apps/${app.id}/${action}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scope: 'fleet' }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) { alert(data.error ?? 'Failed to queue install'); return }
-      alert(`Install queued for ${data.queued} device${data.queued === 1 ? '' : 's'}. Watch the Agent Monitor for results.`)
+      if (!res.ok) { setStatus({ id: app.id, text: data.error ?? 'Failed to queue', error: true }); return }
+      const verb = action === 'install' ? 'Install' : 'Uninstall'
+      setStatus({ id: app.id, text: `${verb} queued for ${data.queued} device${data.queued === 1 ? '' : 's'}. Watch the Agent Monitor.` })
     } catch {
-      alert('Network error')
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  // Queue a remote uninstall of this app on every device in scope. Destructive
-  // and irreversible on the devices — require typing the app name to confirm.
-  async function uninstallFleet(app: App) {
-    const typed = prompt(`Uninstall "${app.name}" from ALL devices in your scope?\n\nThis removes the app from every machine where it is found and cannot be undone. Type the app name to confirm.`)
-    if (typed !== app.name) return
-    setLoading(app.id)
-    try {
-      const res = await fetch(`/api/apps/${app.id}/uninstall`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope: 'fleet' }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) { alert(data.error ?? 'Failed to queue uninstall'); return }
-      alert(`Uninstall queued for ${data.queued} device${data.queued === 1 ? '' : 's'}. Watch the Agent Monitor for results.`)
-    } catch {
-      alert('Network error')
+      setStatus({ id: app.id, text: 'Network error', error: true })
     } finally {
       setLoading(null)
     }
@@ -141,26 +136,29 @@ export default function AdminAppsTable({ apps: initial, userId }: { apps: App[];
       },
     },
     {
-      id: 'actions', label: 'Actions', defaultWidth: 400, sortable: false,
+      id: 'actions', label: 'Actions', defaultWidth: 420, sortable: false,
       renderCell: app => (
-        <div className="flex items-center gap-2">
-          <button onClick={() => toggleStatus(app)} disabled={loading === app.id}
-            className={`text-xs px-3 py-1 rounded-md border font-medium disabled:opacity-50 ${app.status === 'allowed' ? 'border-red-700 text-red-400 hover:bg-red-900' : 'border-green-700 text-green-400 hover:bg-green-900'}`}>
-            {app.status === 'allowed' ? 'Block' : 'Allow'}
-          </button>
-          <a href={`/admin/edit/${app.id}`} className="text-xs px-3 py-1 rounded-md border border-blue-700 text-blue-400 hover:bg-blue-900 font-medium">Edit</a>
-          <button onClick={() => installFleet(app)} disabled={loading === app.id}
-            className="text-xs px-3 py-1 rounded-md border border-green-700 text-green-400 hover:bg-green-950 disabled:opacity-50 font-medium whitespace-nowrap">
-            Install to fleet
-          </button>
-          <button onClick={() => uninstallFleet(app)} disabled={loading === app.id}
-            className="text-xs px-3 py-1 rounded-md border border-orange-700 text-orange-400 hover:bg-orange-950 disabled:opacity-50 font-medium whitespace-nowrap">
-            Uninstall from fleet
-          </button>
-          <button onClick={() => deleteApp(app.id)} disabled={loading === app.id}
-            className="text-xs px-3 py-1 rounded-md border border-red-800 text-red-500 hover:bg-red-900 disabled:opacity-50 font-medium">
-            Delete
-          </button>
+        <div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => toggleStatus(app)} disabled={loading === app.id}
+              className={`text-xs px-3 py-1 rounded-md border font-medium disabled:opacity-50 ${app.status === 'allowed' ? 'border-red-700 text-red-400 hover:bg-red-900' : 'border-green-700 text-green-400 hover:bg-green-900'}`}>
+              {app.status === 'allowed' ? 'Block' : 'Allow'}
+            </button>
+            <a href={`/admin/edit/${app.id}`} className="text-xs px-3 py-1 rounded-md border border-blue-700 text-blue-400 hover:bg-blue-900 font-medium">Edit</a>
+            <button onClick={() => clickAction(app, 'install', () => fleetCommand(app, 'install'))} disabled={loading === app.id}
+              className={`text-xs px-3 py-1 rounded-md border font-medium disabled:opacity-50 whitespace-nowrap ${isArmed(app, 'install') ? 'border-green-600 bg-green-700 text-white' : 'border-green-700 text-green-400 hover:bg-green-950'}`}>
+              {isArmed(app, 'install') ? 'Confirm install' : 'Install to fleet'}
+            </button>
+            <button onClick={() => clickAction(app, 'uninstall', () => fleetCommand(app, 'uninstall'))} disabled={loading === app.id}
+              className={`text-xs px-3 py-1 rounded-md border font-medium disabled:opacity-50 whitespace-nowrap ${isArmed(app, 'uninstall') ? 'border-orange-600 bg-orange-700 text-white' : 'border-orange-700 text-orange-400 hover:bg-orange-950'}`}>
+              {isArmed(app, 'uninstall') ? 'Confirm uninstall' : 'Uninstall from fleet'}
+            </button>
+            <button onClick={() => clickAction(app, 'delete', () => deleteApp(app))} disabled={loading === app.id}
+              className={`text-xs px-3 py-1 rounded-md border font-medium disabled:opacity-50 whitespace-nowrap ${isArmed(app, 'delete') ? 'border-red-600 bg-red-700 text-white' : 'border-red-800 text-red-500 hover:bg-red-900'}`}>
+              {isArmed(app, 'delete') ? 'Confirm delete' : 'Delete'}
+            </button>
+          </div>
+          {status?.id === app.id && <p className={`mt-1.5 text-xs ${status.error ? 'text-red-400' : 'text-green-400'}`}>{status.text}</p>}
         </div>
       ),
     },
