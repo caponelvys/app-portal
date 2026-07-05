@@ -125,9 +125,9 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div className="min-h-screen bg-transparent flex flex-col">
       {/* ── Top Nav (floating card) ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 p-3">
+      <nav className="fixed top-0 inset-x-0 z-50 px-3 pb-3">
         <div className="mx-auto flex h-14 items-center gap-4 rounded-2xl border border-gray-800 bg-gray-900/80 backdrop-blur px-4">
         {/* Logo */}
         <Link href="/admin" className="flex items-center shrink-0 mr-1">

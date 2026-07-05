@@ -84,8 +84,8 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-transparent">
+      <header className="bg-gray-900/70 backdrop-blur border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
         <BrandLockup markSize={26} />
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{user.email}</span>

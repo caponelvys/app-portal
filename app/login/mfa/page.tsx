@@ -46,7 +46,7 @@ export default function MfaChallengePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950">
+    <div className="min-h-screen flex items-center justify-center bg-transparent">
       <div className="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-md w-full max-w-md">
         <h1 className="text-2xl font-bold mb-2 text-white">Two-factor verification</h1>
         <p className="text-sm text-gray-400 mb-6">Enter the 6-digit code from your authenticator app.</p>

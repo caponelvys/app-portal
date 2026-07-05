@@ -11,8 +11,8 @@ export default async function SecurityPage() {
   const required = isMspStaff(profile)
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-transparent">
+      <header className="bg-gray-900/70 backdrop-blur border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <a href="/" className="text-gray-500 hover:text-gray-300 text-sm">← Portal</a>
           <h1 className="text-xl font-bold text-white">Security</h1>

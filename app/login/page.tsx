@@ -62,12 +62,9 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4 py-10">
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-8 sm:p-10 shadow-xl">
-        {/* Brand glow */}
-        <div aria-hidden className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-blue-600/20 blur-3xl" />
-
-        <div className="relative">
+    <div className="min-h-screen flex items-center justify-center bg-transparent px-4 py-10">
+      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900/70 backdrop-blur-sm p-8 sm:p-10 shadow-xl">
+        <div>
           <div className="flex justify-center mb-5">
             <BrandLockup markSize={44} wordmark={false} />
           </div>

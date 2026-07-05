@@ -65,7 +65,26 @@ html {
 }
 
 body {
-  background: var(--cx-base);
+  background-color: var(--cx-base);
+  /* Ambient Corvex violet bloom from the top — fixed so it reads as page
+     lighting on every route. Page wrappers are transparent so this shows. */
+  background-image:
+    /* Top bloom — anchored at the top edge, fading down from the bar */
+    radial-gradient(
+      80rem 46rem at 50% 0%,
+      rgba(124, 92, 255, 0.30),
+      rgba(124, 92, 255, 0.07) 42%,
+      transparent 66%
+    ),
+    /* Bottom bloom — subtle, just a faint lift from the bottom edge */
+    radial-gradient(
+      80rem 42rem at 50% 100%,
+      rgba(124, 92, 255, 0.22),
+      rgba(124, 92, 255, 0.06) 42%,
+      transparent 66%
+    );
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--cx-text);
   font-family: var(--font-sans);
 }
