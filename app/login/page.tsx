@@ -9,6 +9,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   oauth: 'Single sign-on failed. Please try again.',
 }
 
+const TIMEOUT_MESSAGES: Record<string, string> = {
+  idle: 'You were signed out after 30 minutes of inactivity.',
+  expired: 'Your session reached its 12-hour limit. Please sign in again.',
+}
+
 export default function LoginPage() {
   return (
     <Suspense>
@@ -20,6 +25,10 @@ export default function LoginPage() {
 function LoginForm() {
   const params = useSearchParams()
   const urlError = params.get('error')
+  const timeoutReason = params.get('timeout')
+  const notice = timeoutReason
+    ? (TIMEOUT_MESSAGES[timeoutReason] ?? 'Your session ended. Please sign in again.')
+    : ''
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(urlError ? (ERROR_MESSAGES[urlError] ?? 'Sign-in failed. Please try again.') : '')
@@ -55,6 +64,12 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-950">
       <div className="bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-md w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-white">Sign in</h1>
+
+        {notice && (
+          <p className="mb-4 text-sm text-amber-300 bg-amber-950/40 border border-amber-900/60 rounded-lg px-3 py-2">
+            {notice}
+          </p>
+        )}
 
         <div className="space-y-2 mb-4">
           <button
