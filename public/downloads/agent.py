@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.14"
+AGENT_VERSION = "1.7.15"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -636,9 +636,15 @@ def _install_companion_macos(user):
         with open(plist, "w") as f:
             f.write(COMPANION_PLIST)
         subprocess.run(["chown", user, plist], capture_output=True)
-        subprocess.run(["launchctl", "bootout", f"gui/{uid}/app.ravyn.companion"], capture_output=True)
-        subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", plist], capture_output=True)
-        return True
+        # Load it into the user's GUI session. A root/session-0 daemon can't reach
+        # gui/<uid> directly (bootstrap silently no-ops), so run launchctl via
+        # `asuser <uid>` to enter the user's session context — same trick notify_user
+        # uses. Then confirm it actually loaded, so we don't write the version marker
+        # (and suppress retries) for a load that didn't take.
+        subprocess.run(["launchctl", "asuser", uid, "launchctl", "bootout", f"gui/{uid}/app.ravyn.companion"], capture_output=True)
+        subprocess.run(["launchctl", "asuser", uid, "launchctl", "bootstrap", f"gui/{uid}", plist], capture_output=True)
+        chk = subprocess.run(["launchctl", "asuser", uid, "launchctl", "print", f"gui/{uid}/app.ravyn.companion"], capture_output=True)
+        return chk.returncode == 0
     except Exception:
         return False
 

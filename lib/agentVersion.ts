@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.14'
+export const AGENT_VERSION = '1.7.15'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.15',
+    date: '2026-07-06',
+    changes: [
+      'Fix macOS companion auto-update (from 1.7.14): the agent is a root session-0 daemon, and launchctl bootstrap gui/<uid> silently no-ops from there, so the newly installed companion never launched. It now loads via launchctl asuser and verifies the load before recording the version, so a failed load retries instead of sticking.',
+    ],
+  },
   {
     version: '1.7.14',
     date: '2026-07-06',

@@ -1,5 +1,14 @@
 # Ravyn Agent — Changelog
 
+## v1.7.15 — 2026-07-06
+- Fix macOS companion auto-update (from v1.7.14): the agent runs as a root
+  session-0 LaunchDaemon, and `launchctl bootstrap gui/<uid>` silently no-ops from
+  there, so the freshly-installed companion never started (and the version marker
+  was written anyway, suppressing retries). Now the load runs via
+  `launchctl asuser <uid> launchctl bootstrap …` (the user-session trick notify
+  already uses) and is verified with `launchctl print` before the marker is
+  written — a failed load now retries next cycle instead of silently sticking.
+
 ## v1.7.14 — 2026-07-06
 - The agent now keeps the **user-session companion** up to date automatically. It
   polls the portal's `companion_version` alongside its own version and, when that
