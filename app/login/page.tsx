@@ -84,7 +84,18 @@ function LoginForm() {
     'w-full rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40'
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="relative min-h-screen">
+      {/* Mobile only: cover the body's top/bottom ambient bloom with a flat dark
+          field, then a single violet glow behind the name + SSO (matches the mock).
+          Desktop keeps the ambient bloom + two-column layout. */}
+      <div aria-hidden className="fixed inset-0 bg-[#08080b] lg:hidden" />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed left-1/2 top-[30%] h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl lg:hidden"
+        style={{ background: 'radial-gradient(closest-side, rgba(124,92,255,0.38), rgba(124,92,255,0.10) 45%, transparent 72%)' }}
+      />
+
+      <div className="relative grid min-h-screen lg:grid-cols-2">
       {/* ── Left: brand / marketing (lg and up) ── */}
       <aside className="hidden lg:flex flex-col justify-between p-12 xl:p-16">
         <div>
@@ -115,8 +126,8 @@ function LoginForm() {
       {/* ── Right: sign in ── */}
       <main className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <div className="mb-8 flex justify-center lg:hidden">
-            <BrandLockup markSize={40} />
+          <div className="mb-10 flex justify-center lg:hidden">
+            <BrandLockup markSize={46} />
           </div>
 
           {/* Heading — desktop only; mobile goes straight from the lockup to SSO */}
@@ -206,6 +217,7 @@ function LoginForm() {
           <p className="mt-8 text-center text-xs text-gray-500">SSO · SAML · one lightweight agent</p>
         </div>
       </main>
+      </div>
     </div>
   )
 }

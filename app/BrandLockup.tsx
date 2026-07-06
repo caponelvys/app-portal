@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useId, type CSSProperties } from 'react'
 
 /**
  * Ravyn brand lockup — the glossy violet gradient diamond mark plus the "Ravyn"
@@ -16,6 +16,12 @@ export default function BrandLockup({
   wordmark?: boolean
 }) {
   const displayStyle: CSSProperties = { fontFamily: 'var(--font-display)' }
+  // Unique gradient ids per instance — two lockups (desktop aside + mobile) share
+  // the DOM; identical ids let a display:none instance's gradient win the url(#…)
+  // lookup, leaving the visible mark unpainted.
+  const uid = useId().replace(/:/g, '')
+  const faceId = `rv-face-${uid}`
+  const topId = `rv-top-${uid}`
   return (
     <span
       className={`inline-flex items-center gap-2 ${className}`}
@@ -24,19 +30,19 @@ export default function BrandLockup({
     >
       <svg width={markSize} height={markSize} viewBox="0 0 32 32" aria-hidden="true">
         <defs>
-          <linearGradient id="rv-lockup-face" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={faceId} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#6b8bff" />
             <stop offset="0.55" stopColor="#7c5cff" />
             <stop offset="1" stopColor="#6d3fe0" />
           </linearGradient>
-          <linearGradient id="rv-lockup-top" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={topId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#ffffff" stopOpacity="0.28" />
             <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
         </defs>
         <g transform="rotate(45 16 16)">
-          <rect x="5" y="5" width="22" height="22" rx="5.5" fill="url(#rv-lockup-face)" />
-          <rect x="5" y="5" width="22" height="11" rx="5.5" fill="url(#rv-lockup-top)" />
+          <rect x="5" y="5" width="22" height="22" rx="5.5" fill={`url(#${faceId})`} />
+          <rect x="5" y="5" width="22" height="11" rx="5.5" fill={`url(#${topId})`} />
         </g>
       </svg>
       {wordmark && (
