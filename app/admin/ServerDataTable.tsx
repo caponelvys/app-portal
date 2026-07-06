@@ -332,7 +332,21 @@ export default function ServerDataTable<T>({
           <span className="flex items-center gap-2">
             <button disabled={state.page <= 1} onClick={() => goPage(state.page - 1)}
               className="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
-            <span className="text-gray-400">Page {state.page} of {totalPages}</span>
+            <span className="flex items-center gap-1.5 text-gray-400">
+              Page
+              <input
+                key={state.page}
+                type="number"
+                min={1}
+                max={totalPages}
+                defaultValue={state.page}
+                aria-label="Go to page"
+                onKeyDown={e => { if (e.key === 'Enter') { const n = parseInt((e.target as HTMLInputElement).value, 10); if (!Number.isNaN(n) && n !== state.page) goPage(Math.min(totalPages, Math.max(1, n))) } }}
+                onBlur={e => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== state.page) goPage(Math.min(totalPages, Math.max(1, n))) }}
+                className="w-14 rounded border border-gray-700 bg-gray-800 px-2 py-1 text-center text-gray-200 focus:border-blue-500 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              of {totalPages}
+            </span>
             <button disabled={state.page >= totalPages} onClick={() => goPage(state.page + 1)}
               className="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
           </span>

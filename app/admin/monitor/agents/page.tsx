@@ -7,12 +7,12 @@ import { resolveDeviceNames } from '@/lib/deviceArchive'
 import { getHealthTier, TIER_LABEL, INACTIVE_MS } from '@/lib/deviceStatus'
 import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import { agentEventLabel } from '@/lib/agentEvents'
-import { parseTableState, timeRangeSince, DEFAULT_PAGE_SIZE } from '@/lib/tableParams'
+import { parseTableState, timeRangeSince } from '@/lib/tableParams'
 import AgentEventsTableServer from './AgentEventsTableServer'
 
 const NO_MATCH = '00000000-0000-0000-0000-000000000000'
 const CMD_LABEL: Record<string, string> = { restart: 'Restart', update: 'Update', uninstall: 'Uninstall' }
-const EVENT_PAGE_SIZE = DEFAULT_PAGE_SIZE
+const EVENT_PAGE_SIZE = 25
 const EV_SORT: Record<string, string> = { level: 'level', event: 'event', message: 'message', time: 'created_at' }
 const ATTENTION_TIERS = ['warning', 'stale', 'lost', 'never'] as const  // offline long enough to matter
 
