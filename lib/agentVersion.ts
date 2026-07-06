@@ -10,7 +10,7 @@ export const AGENT_VERSION = '1.7.15'
 // the agent version and re-installs the companion when it changes, so companion
 // updates ship without a manual reinstall. Bump on any companion change (icon,
 // code); existing installs (no marker) reinstall once to converge.
-export const COMPANION_VERSION = '0.2.0'
+export const COMPANION_VERSION = '0.2.1'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
