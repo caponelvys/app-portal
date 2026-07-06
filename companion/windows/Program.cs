@@ -154,7 +154,7 @@ sealed class RequestForm : Form
     public RequestForm(string deviceId, HttpClient http, Action<string, string> notify)
     {
         _deviceId = deviceId; _http = http; _notify = notify;
-        Text = "Request app access";
+        Text = "Request App Access";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false; MinimizeBox = false; StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(360, 230);
