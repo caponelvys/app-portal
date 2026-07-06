@@ -145,6 +145,10 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
             <p className="text-xs text-gray-500 mt-2">
               Ready to run — this location&apos;s enrollment token is baked in, so devices land here automatically.
             </p>
+            <p className="text-xs text-gray-500 mt-1">
+              macOS: unzip and double-click <span className="text-gray-400">Install Ravyn Agent</span> (first time: right-click → Open),
+              then enter your Mac password. Not signed yet, so Gatekeeper asks once.
+            </p>
           </div>
         )}
 

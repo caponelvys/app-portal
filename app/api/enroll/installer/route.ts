@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
+import { zipSingleExecutable } from '@/lib/zip'
 
 // Per-location installer download. Fetches the base installer script and bakes
 // the location's enrollment token into it, so the downloaded file self-enrolls
@@ -36,6 +37,31 @@ export async function GET(req: NextRequest) {
   if (error) return new NextResponse(`Lookup failed: ${error.message}`, { status: 500 })
   const token = loc?.enrollment_token
   if (!token) return new NextResponse('Location has no enrollment token', { status: 404 })
+
+  // macOS: a raw .sh opens in TextEdit on double-click and needs sudo. Ship a
+  // double-clickable `.command` (self-elevates via a native password prompt) inside
+  // a zip — the zip preserves the exec bit that an HTTP download can't carry.
+  if (os === 'mac') {
+    const installUrl = `${req.nextUrl.origin}/downloads/install_mac.sh`
+    const command = [
+      '#!/bin/bash',
+      '# Ravyn Agent — double-click to install. macOS will ask for your password once.',
+      'echo "Installing the Ravyn Agent…"',
+      `osascript -e 'do shell script "curl -fsSL ${installUrl} | bash -s -- --token ${token}" with administrator privileges'`,
+      'code=$?',
+      'if [ "$code" = "0" ]; then echo "Ravyn Agent installed. You can close this window."; else echo "Install did not complete (code $code). Contact your administrator."; fi',
+      '',
+    ].join('\n')
+    const zip = zipSingleExecutable('Install Ravyn Agent.command', command)
+    return new NextResponse(new Uint8Array(zip), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': 'attachment; filename="Install-Ravyn-Agent-macOS.zip"',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
 
   // Base scripts live in /public/downloads; fetch over HTTP so this works the
   // same in dev and on Vercel (public assets are CDN-served, not on the fn fs).
