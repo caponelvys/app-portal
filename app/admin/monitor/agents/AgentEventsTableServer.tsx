@@ -38,12 +38,15 @@ export default function AgentEventsTableServer({
     {
       id: 'level', label: 'Level', defaultWidth: 110,
       filter: { type: 'select', options: LEVEL_OPTIONS },
-      renderCell: r => (
-        <span className="inline-flex items-center gap-1.5 text-xs text-gray-300 capitalize">
-          <span className={`w-2 h-2 rounded-full ${LEVEL_DOT[r.level] ?? 'bg-gray-500'}`} />
-          {r.level}
-        </span>
-      ),
+      renderCell: r => {
+        const badge = ({ info: 'bg-gray-800 text-gray-300', warn: 'bg-amber-950/50 text-amber-300', error: 'bg-red-950/50 text-red-300' } as Record<string, string>)[r.level] ?? 'bg-gray-800 text-gray-400'
+        return (
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${badge}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${LEVEL_DOT[r.level] ?? 'bg-gray-500'}`} />
+            {r.level}
+          </span>
+        )
+      },
     },
     {
       id: 'event', label: 'Event', defaultWidth: 170,

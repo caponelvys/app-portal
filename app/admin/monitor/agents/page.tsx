@@ -99,10 +99,10 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
   const hostnameById = await resolveDeviceNames(admin, [...evList, ...recentErrors].map(e => e.device_id))
 
   // Needs attention: recent error events (24h) + a preview of long-offline devices.
-  const attention: { hostname: string; issue: string; time: string | null; level: 'error' | 'warn' }[] = [
-    ...recentErrors.map(e => ({ hostname: hostnameById[e.device_id] ?? e.device_id, issue: `${agentEventLabel(e.event)}${e.message ? ' — ' + e.message : ''}`, time: e.created_at, level: 'error' as const })),
+  const attention: { title: string; detail: string; device: string; time: string | null; level: 'error' | 'warn' }[] = [
+    ...recentErrors.map(e => ({ title: agentEventLabel(e.event), detail: e.message ?? '', device: hostnameById[e.device_id] ?? e.device_id, time: e.created_at, level: 'error' as const })),
     ...((offlineRows ?? []) as { device_id: string; hostname: string; last_seen: string | null }[])
-      .map(d => ({ hostname: cleanHostname(d.hostname) || d.device_id, issue: `No heartbeat — ${TIER_LABEL[getHealthTier(d.last_seen)]}`, time: d.last_seen, level: 'warn' as const })),
+      .map(d => ({ title: 'No heartbeat', detail: TIER_LABEL[getHealthTier(d.last_seen)], device: cleanHostname(d.hostname) || d.device_id, time: d.last_seen, level: 'warn' as const })),
   ].sort((a, b) => (b.time ?? '').localeCompare(a.time ?? ''))
   const attentionTotal = offlineCount + recentErrors.length
 
@@ -123,7 +123,11 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
         {stats.map(s => (
           <div key={s.label} className="bg-gray-900 rounded-xl border border-gray-800 p-4">
             <p className={`text-2xl font-bold ${
-              s.accent === 'green' ? 'text-green-400' : s.accent === 'red' ? 'text-red-400' : s.accent === 'yellow' ? 'text-yellow-400' : 'text-white'
+              s.value === 0 ? 'text-gray-600'
+              : s.accent === 'green' ? 'text-green-400'
+              : s.accent === 'red' ? 'text-red-400'
+              : s.accent === 'yellow' ? 'text-yellow-400'
+              : 'text-white'
             }`}>{s.value}</p>
             <p className="text-xs text-gray-500 mt-1">{s.label}</p>
           </div>
@@ -133,8 +137,14 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
       {/* Needs attention — the hero */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Needs attention</h2>
-          {attentionTotal > attention.slice(0, 6).length && <span className="text-xs text-gray-500">showing {Math.min(6, attention.length)} of {attentionTotal} — filter events below for the rest</span>}
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />Needs attention
+          </h2>
+          {attentionTotal > 0 && (
+            <span className="text-xs text-gray-500">
+              Showing {Math.min(6, attention.length)} of {attentionTotal} · <a href="?level=error" className="text-blue-400 hover:text-blue-300">view all</a>
+            </span>
+          )}
         </div>
         {attention.length === 0 ? (
           <p className="text-gray-500 text-sm">All agents healthy and reporting in.</p>
@@ -142,12 +152,15 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
           <div className="divide-y divide-gray-800 -mx-4 -mb-4">
             {attention.slice(0, 6).map((a, i) => (
               <div key={i} className="flex items-start gap-3 px-4 py-2.5">
-                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${a.level === 'error' ? 'bg-red-500' : 'bg-orange-400'}`} />
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.level === 'error' ? 'bg-red-500' : 'bg-amber-400'}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-white truncate">{a.hostname}</p>
-                  <p className="text-xs text-gray-400 truncate">{a.issue}</p>
+                  <p className="truncate text-sm font-medium text-white">{a.title}</p>
+                  {a.detail && <p className="truncate text-xs text-gray-500">{a.detail}</p>}
                 </div>
-                <span className="text-xs text-gray-600 whitespace-nowrap">{a.time ? new Date(a.time).toLocaleDateString() : ''}</span>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-gray-400">{a.device}</p>
+                  <p className="text-xs text-gray-600">{a.time ? new Date(a.time).toLocaleDateString() : ''}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -190,7 +203,13 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
                   </span>
                 )
               })}
-              <span className="text-xs text-gray-500 self-center ml-1">latest v{AGENT_VERSION}</span>
+              {outdated === 0 ? (
+                <span className="ml-1 flex items-center gap-1.5 self-center text-xs text-green-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-400" />all on latest v{AGENT_VERSION}
+                </span>
+              ) : (
+                <span className="ml-1 self-center text-xs text-gray-500">latest v{AGENT_VERSION}</span>
+              )}
             </div>
           )}
         </div>
