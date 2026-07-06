@@ -134,8 +134,12 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
         ))}
       </div>
 
-      {/* Needs attention — the hero */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+      {/* Needs attention — the hero. Red glow only when something's actually wrong. */}
+      <div className={`rounded-xl border p-4 ${
+        attentionTotal > 0
+          ? 'border-red-900/60 bg-red-950/10 shadow-[0_0_60px_-15px_rgba(239,68,68,0.45)]'
+          : 'border-gray-800 bg-gray-900'
+      }`}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             <span className="h-1.5 w-1.5 rounded-full bg-red-500" />Needs attention
