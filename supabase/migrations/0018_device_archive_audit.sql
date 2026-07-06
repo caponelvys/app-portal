@@ -8,12 +8,17 @@
 -- filters on org_id). We now snapshot the device's identity into device_archive
 -- on delete and resolve the timeline from devices ∪ archive.
 
+-- device_id is TEXT to match agent_logs.device_id / devices.device_id (both text,
+-- despite looking like UUIDs). org_id is uuid to match devices.org_id.
 create table if not exists public.device_archive (
-  device_id  uuid primary key,
+  device_id  text primary key,
   hostname   text,
   org_id     uuid,
   deleted_at timestamptz not null default now()
 );
+-- Fix an earlier draft that created device_id as uuid (table is empty → safe;
+-- no-op once it's already text, so this stays idempotent on fresh DBs).
+alter table public.device_archive alter column device_id type text using device_id::text;
 grant select, insert, update on public.device_archive to service_role;
 -- RLS on with no policies → anon/authenticated denied; service_role bypasses RLS,
 -- so the admin-client reads/writes (archiveDevice, resolveDeviceNames) still work.
