@@ -139,7 +139,7 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
           when something's actually wrong. */}
       <div className={`rounded-xl border border-gray-800 p-4 ${
         attentionTotal > 0
-          ? 'bg-gray-900 bg-[linear-gradient(180deg,rgba(239,68,68,0.22),transparent_100px)]'
+          ? 'bg-gray-900 bg-[linear-gradient(180deg,rgba(239,68,68,0.42),transparent_120px)]'
           : 'bg-gray-900'
       }`}>
         <div className="flex items-center justify-between mb-3">
