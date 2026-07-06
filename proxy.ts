@@ -32,8 +32,9 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
-  // Redirect unauthenticated users to /login (except on auth pages and public agent downloads)
-  const pub = ['/login', '/signup', '/reset-password', '/downloads', '/api/enroll', '/api/agent', '/auth/callback']
+  // Redirect unauthenticated users to /login (except on auth pages, public agent
+  // downloads, and device-authenticated APIs the agent/companion call without a session)
+  const pub = ['/login', '/signup', '/reset-password', '/downloads', '/api/enroll', '/api/agent', '/api/device-request', '/auth/callback']
   if (!user && !pub.some(p => path.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
