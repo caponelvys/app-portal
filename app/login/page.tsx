@@ -63,6 +63,23 @@ function LoginForm() {
     if (error) setError(error.message)
   }
 
+  // SAML SSO by work-email domain. Redirects to the org's IdP once a SAML provider
+  // is registered in Supabase for that domain; until then it explains the fallback.
+  async function continueWithSSO() {
+    setError('')
+    const domain = email.split('@')[1]?.trim().toLowerCase()
+    if (!domain) {
+      setError('Enter your work email above, then continue with SSO.')
+      return
+    }
+    const { data, error } = await supabase.auth.signInWithSSO({ domain })
+    if (error || !data?.url) {
+      setError("Single sign-on isn't set up for your organization yet — use Microsoft, Google, or email.")
+      return
+    }
+    window.location.href = data.url
+  }
+
   const inputClass =
     'w-full rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40'
 
@@ -102,8 +119,11 @@ function LoginForm() {
             <BrandLockup markSize={40} />
           </div>
 
-          <h1 style={display} className="text-3xl font-bold text-white">Sign in</h1>
-          <p className="mt-2 text-gray-400">Welcome back. Use your work account.</p>
+          {/* Heading — desktop only; mobile goes straight from the lockup to SSO */}
+          <div className="hidden lg:block">
+            <h1 style={display} className="text-3xl font-bold text-white">Sign in</h1>
+            <p className="mt-2 text-gray-400">Welcome back. Use your work account.</p>
+          </div>
 
           {notice && (
             <p className="mt-6 rounded-lg border border-amber-900/60 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
@@ -111,8 +131,17 @@ function LoginForm() {
             </p>
           )}
 
-          {/* SSO providers */}
-          <div className="mt-8 grid grid-cols-2 gap-3">
+          {/* Primary: SAML SSO */}
+          <button
+            onClick={continueWithSSO}
+            className="mt-4 lg:mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-base font-semibold text-white hover:bg-blue-700"
+          >
+            <LockIcon />
+            Continue with SSO
+          </button>
+
+          {/* OAuth providers */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <button
               onClick={() => signInWith('azure')}
               className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800/60 py-3 text-sm font-medium text-white hover:bg-gray-700"
@@ -168,7 +197,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-blue-600 py-3 text-base font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="w-full rounded-xl border border-gray-700 bg-gray-800/60 py-3 text-base font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
@@ -178,6 +207,15 @@ function LoginForm() {
         </div>
       </main>
     </div>
+  )
+}
+
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
   )
 }
 
