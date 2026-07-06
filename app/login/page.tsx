@@ -15,6 +15,8 @@ const TIMEOUT_MESSAGES: Record<string, string> = {
   expired: 'Your session reached its 12-hour limit. Please sign in again.',
 }
 
+const display = { fontFamily: 'var(--font-display)' } as const
+
 export default function LoginPage() {
   return (
     <Suspense>
@@ -61,39 +63,100 @@ function LoginForm() {
     if (error) setError(error.message)
   }
 
+  const inputClass =
+    'w-full rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40'
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-transparent px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900/70 backdrop-blur-sm p-8 sm:p-10 shadow-xl">
-        <div>
-          <div className="flex justify-center mb-5">
-            <BrandLockup markSize={44} />
+    <div className="min-h-screen grid lg:grid-cols-2">
+      {/* ── Left: brand / marketing (lg and up) ── */}
+      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-gray-800 p-12 xl:p-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-32 top-8 h-[40rem] w-[40rem] rounded-full"
+          style={{ background: 'radial-gradient(closest-side, rgba(124,92,255,0.20), transparent)' }}
+        />
+        <div className="relative">
+          <BrandLockup markSize={30} />
+        </div>
+
+        <div className="relative max-w-xl">
+          <h2 style={display} className="text-5xl font-bold leading-[1.05] tracking-tight text-white">
+            One control plane for every endpoint.
+          </h2>
+          <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-400">
+            Push apps, set allow/block policy, and see every managed device — from a single lightweight agent.
+          </p>
+        </div>
+
+        <div className="relative flex gap-12">
+          <div>
+            <p style={display} className="text-xl font-semibold text-white">Windows · macOS · Linux</p>
+            <p className="mt-1 text-sm text-gray-500">one lightweight agent per device</p>
           </div>
-          <h1 className="text-3xl font-bold text-white text-center">Sign in</h1>
-          <p className="mt-2 mb-8 text-center text-gray-400">Control plane for every endpoint</p>
+          <div>
+            <p style={display} className="text-xl font-semibold text-white">Allow / block</p>
+            <p className="mt-1 text-sm text-gray-500">policy enforced in real time</p>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Right: sign in ── */}
+      <main className="flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex justify-center lg:hidden">
+            <BrandLockup markSize={40} />
+          </div>
+
+          <h1 style={display} className="text-3xl font-bold text-white">Sign in</h1>
+          <p className="mt-2 text-gray-400">Welcome back. Use your work account.</p>
 
           {notice && (
-            <p className="mb-5 text-sm text-amber-300 bg-amber-950/40 border border-amber-900/60 rounded-lg px-3 py-2">
+            <p className="mt-6 rounded-lg border border-amber-900/60 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
               {notice}
             </p>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          {/* SSO providers */}
+          <div className="mt-8 grid grid-cols-2 gap-3">
+            <button
+              onClick={() => signInWith('azure')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800/60 py-3 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              <MicrosoftIcon />
+              Microsoft
+            </button>
+            <button
+              onClick={() => signInWith('google')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800/60 py-3 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              <GoogleIcon />
+              Google
+            </button>
+          </div>
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-800" />
+            <span className="text-xs text-gray-500">or email</span>
+            <div className="h-px flex-1 bg-gray-800" />
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-300">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
                 placeholder="you@company.com"
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="mb-1.5 flex items-center justify-between">
                 <label className="block text-sm font-medium text-gray-300">Password</label>
-                <a href="/reset-password" className="text-xs text-blue-400 hover:underline">Forgot password?</a>
+                <a href="/reset-password" className="text-xs text-blue-400 hover:underline">Forgot?</a>
               </div>
               <input
                 type="password"
@@ -101,11 +164,11 @@ function LoginForm() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+                className={inputClass}
               />
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-sm text-red-400">{error}</p>}
 
             <button
               type="submit"
@@ -116,32 +179,9 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-gray-800" />
-            <span className="text-xs text-gray-500">or continue with</span>
-            <div className="flex-1 h-px bg-gray-800" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => signInWith('azure')}
-              className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              <MicrosoftIcon />
-              Microsoft
-            </button>
-            <button
-              onClick={() => signInWith('google')}
-              className="flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              <GoogleIcon />
-              Google
-            </button>
-          </div>
-
           <p className="mt-8 text-center text-xs text-gray-500">SSO · SAML · one lightweight agent</p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
