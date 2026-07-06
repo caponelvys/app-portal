@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react'
 
 /**
- * Ravyn brand lockup — the faceted violet mark plus the "Ravyn" wordmark.
- * Use `wordmark={false}` for the mark on its own. Colors are the fixed brand
- * facets (do not recolor per the brand guide).
+ * Ravyn brand lockup — the glossy violet gradient diamond mark plus the "Ravyn"
+ * wordmark. Use `wordmark={false}` for the mark on its own. The mark is the flat
+ * (glow-free) variant so it stays crisp at nav/login sizes and matches the
+ * favicon; don't recolor the gradient per the brand guide.
  */
 export default function BrandLockup({
   className = '',
@@ -21,15 +22,39 @@ export default function BrandLockup({
       role={wordmark ? undefined : 'img'}
       aria-label={wordmark ? undefined : 'Ravyn'}
     >
-      <svg width={markSize} height={markSize} viewBox="0 0 48 48" aria-hidden="true">
-        <polygon points="24,5 24,24 5,24" fill="#7C5CFF" />
-        <polygon points="24,5 43,24 24,24" fill="#5B3FF0" />
-        <polygon points="24,24 43,24 24,43" fill="#7C5CFF" />
-        <polygon points="24,24 5,24 24,43" fill="#5B3FF0" />
+      <svg width={markSize} height={markSize} viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <linearGradient id="rv-lockup-face" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#6b8bff" />
+            <stop offset="0.55" stopColor="#7c5cff" />
+            <stop offset="1" stopColor="#6d3fe0" />
+          </linearGradient>
+          <linearGradient id="rv-lockup-top" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.28" />
+            <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <g transform="rotate(45 16 16)">
+          <rect x="5" y="5" width="22" height="22" rx="5.5" fill="url(#rv-lockup-face)" />
+          <rect x="5" y="5" width="22" height="11" rx="5.5" fill="url(#rv-lockup-top)" />
+        </g>
       </svg>
       {wordmark && (
-        <span style={displayStyle} className="text-xl font-semibold tracking-tight text-white">
-          Ravyn
+        <span
+          style={{ ...displayStyle, fontSize: markSize * 0.9, lineHeight: 1 }}
+          className="font-semibold tracking-tight"
+        >
+          <span className="text-white">Rav</span>
+          <span
+            style={{
+              background: 'linear-gradient(180deg, #B9A8FF 0%, #7C5CFF 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            yn
+          </span>
         </span>
       )}
     </span>

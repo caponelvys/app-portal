@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" role="img" aria-label="Ravyn">
+  <defs>
+    <linearGradient id="rv-face" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6b8bff"></stop>
+      <stop offset="0.55" stop-color="#7c5cff"></stop>
+      <stop offset="1" stop-color="#6d3fe0"></stop>
+    </linearGradient>
+    <linearGradient id="rv-spec" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"></stop>
+      <stop offset="0.52" stop-color="#ffffff" stop-opacity="0"></stop>
+    </linearGradient>
+    <linearGradient id="rv-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"></stop>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+    </linearGradient>
+    <filter id="rv-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#7c5cff" flood-opacity="0.6"></feDropShadow>
+    </filter>
+  </defs>
+  <g transform="rotate(45 20 20)" filter="url(#rv-glow)">
+    <rect x="9" y="9" width="22" height="22" rx="5.5" fill="url(#rv-face)"></rect>
+    <rect x="9" y="9" width="22" height="11" rx="5.5" fill="url(#rv-top)"></rect>
+    <rect x="9" y="9" width="22" height="22" rx="5.5" fill="url(#rv-spec)"></rect>
+  </g>
+</svg>

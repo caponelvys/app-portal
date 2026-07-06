@@ -66,9 +66,9 @@ function LoginForm() {
       <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900/70 backdrop-blur-sm p-8 sm:p-10 shadow-xl">
         <div>
           <div className="flex justify-center mb-5">
-            <BrandLockup markSize={44} wordmark={false} />
+            <BrandLockup markSize={44} />
           </div>
-          <h1 className="text-3xl font-bold text-white text-center">Sign in to Ravyn</h1>
+          <h1 className="text-3xl font-bold text-white text-center">Sign in</h1>
           <p className="mt-2 mb-8 text-center text-gray-400">Control plane for every endpoint</p>
 
           {notice && (

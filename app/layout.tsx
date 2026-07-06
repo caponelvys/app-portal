@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description: "Ravyn — cross-platform app control for managed fleets.",
   icons: {
     icon: [
-      { url: "/brand/ravyn-mark-primary.svg", type: "image/svg+xml" },
+      { url: "/brand/ravyn-mark.svg", type: "image/svg+xml" },
       { url: "/brand/png/favicon-32.png", type: "image/png", sizes: "32x32" },
     ],
     apple: [{ url: "/brand/png/appicon-180.png", sizes: "180x180" }],
