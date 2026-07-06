@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.11"
+AGENT_VERSION = "1.7.12"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -628,6 +628,74 @@ def clear_command(device_id):
     except Exception:
         return False
 
+def _teardown_companion():
+    """Remove the per-user Ravyn Companion (menu-bar/tray app + login autostart)
+    that the agent installed into the console user's session. The companion lives
+    in the logged-in user's profile/home and hive, which the SYSTEM/root agent
+    can't delete directly, so removal is dispatched into that user's context.
+    Best-effort — a companion-teardown failure must never abort the agent uninstall."""
+    user = get_device_user()
+    try:
+        if OS == "Darwin":
+            # Unload the LaunchAgent from the user's GUI session, then remove the
+            # app (both the fleet-wide /Applications and the standalone ~/Applications
+            # install locations) and the per-user plist.
+            if user and user != "root":
+                try:
+                    uid = subprocess.check_output(["id", "-u", user], text=True).strip()
+                    subprocess.run(["launchctl", "bootout", f"gui/{uid}/app.ravyn.companion"],
+                                   capture_output=True, timeout=10)
+                except Exception:
+                    pass
+                try:
+                    home = subprocess.check_output(
+                        ["dscl", ".", "-read", f"/Users/{user}", "NFSHomeDirectory"],
+                        text=True).split()[-1]
+                except Exception:
+                    home = f"/Users/{user}"
+                for p in (f"{home}/Library/LaunchAgents/app.ravyn.companion.plist",
+                          f"{home}/Applications/Ravyn.app"):
+                    try: os.remove(p) if os.path.isfile(p) else shutil.rmtree(p, ignore_errors=True)
+                    except Exception: pass
+            subprocess.run(["pkill", "-f", "Ravyn.app/Contents/MacOS/Ravyn"], capture_output=True)
+            shutil.rmtree("/Applications/Ravyn.app", ignore_errors=True)
+        elif OS == "Windows":
+            # The companion (exe under %LOCALAPPDATA%\Ravyn + HKCU Run key) sits in
+            # the user's profile and hive. Run the teardown in the user's own session
+            # via a one-shot interactive scheduled task; it deletes itself when done.
+            if user:
+                base = r"C:\ProgramData\Ravyn"
+                script_path = base + r"\companion_teardown.ps1"
+                task = "Ravyn_CompanionTeardown"
+                ps = (
+                    "$ErrorActionPreference='SilentlyContinue'\n"
+                    "Get-Process RavynCompanion | Stop-Process -Force\n"
+                    "Remove-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'RavynCompanion'\n"
+                    "Remove-Item -Recurse -Force (Join-Path $env:LOCALAPPDATA 'Ravyn')\n"
+                    f"schtasks /delete /tn {task} /f\n"
+                )
+                try:
+                    os.makedirs(base, exist_ok=True)
+                    with open(script_path, "w") as f:
+                        f.write(ps)
+                    subprocess.run(["schtasks", "/create", "/tn", task, "/f", "/sc", "ONCE",
+                                    "/st", "00:00", "/ru", user, "/it", "/tr",
+                                    f'powershell -NoProfile -ExecutionPolicy Bypass -File "{script_path}"'],
+                                   capture_output=True, text=True, timeout=30)
+                    subprocess.run(["schtasks", "/run", "/tn", task], capture_output=True, timeout=30)
+                except Exception:
+                    pass
+        elif OS == "Linux":
+            if user and user != "root":
+                home = os.path.expanduser(f"~{user}")
+                for p in (f"{home}/.config/autostart/ravyn-companion.desktop",
+                          f"{home}/.local/bin/RavynCompanion"):
+                    try: os.remove(p)
+                    except Exception: pass
+            subprocess.run(["pkill", "-f", "RavynCompanion"], capture_output=True)
+    except Exception as e:
+        print(f"[agent] Companion teardown error: {e}")
+
 def uninstall_agent(device_id=None):
     """Remove our portal record, then the service + installed files, then stop.
     Best-effort per OS."""
@@ -637,6 +705,9 @@ def uninstall_agent(device_id=None):
             requests.post(f"{PORTAL_URL}/api/devices/{device_id}/self-remove", timeout=10)
         except Exception:
             pass
+    # Tear down the user-session companion before removing our own footprint, so
+    # the tray/menu-bar app + its login autostart don't linger after the agent's gone.
+    _teardown_companion()
     try:
         # Remove both the current (Ravyn) and legacy (AppController) service names
         # and data dirs, so uninstall fully cleans up regardless of install vintage.

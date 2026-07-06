@@ -34,6 +34,17 @@ icons — you can drag it onto the taskbar to keep it visible).
 - **Right-click → Request access…** → reads `C:\Ravyn\.device_id`, lists the
   blocked apps you can request, and submits to `POST /api/device-request`.
 
+## Uninstall
+
+```powershell
+iwr https://appcontroller.vercel.app/downloads/uninstall-companion.ps1 | iex
+```
+
+Stops `RavynCompanion`, removes the per-user autostart Run key, and deletes
+`%LOCALAPPDATA%\Ravyn`. No admin needed. The Ravyn Agent, if installed, is left
+untouched. A portal-issued agent uninstall (agent ≥ v1.7.12) also does this
+automatically, via a one-shot task in the user's session.
+
 ## How it fits together
 
 - Reads `device_id` from `C:\Ravyn\.device_id` (written by the agent).

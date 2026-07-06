@@ -1,5 +1,17 @@
 # Ravyn Agent — Changelog
 
+## v1.7.12 — 2026-07-06
+- Self-uninstall now tears down the user-session Ravyn Companion too, so a
+  portal-issued uninstall leaves nothing behind. macOS unloads the
+  `app.ravyn.companion` LaunchAgent from the console user's session and deletes
+  `Ravyn.app` (both the fleet `/Applications` and standalone `~/Applications`
+  copies) + the plist. Windows runs a one-shot interactive scheduled task in the
+  user's session to stop `RavynCompanion`, remove its `HKCU\...\Run` autostart
+  entry, and delete `%LOCALAPPDATA%\Ravyn`. No effect on devices without the
+  companion.
+- Added standalone `uninstall-companion.sh` (macOS) / `uninstall-companion.ps1`
+  (Windows) to reverse the manual companion install.
+
 ## v1.7.11 — 2026-07-05
 - Windows: grant the Users group modify rights on the companion notification
   spool (`C:\Ravyn\notify`) via `icacls`, so the user-session Ravyn Companion can

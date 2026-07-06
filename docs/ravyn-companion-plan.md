@@ -167,8 +167,12 @@ endpoint(s).
       `UNUserNotificationCenter`, spool watcher, `/api/device-request` client.
 - [ ] **Windows app** — C#/.NET tray app: NotifyIcon, request window, toast via
       AUMID + Ravyn icon, spool watcher, API client.
-- [ ] **Agent** — write notification requests to the spool; keep osascript/msg
-      fallback when the companion isn't present.
+- [x] **Agent** — write notification requests to the spool; keep osascript/msg
+      fallback when the companion isn't present. *(v1.7.10–1.7.11.)*
+- [x] **Agent uninstall teardown** — a portal-issued agent uninstall also removes
+      the user-session companion (LaunchAgent + app on macOS; a per-user task that
+      clears the Run key + install dir on Windows). Standalone
+      `uninstall-companion.{sh,ps1}` reverse the manual install. *(v1.7.12.)*
 - [ ] **CI** — macOS job (xcodebuild → codesign → notarytool → staple) + Windows
       job (dotnet publish → sign). Installers place the companion + autostart
       (LaunchAgent / logon task) and register the Windows AUMID shortcut.

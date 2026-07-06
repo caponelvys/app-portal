@@ -30,6 +30,18 @@ notifications — click **Allow**.
   submits to `POST /api/device-request`. The request shows up in the portal's
   **Requests** queue for an admin.
 
+## Uninstall
+
+```bash
+cd companion/macos
+bash uninstall-companion.sh
+```
+
+Unloads the `app.ravyn.companion` LaunchAgent, removes the plist, and deletes
+`Ravyn.app` (from both `~/Applications` and the fleet-wide `/Applications` — the
+latter needs `sudo`). The Ravyn Agent, if installed, is left untouched. A
+portal-issued agent uninstall (agent ≥ v1.7.12) also does this automatically.
+
 ## How it fits together
 
 - Reads `device_id` from `/usr/local/ravyn/.device_id` (written by the agent).

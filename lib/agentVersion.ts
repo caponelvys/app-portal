@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.11'
+export const AGENT_VERSION = '1.7.12'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.12',
+    date: '2026-07-06',
+    changes: [
+      'On self-uninstall the agent now also removes the user-session Ravyn Companion (menu-bar/tray app + its login autostart), so a portal-issued uninstall leaves nothing behind. macOS unloads the LaunchAgent and deletes the app; Windows runs a one-shot per-user task to stop the app, clear its Run key, and delete its install dir. No effect on devices without the companion.',
+    ],
+  },
   {
     version: '1.7.11',
     date: '2026-07-05',
