@@ -1,5 +1,12 @@
 # Ravyn Agent — Changelog
 
+## v1.7.10 — 2026-07-05
+- When the Ravyn Companion (user-session app) is running, notifications are routed
+  to it through a world-writable spool dir (`<data>/notify/`) so they render with
+  the Ravyn logo instead of the plain osascript/msg banner. The companion posts a
+  heartbeat; if it's stale/absent the agent falls back to the direct method, so
+  devices without the companion are unaffected.
+
 ## v1.7.9 — 2026-07-05
 - Report a stable, user-recognizable device name. On macOS the agent now uses
   the ComputerName (from System Settings) instead of `socket.gethostname()`,

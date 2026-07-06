@@ -15,6 +15,7 @@ import secrets
 import hashlib
 import platform
 import subprocess
+import json
 import requests
 from datetime import datetime, timezone
 
@@ -27,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.9"
+AGENT_VERSION = "1.7.10"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -104,6 +105,29 @@ _migrate_state_dir()
 DEVICE_ID_FILE = os.path.join(DATA_DIR, ".device_id")
 PAIRING_CODE_FILE = os.path.join(DATA_DIR, ".pairing_code")
 ENROLLMENT_TOKEN_FILE = os.path.join(DATA_DIR, ".enrollment_token")
+
+# The Ravyn Companion (user-session app) can't be reached across the session
+# boundary directly, so we hand it notifications via a world-writable spool dir.
+# The companion drops a heartbeat here; if it's fresh we route notifications to
+# the spool (branded, with the Ravyn logo) instead of the plain osascript/msg.
+COMPANION_SPOOL = os.path.join(DATA_DIR, "notify")
+COMPANION_HEARTBEAT = os.path.join(COMPANION_SPOOL, ".companion_alive")
+
+def _ensure_companion_spool():
+    """Create the spool dir world-writable so the user-session companion can drop
+    its heartbeat and delete consumed notifications. Best-effort."""
+    try:
+        os.makedirs(COMPANION_SPOOL, exist_ok=True)
+        if OS != "Windows":
+            os.chmod(COMPANION_SPOOL, 0o777)
+    except Exception:
+        pass
+
+def _companion_alive():
+    try:
+        return (time.time() - os.path.getmtime(COMPANION_HEARTBEAT)) < 30
+    except Exception:
+        return False
 # User-facing page where a device owner enters their pairing code. Kept separate
 # from PORTAL_URL (the API base) so it can't break the /api/enroll endpoint.
 PAIRING_URL = "https://appcontroller.vercel.app/devices"
@@ -426,6 +450,21 @@ def notify_user(title, message):
     # sanitize anyway.
     title = title.replace('"', "'")
     message = message.replace('"', "'")
+    # Prefer the Ravyn Companion (branded, shows the Ravyn logo) when it's running.
+    if _companion_alive():
+        try:
+            _ensure_companion_spool()
+            path = os.path.join(COMPANION_SPOOL, f"{int(time.time() * 1000)}-{secrets.token_hex(4)}.json")
+            with open(path, "w") as f:
+                json.dump({"title": title, "message": message}, f)
+            try:
+                if OS != "Windows":
+                    os.chmod(path, 0o666)
+            except Exception:
+                pass
+            return
+        except Exception:
+            pass  # fall through to the direct method below
     try:
         if OS == "Darwin":
             uid = subprocess.check_output(["id", "-u", user], text=True).strip()
@@ -1153,6 +1192,9 @@ def main():
     print(f"[agent] Starting — device ID: {device_id}")
     print(f"[agent] OS: {OS} | Polling every {POLL_INTERVAL}s")
     log_event(device_id, "info", "started", f"Agent v{AGENT_VERSION} started on {OS_LABEL}")
+
+    # Create the companion spool so the user-session app can post its heartbeat.
+    _ensure_companion_spool()
 
     # Remove the previous exe left behind by a frozen self-update.
     if IS_FROZEN and OS == "Windows":

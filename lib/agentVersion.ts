@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.9'
+export const AGENT_VERSION = '1.7.10'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.10',
+    date: '2026-07-05',
+    changes: [
+      'When the Ravyn Companion (user-session app) is running, notifications are routed to it via a spool directory so they show with the Ravyn logo, instead of the plain osascript/msg banner. Falls back to the direct method when the companion isn’t present, so nothing changes on devices without it.',
+    ],
+  },
   {
     version: '1.7.9',
     date: '2026-07-05',

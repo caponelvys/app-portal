@@ -129,8 +129,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     // MARK: agent → companion spool
     private func startSpoolWatcher() {
         spoolTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            guard let self,
-                  let files = try? FileManager.default.contentsOfDirectory(atPath: NOTIFY_SPOOL)
+            guard let self else { return }
+            // Heartbeat: tells the agent the companion is alive, so it routes
+            // notifications here (branded) instead of plain osascript.
+            try? "alive".write(toFile: NOTIFY_SPOOL + "/.companion_alive", atomically: true, encoding: .utf8)
+            guard let files = try? FileManager.default.contentsOfDirectory(atPath: NOTIFY_SPOOL)
             else { return }
             for f in files where f.hasSuffix(".json") {
                 let full = NOTIFY_SPOOL + "/" + f
