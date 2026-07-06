@@ -96,29 +96,26 @@ function LoginForm() {
       />
 
       <div className="relative grid min-h-screen lg:grid-cols-2">
-      {/* ── Left: brand / marketing (lg and up) ── */}
-      <aside className="hidden lg:flex flex-col p-12 xl:p-16">
+      {/* ── Left: brand / marketing (lg and up). Lockup pinned top-left, hero
+          headline in the vertical middle, stats anchored bottom-left. ── */}
+      <aside className="hidden lg:flex flex-col justify-between p-12 xl:p-16">
         <BrandLockup markSize={30} />
-        {/* Hero cluster vertically centered so it shares an optical baseline with
-            the form; the stats sit right under it (no stranded bottom quadrant). */}
-        <div className="flex flex-1 flex-col justify-center">
-          <div className="max-w-xl">
-            <h2 style={display} className="text-5xl font-bold leading-[1.05] tracking-tight text-white">
-              One control plane for every endpoint.
-            </h2>
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-400">
-              Push apps, set allow/block policy, and see every managed device — from a single lightweight agent.
-            </p>
-            <div className="mt-10 flex gap-12">
-              <div>
-                <p style={display} className="text-xl font-semibold text-white">Windows · macOS · Linux</p>
-                <p className="mt-1 text-sm text-gray-500">one lightweight agent per device</p>
-              </div>
-              <div>
-                <p style={display} className="text-xl font-semibold text-white">Allow / block</p>
-                <p className="mt-1 text-sm text-gray-500">policy enforced in real time</p>
-              </div>
-            </div>
+        <div className="max-w-xl">
+          <h2 style={display} className="text-5xl font-bold leading-[1.05] tracking-tight text-white">
+            One control plane for every endpoint.
+          </h2>
+          <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-400">
+            Push apps, set allow/block policy, and see every managed device — from a single lightweight agent.
+          </p>
+        </div>
+        <div className="flex gap-12">
+          <div>
+            <p style={display} className="text-xl font-semibold text-white">Windows · macOS · Linux</p>
+            <p className="mt-1 text-sm text-gray-500">one lightweight agent per device</p>
+          </div>
+          <div>
+            <p style={display} className="text-xl font-semibold text-white">Allow / block</p>
+            <p className="mt-1 text-sm text-gray-500">policy enforced in real time</p>
           </div>
         </div>
       </aside>
