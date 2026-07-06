@@ -57,11 +57,16 @@ sealed class TrayContext : ApplicationContext
     {
         try
         {
-            var path = System.IO.Path.Combine(AppContext.BaseDirectory, "ravyn.png");
-            using var bmp = new Bitmap(path);
-            return Icon.FromHandle(bmp.GetHicon());
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            var name = Array.Find(asm.GetManifestResourceNames(), n => n.EndsWith("ravyn.png", StringComparison.OrdinalIgnoreCase));
+            if (name is not null)
+            {
+                using var s = asm.GetManifestResourceStream(name);
+                if (s is not null) { using var bmp = new Bitmap(s); return Icon.FromHandle(bmp.GetHicon()); }
+            }
         }
-        catch { return SystemIcons.Application; }
+        catch { }
+        return SystemIcons.Application;
     }
 
     ContextMenuStrip BuildMenu()

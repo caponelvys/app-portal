@@ -1,0 +1,45 @@
+name: Build Windows companion .exe
+
+# Builds the Ravyn Companion (Windows) as self-contained single-file exes for
+# x64 and arm64 and publishes them to the rolling "agent-latest" release, so
+# devices download a prebuilt binary instead of building from source.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'companion/windows/**'
+      - '.github/workflows/build-companion-exe.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish x64 + arm64
+        shell: pwsh
+        run: |
+          $proj = "companion/windows/RavynCompanion.csproj"
+          dotnet publish $proj -c Release -r win-x64   --self-contained true -p:PublishSingleFile=true -o out-x64
+          dotnet publish $proj -c Release -r win-arm64 --self-contained true -p:PublishSingleFile=true -o out-arm64
+          Copy-Item out-x64/RavynCompanion.exe   RavynCompanion-x64.exe
+          Copy-Item out-arm64/RavynCompanion.exe RavynCompanion-arm64.exe
+
+      - name: Publish to agent-latest release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: agent-latest
+          name: Agent (latest build)
+          prerelease: true
+          files: |
+            RavynCompanion-x64.exe
+            RavynCompanion-arm64.exe

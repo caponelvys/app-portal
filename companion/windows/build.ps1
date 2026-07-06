@@ -11,7 +11,6 @@ dotnet publish -c Release -r $rid --self-contained true -p:PublishSingleFile=tru
 $dest = Join-Path $env:LOCALAPPDATA "Ravyn"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 Copy-Item -Force publish\RavynCompanion.exe $dest\RavynCompanion.exe
-Copy-Item -Force ravyn.png $dest\ravyn.png
 $exe = Join-Path $dest "RavynCompanion.exe"
 
 Write-Host "[build] Registering autostart (per-user Run key)..."

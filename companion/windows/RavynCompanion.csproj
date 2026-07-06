@@ -11,10 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Tray/notification icon, loaded at runtime from next to the exe. -->
-    <None Include="ravyn.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <!-- Tray/notification icon, embedded so the exe is a single self-contained file. -->
+    <EmbeddedResource Include="ravyn.png" />
   </ItemGroup>
 
 </Project>
