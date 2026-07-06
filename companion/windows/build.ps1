@@ -3,8 +3,10 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-$arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
-$rid  = if ($arch -eq "Arm64") { "win-arm64" } else { "win-x64" }
+# True OS arch — RuntimeInformation reports X64 under x64-emulated PowerShell on
+# ARM64. The machine-level registry value is real even under emulation.
+$osArch = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment' -Name PROCESSOR_ARCHITECTURE -ErrorAction SilentlyContinue).PROCESSOR_ARCHITECTURE
+$rid  = if ($osArch -eq "ARM64") { "win-arm64" } else { "win-x64" }
 Write-Host "[build] Publishing self-contained single-file ($rid)..."
 dotnet publish -c Release -r $rid --self-contained true -p:PublishSingleFile=true -o publish
 

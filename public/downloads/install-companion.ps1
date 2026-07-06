@@ -4,7 +4,10 @@
 #   Run:  iwr https://appcontroller.vercel.app/downloads/install-companion.ps1 | iex
 $ErrorActionPreference = "Stop"
 
-$arch = if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') { 'arm64' } else { 'x64' }
+# True OS arch — RuntimeInformation/$env:PROCESSOR_ARCHITECTURE report X64 under
+# x64-emulated PowerShell (5.1) on ARM64. The machine-level registry value is real.
+$osArch = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment' -Name PROCESSOR_ARCHITECTURE -ErrorAction SilentlyContinue).PROCESSOR_ARCHITECTURE
+$arch = if ($osArch -eq 'ARM64') { 'arm64' } else { 'x64' }
 $url  = "https://github.com/caponelvys/app-portal/releases/download/agent-latest/RavynCompanion-$arch.exe"
 $dest = Join-Path $env:LOCALAPPDATA 'Ravyn'
 $exe  = Join-Path $dest 'RavynCompanion.exe'
