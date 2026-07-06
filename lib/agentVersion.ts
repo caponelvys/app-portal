@@ -4,13 +4,13 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.15'
+export const AGENT_VERSION = '1.7.16'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
 // updates ship without a manual reinstall. Bump on any companion change (icon,
 // code); existing installs (no marker) reinstall once to converge.
-export const COMPANION_VERSION = '0.2.1'
+export const COMPANION_VERSION = '0.2.2'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.16',
+    date: '2026-07-06',
+    changes: [
+      'macOS companion updates now refresh the app icon in LaunchServices (lsregister -f) so notifications show the current icon instead of a cached old one. Companion 0.2.2 also switches the macOS app/notification icon to the transparent diamond (no dark tile), matching the tray.',
+    ],
+  },
   {
     version: '1.7.15',
     date: '2026-07-06',

@@ -6,7 +6,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 APP="Ravyn.app"
-ICON_SRC="../../public/brand/png/appicon-512.png"   # repo brand asset
+ICON_SRC="AppIcon.png"   # transparent glossy diamond (no tile) — used for the
+                         # Finder icon and, notably, the notification icon
 
 echo "[build] Compiling…"
 rm -rf build "$APP"

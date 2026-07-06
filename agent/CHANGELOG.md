@@ -1,5 +1,12 @@
 # Ravyn Agent — Changelog
 
+## v1.7.16 — 2026-07-06
+- macOS companion updates now run `lsregister -f` on the installed app so macOS
+  refreshes its icon — notifications show the current icon instead of a cached
+  old one after an in-place update. Paired with companion 0.2.2, whose macOS
+  app/notification icon is now the transparent diamond (no dark tile), matching
+  the menu-bar/tray icon.
+
 ## v1.7.15 — 2026-07-06
 - Fix macOS companion auto-update (from v1.7.14): the agent runs as a root
   session-0 LaunchDaemon, and `launchctl bootstrap gui/<uid>` silently no-ops from

@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.15"
+AGENT_VERSION = "1.7.16"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -643,6 +643,10 @@ def _install_companion_macos(user):
         # (and suppress retries) for a load that didn't take.
         subprocess.run(["launchctl", "asuser", uid, "launchctl", "bootout", f"gui/{uid}/app.ravyn.companion"], capture_output=True)
         subprocess.run(["launchctl", "asuser", uid, "launchctl", "bootstrap", f"gui/{uid}", plist], capture_output=True)
+        # Refresh LaunchServices so macOS uses the new app icon for notifications —
+        # an in-place update otherwise keeps the cached old notification icon.
+        lsreg = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+        subprocess.run(["launchctl", "asuser", uid, lsreg, "-f", "/Applications/Ravyn.app"], capture_output=True)
         chk = subprocess.run(["launchctl", "asuser", uid, "launchctl", "print", f"gui/{uid}/app.ravyn.companion"], capture_output=True)
         return chk.returncode == 0
     except Exception:
