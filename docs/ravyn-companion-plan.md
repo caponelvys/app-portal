@@ -154,8 +154,10 @@ endpoint(s).
    or WPF) tray app (Windows). Two codebases, best-in-class UX.
 3. **Scope** — build **tray + request-access + notifications together** as v1 (not
    notifications-first).
-4. **macOS signing** — **CI signing from the start**: a `macos` GitHub Actions job
-   that builds, `codesign`s (Developer ID), and `notarytool`-notarizes.
+4. **macOS signing** — **local-only for now** (paid Developer Program lapsed).
+   Build + **ad-hoc sign** (`codesign -s -`) on-device for local testing; the Ravyn
+   notification logo works locally without notarization. Developer ID signing,
+   notarization, and CI distribution are **deferred** until the account is renewed.
 
 ## 11. Build order & status
 
