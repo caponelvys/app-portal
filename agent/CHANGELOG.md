@@ -1,5 +1,16 @@
 # Ravyn Agent — Changelog
 
+## v1.7.14 — 2026-07-06
+- The agent now keeps the **user-session companion** up to date automatically. It
+  polls the portal's `companion_version` alongside its own version and, when that
+  changes, re-runs the per-user companion installer for the logged-in user —
+  Windows via a one-shot interactive scheduled task (`iwr install-companion.ps1`),
+  macOS by installing the release `Ravyn.app` + LaunchAgent. The installed version
+  is recorded in `<data>/.companion_version`, so it's a no-op once current (no
+  reinstall loop). The companion has no self-updater; this delivers its updates.
+  Bumping `COMPANION_VERSION` in the portal rolls the companion to every online
+  agent within ~5 min.
+
 ## v1.7.13 — 2026-07-06
 - Uninstall now fully removes the agent's own footprint. On **macOS/Linux** the
   data dir (`/usr/local/ravyn`) is deleted *before* the service is stopped —

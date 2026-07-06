@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.13"
+AGENT_VERSION = "1.7.14"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -146,6 +146,26 @@ VERSION_URL   = f"{PORTAL_URL}/api/agent/version"
 IS_FROZEN     = getattr(sys, "frozen", False)
 AGENT_FILE    = sys.executable if IS_FROZEN else os.path.abspath(__file__)
 EXE_URL       = "https://github.com/caponelvys/app-portal/releases/download/agent-latest/RavynAgent.exe"
+
+# Companion (user-session tray/menu-bar app) auto-update. The agent installs the
+# companion at enroll time; here it keeps it current by re-running the per-user
+# installer whenever the portal's companion_version differs from what we last
+# installed (recorded in COMPANION_MARKER). No companion self-updater needed.
+COMPANION_MARKER   = os.path.join(DATA_DIR, ".companion_version")
+COMPANION_ZIP_URL  = "https://github.com/caponelvys/app-portal/releases/download/agent-latest/RavynCompanion-macos-arm64.zip"
+COMPANION_PS1_URL  = "https://appcontroller.vercel.app/downloads/install-companion.ps1"
+COMPANION_PLIST    = (
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+    '<plist version="1.0"><dict>\n'
+    '  <key>Label</key><string>app.ravyn.companion</string>\n'
+    '  <key>ProgramArguments</key><array><string>/Applications/Ravyn.app/Contents/MacOS/Ravyn</string></array>\n'
+    '  <key>RunAtLoad</key><true/>\n'
+    '  <key>KeepAlive</key><true/>\n'
+    '  <key>ProcessType</key><string>Interactive</string>\n'
+    '  <key>LimitLoadToSessionType</key><string>Aqua</string>\n'
+    '</dict></plist>\n'
+)
 
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -515,17 +535,112 @@ def log_event(device_id, level, event, message=""):
         pass
 
 # ── Auto-update ───────────────────────────────────────────────────────────────
-def get_latest_version():
-    """Ask the portal for the latest published agent version, or None."""
+def get_version_info():
+    """Fetch the portal's latest published versions: {version, companion_version}.
+    Returns {} on any error."""
     try:
         r = requests.get(VERSION_URL, timeout=10)
         if r.status_code == 200:
-            v = r.json().get("version")
-            if isinstance(v, str) and v.strip():
-                return v.strip()
+            data = r.json()
+            if isinstance(data, dict):
+                return data
     except Exception:
         pass
-    return None
+    return {}
+
+def get_latest_version():
+    """Latest published agent version string, or None."""
+    v = get_version_info().get("version")
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+def check_companion_update(device_id, latest):
+    """Keep the user-session companion current. When the portal's companion_version
+    differs from what we last installed (COMPANION_MARKER), re-run the per-user
+    companion installer for the logged-in user. A no-op once the marker matches, so
+    it's safe to call every update cycle. Best-effort — never disrupts the agent."""
+    if not latest or not isinstance(latest, str):
+        return
+    latest = latest.strip()
+    try:
+        with open(COMPANION_MARKER) as f:
+            if f.read().strip() == latest:
+                return  # already current
+    except Exception:
+        pass  # no marker yet → install once to converge
+    user = get_device_user()
+    if not user or user == "root":
+        return  # no interactive user to install the companion into
+    ok = False
+    try:
+        if OS == "Windows":
+            ok = _install_companion_windows(user)
+        elif OS == "Darwin":
+            ok = _install_companion_macos(user)
+        # Linux: no companion shipped yet.
+    except Exception as e:
+        print(f"[agent] Companion update error: {e}")
+    if ok:
+        try:
+            with open(COMPANION_MARKER, "w") as f:
+                f.write(latest)
+        except Exception:
+            pass
+        log_event(device_id, "info", "companion_updated", f"Companion updated to {latest}")
+
+def _install_companion_windows(user):
+    """Run the per-user companion installer in the logged-in user's session via a
+    one-shot interactive scheduled task (it self-deletes). Returns True if launched.
+    The installer stops the running companion before overwriting, so it swaps cleanly."""
+    base = r"C:\ProgramData\Ravyn"
+    script_path = base + r"\companion_update.ps1"
+    task = "Ravyn_CompanionUpdate"
+    ps = ("$ErrorActionPreference='SilentlyContinue'\n"
+          f"try {{ iwr '{COMPANION_PS1_URL}' -UseBasicParsing | iex }} catch {{}}\n"
+          f"schtasks /delete /tn {task} /f\n")
+    try:
+        os.makedirs(base, exist_ok=True)
+        with open(script_path, "w") as f:
+            f.write(ps)
+        subprocess.run(["schtasks", "/create", "/tn", task, "/f", "/sc", "ONCE",
+                        "/st", "00:00", "/ru", user, "/it", "/tr",
+                        f'powershell -NoProfile -ExecutionPolicy Bypass -File "{script_path}"'],
+                       capture_output=True, text=True, timeout=30)
+        run = subprocess.run(["schtasks", "/run", "/tn", task], capture_output=True, timeout=30)
+        return run.returncode == 0
+    except Exception:
+        return False
+
+def _install_companion_macos(user):
+    """Download the release companion zip and install Ravyn.app to /Applications with
+    a LaunchAgent for the console user (mirrors install_mac.sh). Returns True on success."""
+    try:
+        uid = subprocess.check_output(["id", "-u", user], text=True).strip()
+        try:
+            home = subprocess.check_output(
+                ["dscl", ".", "-read", f"/Users/{user}", "NFSHomeDirectory"], text=True).split()[-1]
+        except Exception:
+            home = f"/Users/{user}"
+        r = requests.get(COMPANION_ZIP_URL, timeout=120)
+        if r.status_code != 200 or r.content[:2] != b"PK":
+            return False
+        zip_path = "/tmp/RavynCompanion.zip"
+        with open(zip_path, "wb") as f:
+            f.write(r.content)
+        shutil.rmtree("/Applications/Ravyn.app", ignore_errors=True)
+        subprocess.run(["ditto", "-x", "-k", zip_path, "/Applications"], capture_output=True, timeout=60)
+        try: os.remove(zip_path)
+        except Exception: pass
+        la = f"{home}/Library/LaunchAgents"
+        os.makedirs(la, exist_ok=True)
+        plist = f"{la}/app.ravyn.companion.plist"
+        with open(plist, "w") as f:
+            f.write(COMPANION_PLIST)
+        subprocess.run(["chown", user, plist], capture_output=True)
+        subprocess.run(["launchctl", "bootout", f"gui/{uid}/app.ravyn.companion"], capture_output=True)
+        subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", plist], capture_output=True)
+        return True
+    except Exception:
+        return False
 
 def restart_agent():
     """Restart the process into the current (possibly just-updated) binary. On a
@@ -1319,10 +1434,14 @@ def main():
             now_upd = time.time()
             if now_upd - last_update_check >= UPDATE_CHECK_INTERVAL:
                 last_update_check = now_upd
-                latest = get_latest_version()
-                if latest and latest != AGENT_VERSION:
+                info = get_version_info()
+                latest = info.get("version")
+                if isinstance(latest, str) and latest.strip() and latest.strip() != AGENT_VERSION:
                     print(f"[agent] Update available: {latest} (running {AGENT_VERSION})")
-                    self_update(device_id, latest)
+                    self_update(device_id, latest.strip())  # re-execs on success
+                # Keep the user-session companion current (only reached if the agent
+                # itself didn't re-exec above). No-op when already at the latest.
+                check_companion_update(device_id, info.get("companion_version"))
 
             heartbeat(device_id)
 

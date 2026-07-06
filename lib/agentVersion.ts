@@ -4,7 +4,13 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.13'
+export const AGENT_VERSION = '1.7.14'
+
+// Current companion (tray/menu-bar app) version. The agent polls this alongside
+// the agent version and re-installs the companion when it changes, so companion
+// updates ship without a manual reinstall. Bump on any companion change (icon,
+// code); existing installs (no marker) reinstall once to converge.
+export const COMPANION_VERSION = '0.2.0'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.14',
+    date: '2026-07-06',
+    changes: [
+      'The agent now auto-updates the user-session companion (tray/menu-bar app). It watches the portal’s companion version and, when it changes, re-installs the companion for the logged-in user — Windows via a one-shot per-user task, macOS via the release app + LaunchAgent. Records the installed version so it’s a no-op once current. The companion has no self-updater, so this delivers its updates; bumping the companion version rolls it to every online agent within ~5 min.',
+    ],
+  },
   {
     version: '1.7.13',
     date: '2026-07-06',
