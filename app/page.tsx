@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import BrandLockup from './BrandLockup'
 import PortalView, { type PortalApp, type PendingItem, type ExpiringItem, type ActiveItem } from './PortalView'
@@ -27,7 +28,10 @@ export default async function DashboardPage() {
   const { data: cats } = await supabase.from('apps').select('id, category')
   const catById = new Map((cats ?? []).map((c: { id: string; category: string | null }) => [c.id, c.category]))
 
-  const { data: myRequests } = await supabase
+  // app_requests must be read with the service-role client — the authenticated
+  // client returns empty/partial under RLS/grants (see HANDOFF gotcha), which
+  // would drop every pending/active request and mis-bucket apps into Browse.
+  const { data: myRequests } = await createAdminClient()
     .from('app_requests')
     .select('app_id, status, expires_at, duration, created_at')
     .eq('user_id', user.id)
