@@ -20,6 +20,9 @@ func readDeviceId() -> String? {
 
 // MARK: - API
 
+// Lets us use plain error message strings as a Result failure type.
+extension String: @retroactive Error {}
+
 struct RequestableApp: Decodable {
     let id: String
     let name: String
