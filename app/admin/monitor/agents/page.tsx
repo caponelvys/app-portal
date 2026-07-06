@@ -134,10 +134,13 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
         ))}
       </div>
 
-      {/* Needs attention — the hero. Neutral border; a red glow from the top edge
-          only (inset shadow) when something's actually wrong. */}
-      <div className={`rounded-xl border border-gray-800 bg-gray-900 p-4 ${
-        attentionTotal > 0 ? 'shadow-[inset_0_22px_40px_-26px_rgba(239,68,68,0.85)]' : ''
+      {/* Needs attention — the hero. Neutral border; a red glow that fades straight
+          down from the top edge (linear gradient, so it never runs down the sides)
+          when something's actually wrong. */}
+      <div className={`rounded-xl border border-gray-800 p-4 ${
+        attentionTotal > 0
+          ? 'bg-gray-900 bg-[linear-gradient(180deg,rgba(239,68,68,0.22),transparent_100px)]'
+          : 'bg-gray-900'
       }`}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
