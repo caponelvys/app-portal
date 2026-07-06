@@ -182,6 +182,65 @@ function RequestModal({
   )
 }
 
+// ── "Can't find it?" — suggest an off-catalog app ───────────────────────────
+function SuggestModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function submit() {
+    if (!name.trim()) return
+    setSubmitting(true)
+    try {
+      await fetch('/api/app-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, reason }),
+      })
+      setDone(true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const inputCls = 'w-full rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        {done ? (
+          <div className="py-2 text-center">
+            <p className="text-lg font-semibold text-white">Sent to your admin</p>
+            <p className="mt-1 text-sm text-gray-400">They&apos;ll review adding it to the catalog.</p>
+            <button onClick={onClose} className="mt-5 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700">Done</button>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold text-white">Request an app</h3>
+                <p className="text-xs text-gray-400">Not in the catalog? Tell your admin what you need.</p>
+              </div>
+              <button onClick={onClose} className="text-gray-500 hover:text-gray-300" aria-label="Close">✕</button>
+            </div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">App name</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Notion Calendar" className={`${inputCls} mb-4`} />
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Why do you need it?</label>
+            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="What you'd use it for…" className={`${inputCls} mb-5`} />
+            <div className="flex justify-end gap-3">
+              <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-gray-300 hover:text-white">Cancel</button>
+              <button onClick={submit} disabled={submitting || !name.trim()} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                {submitting ? 'Sending…' : 'Send to admin'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main portal view ────────────────────────────────────────────────────────
 export default function PortalView({
   pending, expiring, active, catalog,
@@ -193,6 +252,7 @@ export default function PortalView({
 }) {
   const router = useRouter()
   const [modalApp, setModalApp] = useState<PortalApp | null>(null)
+  const [suggestOpen, setSuggestOpen] = useState(false)
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<string>('All')
@@ -309,7 +369,7 @@ export default function PortalView({
           <SectionHeader label="Active · ready to launch" count={active.length} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {active.map(({ app, expiresAt }) => (
-              <div key={app.id} className="flex flex-col rounded-xl border border-gray-800 bg-gray-900/70 p-4">
+              <div key={app.id} className="flex flex-col rounded-xl border border-gray-800 bg-gray-900/70 p-4 transition-colors hover:border-gray-700">
                 <div className="mb-3 flex items-start justify-between">
                   <AppLogo app={app} size={40} />
                   {expiresAt && (
@@ -353,23 +413,32 @@ export default function PortalView({
           )}
         </div>
 
+        {filteredCatalog.length === 0 && (query || cat !== 'All') && (
+          <p className="mb-3 text-sm text-gray-500">No apps match — try another category or request one below.</p>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {filteredCatalog.map(app => (
-            <div key={app.id} className="flex flex-col rounded-xl border border-gray-800 bg-gray-900/70 p-4">
+            <div key={app.id} className="flex flex-col rounded-xl border border-gray-800 bg-gray-900/70 p-4 transition-colors hover:border-gray-700">
               <AppLogo app={app} size={40} />
               <p className="mt-3 font-semibold text-white">{app.name}</p>
               {app.description && <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{app.description}</p>}
               <button
                 onClick={() => setModalApp(app)}
-                className="mt-3 rounded-lg border border-gray-700 py-2 text-sm font-medium text-blue-300 hover:bg-blue-600/10"
+                className="mt-3 rounded-lg border border-gray-700 py-2 text-sm font-medium text-blue-300 hover:border-blue-500/60 hover:bg-blue-600/10"
               >
                 Request access
               </button>
             </div>
           ))}
-          {filteredCatalog.length === 0 && (
-            <p className="col-span-full py-8 text-center text-sm text-gray-500">No apps match your search.</p>
-          )}
+          {/* Off-catalog request */}
+          <button
+            onClick={() => setSuggestOpen(true)}
+            className="flex flex-col items-start rounded-xl border border-dashed border-gray-700 p-4 text-left transition-colors hover:border-gray-500 hover:bg-gray-900/40"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-700 text-2xl leading-none text-gray-500">+</span>
+            <span className="mt-3 font-semibold text-white">Can&apos;t find it?</span>
+            <span className="mt-0.5 text-xs text-gray-500">Request an app that isn&apos;t in the catalog yet.</span>
+          </button>
         </div>
       </section>
 
@@ -380,6 +449,7 @@ export default function PortalView({
           onDone={() => { setModalApp(null); router.refresh() }}
         />
       )}
+      {suggestOpen && <SuggestModal onClose={() => setSuggestOpen(false)} />}
     </>
   )
 }
