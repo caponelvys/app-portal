@@ -35,7 +35,7 @@ export default function AuditTableServer({
     { id: 'when', label: 'Date & Time', defaultWidth: 160, renderCell: r => <span className="text-gray-500 text-xs whitespace-nowrap">{new Date(r.time).toLocaleString()}</span> },
     { id: 'event', label: 'Event', defaultWidth: 110, filter: { type: 'select', options: EVENT_OPTIONS }, renderCell: r => <span className={`px-2 py-1 rounded-full text-xs font-medium ${KIND_STYLES[r.kind]}`}>{KIND_LABELS[r.kind]}</span> },
     { id: 'app', label: 'App', defaultWidth: 140, filter: { type: 'text', placeholder: 'Search app…' }, renderCell: r => <span className="text-white">{r.app}</span> },
-    { id: 'who', label: 'Device / User', defaultWidth: 180, filter: { type: 'text', placeholder: 'Search…' }, renderCell: r => <span className="text-gray-300">{r.actor}</span> },
+    { id: 'who', label: 'Device', defaultWidth: 180, filter: { type: 'text', placeholder: 'Search device…' }, renderCell: r => <span className="text-gray-300">{r.actor || '—'}</span> },
     { id: 'detail', label: 'Detail', defaultWidth: 220, sortable: false, renderCell: r => <span className="text-gray-500">{r.detail}</span> },
   ]
 

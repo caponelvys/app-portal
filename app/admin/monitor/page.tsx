@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
-import { cleanHostname } from '@/lib/hostname'
+import { resolveDeviceNames } from '@/lib/deviceArchive'
 import ActivityTable from './ActivityTable'
 
 export default async function MonitorPage() {
@@ -17,14 +18,9 @@ export default async function MonitorPage() {
     .order('created_at', { ascending: false })
     .limit(200)
 
-  // Only resolve hostnames for the devices actually referenced by these logs,
-  // so this doesn't load (and silently truncate) the whole devices table.
-  const deviceIds = [...new Set((logs ?? []).map(l => l.device_id).filter(Boolean))]
-  const { data: devices } = deviceIds.length
-    ? await supabase.from('devices').select('device_id, hostname').in('device_id', deviceIds)
-    : { data: [] }
-
-  const hostnameById = Object.fromEntries((devices ?? []).map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
+  // Resolve names only for the devices referenced by these logs (from the live
+  // table + the archive, so deleted devices still show their name, not a UUID).
+  const hostnameById = await resolveDeviceNames(createAdminClient(), (logs ?? []).map(l => l.device_id))
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

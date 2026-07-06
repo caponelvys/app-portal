@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, isMspStaff } from '@/lib/rbac'
 import { durationLabel } from '@/lib/durations'
@@ -44,6 +45,12 @@ export default async function AuditPrintPage({
     supabase.from('locations').select('id, org_id'),
   ])
 
+  // Names of deleted devices, so their past events still read as the device name
+  // (device_archive is service-role only — read it with the admin client).
+  const { data: archived } = await createAdminClient()
+    .from('device_archive').select('device_id, hostname, org_id')
+  const archiveMap = new Map((archived ?? []).map(a => [a.device_id, a]))
+
   const appName = new Map((apps ?? []).map(a => [a.id, a.name]))
 
   // Build location→org map
@@ -60,10 +67,17 @@ export default async function AuditPrintPage({
 
   const profileIds = new Set(profiles.map(p => p.id))
   const deviceIds  = new Set(devices.map(d => d.device_id))
+  // A per-client report must still include events for the org's *deleted* devices.
+  if (isClientReport) {
+    for (const a of archived ?? []) if (a.org_id === org_id) deviceIds.add(a.device_id)
+  }
   const emailMap   = new Map(profiles.map(p => [p.id, p.email]))
   // For "all clients" we still need to resolve hostnames for ALL devices
   const allDeviceMap = new Map((allDevices ?? []).map(d => [d.device_id, d]))
   const allEmailMap  = new Map((allProfiles ?? []).map(p => [p.id, p.email]))
+  // Resolve a device's cleaned name from the live table first, then the archive.
+  const deviceName = (id: string) =>
+    cleanHostname(allDeviceMap.get(id)?.hostname ?? archiveMap.get(id)?.hostname ?? undefined)
 
   type Event = { time: string; kind: string; app: string; actor: string; detail: string }
   const events: Event[] = []
@@ -72,23 +86,21 @@ export default async function AuditPrintPage({
     if (isClientReport && !profileIds.has(r.user_id)) continue
     const who = allEmailMap.get(r.user_id) ?? 'Unknown user'
     const app = appName.get(r.app_id) ?? 'Unknown app'
-    events.push({ time: r.created_at, kind: 'request', app, actor: who, detail: `requested ${durationLabel(r.duration).toLowerCase()} access` })
+    // Device column is device-only; requests/reviews are user actions → blank there.
+    events.push({ time: r.created_at, kind: 'request', app, actor: '', detail: `requested ${durationLabel(r.duration).toLowerCase()} access` })
     if (r.reviewed_at && ['approved', 'denied', 'revoked'].includes(r.status)) {
-      const reviewer = (r.reviewed_by && allEmailMap.get(r.reviewed_by)) || 'admin'
-      events.push({ time: r.reviewed_at, kind: r.status, app, actor: reviewer, detail: `${r.status} access for ${who}` })
+      events.push({ time: r.reviewed_at, kind: r.status, app, actor: '', detail: `${r.status} access for ${who}` })
     }
   }
 
   for (const l of logs ?? []) {
     if (isClientReport && !deviceIds.has(l.device_id)) continue
-    const dev = allDeviceMap.get(l.device_id)
-    const cleanName = cleanHostname(dev?.hostname)
-    const who = (dev?.user_id && allEmailMap.get(dev.user_id)) || cleanName || 'Unknown device'
+    const cleanName = deviceName(l.device_id)
     events.push({
       time: l.created_at,
       kind: l.action === 'accessed' ? 'accessed' : 'killed',
       app: l.app_name,
-      actor: who,
+      actor: cleanName || 'Unknown device',
       detail: l.action === 'accessed'
         ? `used on ${cleanName || 'a device'}`
         : `blocked on ${cleanName || 'a device'}`,
@@ -181,7 +193,7 @@ export default async function AuditPrintPage({
                 <th>Date &amp; Time</th>
                 <th>Event</th>
                 <th>App</th>
-                <th>Agent</th>
+                <th>Device</th>
                 <th>Detail</th>
               </tr>
             </thead>
@@ -197,7 +209,7 @@ export default async function AuditPrintPage({
                     </span>
                   </td>
                   <td style={{ fontWeight: 500 }}>{e.app}</td>
-                  <td style={{ color: '#374151' }}>{e.actor}</td>
+                  <td style={{ color: '#374151' }}>{e.actor || '—'}</td>
                   <td style={{ color: '#6b7280' }}>{e.detail}</td>
                 </tr>
               ))}

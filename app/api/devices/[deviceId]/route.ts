@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { getCallerProfile, isMspStaff, getAccessibleOrgIds } from '@/lib/rbac'
+import { archiveDevice } from '@/lib/deviceArchive'
 
 // Remove a device's record from the portal (for decommissioned/uninstalled
 // machines). MSP staff only, org-scoped. Deletes the devices row + any pending
@@ -22,6 +23,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ d
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Preserve the device's name/org for historical Reports before the row is gone.
+  await archiveDevice(admin, deviceId)
   await admin.from('device_commands').delete().eq('device_id', deviceId)
   const { error } = await admin.from('devices').delete().eq('device_id', deviceId)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })

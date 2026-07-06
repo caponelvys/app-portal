@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { redirect } from 'next/navigation'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import { cleanHostname } from '@/lib/hostname'
+import { resolveDeviceNames } from '@/lib/deviceArchive'
 import { getHealthTier, TIER_LABEL, INACTIVE_MS } from '@/lib/deviceStatus'
 import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import { agentEventLabel } from '@/lib/agentEvents'
@@ -93,12 +94,9 @@ export default async function AgentMonitorPage({ searchParams }: { searchParams:
     .map(d => ({ hostname: cleanHostname(d.hostname) || d.device_id, command: CMD_LABEL[d.pending_command] ?? d.pending_command }))
 
   // Hostname map — only devices referenced by the current event page + the
-  // recent-error attention rows.
-  const evDeviceIds = [...new Set([...evList, ...recentErrors].map(e => e.device_id).filter(Boolean))]
-  const { data: evDevices } = evDeviceIds.length
-    ? await admin.from('devices').select('device_id, hostname').in('device_id', evDeviceIds)
-    : { data: [] }
-  const hostnameById = Object.fromEntries((evDevices ?? []).map(d => [d.device_id, cleanHostname(d.hostname) || d.device_id]))
+  // recent-error attention rows (live table + archive, so deleted devices keep
+  // their name instead of showing a UUID).
+  const hostnameById = await resolveDeviceNames(admin, [...evList, ...recentErrors].map(e => e.device_id))
 
   // Needs attention: recent error events (24h) + a preview of long-offline devices.
   const attention: { hostname: string; issue: string; time: string | null; level: 'error' | 'warn' }[] = [

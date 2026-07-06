@@ -34,20 +34,26 @@ export async function GET() {
   // Resolve only referenced devices/users so the export doesn't silently drop
   // rows to the 1000-row cap.
   const deviceIds = [...new Set((logs ?? []).map(l => l.device_id).filter(Boolean))]
-  const { data: devices } = deviceIds.length
-    ? await admin.from('devices').select('device_id, hostname, user_id').in('device_id', deviceIds)
-    : { data: [] }
-  const userIds = [...new Set([
-    ...(requests ?? []).flatMap(r => [r.user_id, r.reviewed_by].filter(Boolean)),
-    ...(devices ?? []).map(d => d.user_id).filter(Boolean),
-  ])] as string[]
+  // Resolve device names from the live table first, then the archive (so events
+  // for deleted devices keep their name in the export).
+  const [{ data: devices }, { data: archived }] = deviceIds.length
+    ? await Promise.all([
+        admin.from('devices').select('device_id, hostname').in('device_id', deviceIds),
+        admin.from('device_archive').select('device_id, hostname').in('device_id', deviceIds),
+      ])
+    : [{ data: [] }, { data: [] }]
+  const userIds = [...new Set(
+    (requests ?? []).flatMap(r => [r.user_id, r.reviewed_by].filter(Boolean)),
+  )] as string[]
   const { data: profiles } = userIds.length
     ? await admin.from('profiles').select('id, email').in('id', userIds)
     : { data: [] }
 
   const appName = new Map((apps ?? []).map(a => [a.id, a.name]))
   const email   = new Map((profiles ?? []).map(p => [p.id, p.email]))
-  const device  = new Map((devices ?? []).map(d => [d.device_id, d]))
+  const hostname = new Map<string, string | null>()
+  for (const d of archived ?? []) hostname.set(d.device_id, d.hostname)
+  for (const d of devices ?? []) hostname.set(d.device_id, d.hostname)  // live wins
 
   type Event = { time: string; kind: string; app: string; actor: string; detail: string }
   const events: Event[] = []
@@ -55,22 +61,20 @@ export async function GET() {
   for (const r of requests ?? []) {
     const who = email.get(r.user_id) ?? 'Unknown user'
     const app = appName.get(r.app_id) ?? 'Unknown app'
-    events.push({ time: r.created_at, kind: 'Requested', app, actor: who, detail: `requested ${durationLabel(r.duration).toLowerCase()} access` })
+    // Device column is device-only; requests/reviews are user actions → blank there.
+    events.push({ time: r.created_at, kind: 'Requested', app, actor: '', detail: `requested ${durationLabel(r.duration).toLowerCase()} access` })
     if (r.reviewed_at && ['approved', 'denied', 'revoked'].includes(r.status)) {
-      const reviewer = (r.reviewed_by && email.get(r.reviewed_by)) || 'admin'
-      events.push({ time: r.reviewed_at, kind: r.status.charAt(0).toUpperCase() + r.status.slice(1), app, actor: reviewer, detail: `${r.status} access for ${who}` })
+      events.push({ time: r.reviewed_at, kind: r.status.charAt(0).toUpperCase() + r.status.slice(1), app, actor: '', detail: `${r.status} access for ${who}` })
     }
   }
 
   for (const l of logs ?? []) {
-    const dev = device.get(l.device_id)
-    const cleanName = cleanHostname(dev?.hostname)
-    const who = (dev?.user_id && email.get(dev.user_id)) || cleanName || 'Unknown device'
+    const cleanName = cleanHostname(hostname.get(l.device_id) ?? undefined)
     events.push({
       time: l.created_at,
       kind: l.action === 'accessed' ? 'Accessed' : 'Blocked',
       app: l.app_name,
-      actor: who,
+      actor: cleanName || 'Unknown device',
       detail: l.action === 'accessed' ? `used on ${cleanName || 'a device'}` : `blocked on ${cleanName || 'a device'}`,
     })
   }
@@ -78,7 +82,7 @@ export async function GET() {
   events.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
 
   const lines = [
-    row('Timestamp', 'Event', 'App', 'Who', 'Detail'),
+    row('Timestamp', 'Event', 'App', 'Device', 'Detail'),
     ...events.map(e => row(new Date(e.time).toISOString(), e.kind, e.app, e.actor, e.detail)),
   ]
 
