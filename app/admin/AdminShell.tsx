@@ -167,6 +167,9 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
           >
             Users
           </Link>
+          <a href="/" className="hidden sm:inline text-xs text-gray-400 hover:text-white transition-colors">
+            My apps
+          </a>
           <a href="/account/security" className="hidden sm:inline text-xs text-gray-400 hover:text-white transition-colors">
             Security
           </a>
@@ -229,6 +232,7 @@ export default function AdminShell({ children, roleLabel }: { children: React.Re
 
             <div className="border-t border-gray-800 mt-2 pt-2">
               <Link href="/admin/users" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800">Users</Link>
+              <a href="/" className="block px-4 py-3 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800">My apps</a>
               <a href="/auth/signout" className="block px-4 py-3 text-sm text-gray-400 hover:text-white rounded-md hover:bg-gray-800">Sign out</a>
             </div>
           </div>
