@@ -99,8 +99,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         startSpoolWatcher()
     }
 
-    // Small icon for the menu bar — the Ravyn app icon (falls back to an SF Symbol).
+    // Small icon for the menu bar — the transparent Ravyn diamond (no tile). Falls
+    // back to the tiled app icon, then an SF Symbol.
     static func menuBarIcon() -> NSImage {
+        if let path = Bundle.main.path(forResource: "MenuBarIcon", ofType: "png"),
+           let img = NSImage(contentsOfFile: path) {
+            img.size = NSSize(width: 18, height: 18)
+            return img
+        }
         if let path = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
            let img = NSImage(contentsOfFile: path) {
             img.size = NSSize(width: 18, height: 18)

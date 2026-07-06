@@ -49,6 +49,10 @@ else
   echo "[build] WARN: $ICON_SRC not found — app will use a default icon."
 fi
 
+# Menu-bar icon — transparent purple diamond (no tile), separate from the tiled
+# AppIcon used for notifications/Finder.
+[ -f MenuBarIcon.png ] && cp MenuBarIcon.png "$APP/Contents/Resources/MenuBarIcon.png"
+
 echo "[build] Ad-hoc signing…"
 codesign --force --deep --sign - "$APP"
 
