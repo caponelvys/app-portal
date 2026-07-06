@@ -146,8 +146,9 @@ export default function EnrollmentPanel({ locationId, initialToken }: { location
               Ready to run — this location&apos;s enrollment token is baked in, so devices land here automatically.
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              macOS: unzip and double-click <span className="text-gray-400">Install Ravyn Agent</span> (first time: right-click → Open),
-              then enter your Mac password. Not signed yet, so Gatekeeper asks once.
+              macOS: use the Terminal command below — it runs cleanly with no prompts. The download works too, but the
+              app isn&apos;t Apple-signed yet, so recent macOS blocks double-click; you&apos;d have to allow it in
+              System Settings → Privacy &amp; Security → Open Anyway.
             </p>
           </div>
         )}
