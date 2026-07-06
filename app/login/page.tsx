@@ -97,28 +97,28 @@ function LoginForm() {
 
       <div className="relative grid min-h-screen lg:grid-cols-2">
       {/* ── Left: brand / marketing (lg and up) ── */}
-      <aside className="hidden lg:flex flex-col justify-between p-12 xl:p-16">
-        <div>
-          <BrandLockup markSize={30} />
-        </div>
-
-        <div className="max-w-xl">
-          <h2 style={display} className="text-5xl font-bold leading-[1.05] tracking-tight text-white">
-            One control plane for every endpoint.
-          </h2>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-400">
-            Push apps, set allow/block policy, and see every managed device — from a single lightweight agent.
-          </p>
-        </div>
-
-        <div className="flex gap-12">
-          <div>
-            <p style={display} className="text-xl font-semibold text-white">Windows · macOS · Linux</p>
-            <p className="mt-1 text-sm text-gray-500">one lightweight agent per device</p>
-          </div>
-          <div>
-            <p style={display} className="text-xl font-semibold text-white">Allow / block</p>
-            <p className="mt-1 text-sm text-gray-500">policy enforced in real time</p>
+      <aside className="hidden lg:flex flex-col p-12 xl:p-16">
+        <BrandLockup markSize={30} />
+        {/* Hero cluster vertically centered so it shares an optical baseline with
+            the form; the stats sit right under it (no stranded bottom quadrant). */}
+        <div className="flex flex-1 flex-col justify-center">
+          <div className="max-w-xl">
+            <h2 style={display} className="text-5xl font-bold leading-[1.05] tracking-tight text-white">
+              One control plane for every endpoint.
+            </h2>
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-400">
+              Push apps, set allow/block policy, and see every managed device — from a single lightweight agent.
+            </p>
+            <div className="mt-10 flex gap-12">
+              <div>
+                <p style={display} className="text-xl font-semibold text-white">Windows · macOS · Linux</p>
+                <p className="mt-1 text-sm text-gray-500">one lightweight agent per device</p>
+              </div>
+              <div>
+                <p style={display} className="text-xl font-semibold text-white">Allow / block</p>
+                <p className="mt-1 text-sm text-gray-500">policy enforced in real time</p>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
@@ -137,7 +137,8 @@ function LoginForm() {
           </div>
 
           {notice && (
-            <p className="mt-6 rounded-lg border border-amber-900/60 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
+            <p className="mt-6 flex items-center gap-2 text-sm text-gray-400">
+              <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400/80" />
               {notice}
             </p>
           )}
@@ -198,7 +199,7 @@ function LoginForm() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 className={inputClass}
               />
             </div>
@@ -208,7 +209,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl border border-gray-700 bg-gray-800/60 py-3 text-base font-semibold text-white hover:bg-gray-700 disabled:opacity-50"
+              className="w-full rounded-xl border border-gray-600 bg-gray-800 py-3 text-base font-semibold text-white hover:border-gray-500 hover:bg-gray-700 disabled:opacity-50"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>

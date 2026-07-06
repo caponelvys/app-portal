@@ -51,16 +51,7 @@ export default function BrandLockup({
           className="font-semibold tracking-tight"
         >
           <span className="text-white">Rav</span>
-          <span
-            style={{
-              background: 'linear-gradient(180deg, #B9A8FF 0%, #7C5CFF 100%)',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              color: 'transparent',
-            }}
-          >
-            yn
-          </span>
+          <span style={{ color: '#8b7bff' }}>yn</span>
         </span>
       )}
     </span>
