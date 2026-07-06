@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.10'
+export const AGENT_VERSION = '1.7.11'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.11',
+    date: '2026-07-05',
+    changes: [
+      'Windows: grant the Users group modify rights on the companion notification spool (via icacls) so the user-session Ravyn Companion can post its heartbeat and consume notifications. No effect on devices without the companion.',
+    ],
+  },
   {
     version: '1.7.10',
     date: '2026-07-05',

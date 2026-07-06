@@ -1,5 +1,11 @@
 # Ravyn Agent — Changelog
 
+## v1.7.11 — 2026-07-05
+- Windows: grant the Users group modify rights on the companion notification
+  spool (`C:\Ravyn\notify`) via `icacls`, so the user-session Ravyn Companion can
+  post its heartbeat and delete consumed notifications. No effect without the
+  companion.
+
 ## v1.7.10 — 2026-07-05
 - When the Ravyn Companion (user-session app) is running, notifications are routed
   to it through a world-writable spool dir (`<data>/notify/`) so they render with

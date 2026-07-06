@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>RavynCompanion</AssemblyName>
+    <RootNamespace>RavynCompanion</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Tray/notification icon, loaded at runtime from next to the exe. -->
+    <None Include="ravyn.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

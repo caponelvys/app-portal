@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.10"
+AGENT_VERSION = "1.7.11"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -114,11 +114,16 @@ COMPANION_SPOOL = os.path.join(DATA_DIR, "notify")
 COMPANION_HEARTBEAT = os.path.join(COMPANION_SPOOL, ".companion_alive")
 
 def _ensure_companion_spool():
-    """Create the spool dir world-writable so the user-session companion can drop
+    """Create the spool dir writable by the user-session companion so it can drop
     its heartbeat and delete consumed notifications. Best-effort."""
     try:
         os.makedirs(COMPANION_SPOOL, exist_ok=True)
-        if OS != "Windows":
+        if OS == "Windows":
+            # Grant the local Users group (SID S-1-5-32-545, locale-independent)
+            # Modify so the companion running as the user can write here.
+            subprocess.run(["icacls", COMPANION_SPOOL, "/grant", "*S-1-5-32-545:(OI)(CI)M"],
+                           capture_output=True, timeout=10)
+        else:
             os.chmod(COMPANION_SPOOL, 0o777)
     except Exception:
         pass
