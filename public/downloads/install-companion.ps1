@@ -13,6 +13,14 @@ $dest = Join-Path $env:LOCALAPPDATA 'Ravyn'
 $exe  = Join-Path $dest 'RavynCompanion.exe'
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
+
+# Stop any running companion FIRST — a running RavynCompanion.exe locks its own
+# file, so downloading over it fails ("being used by another process") and the
+# update is skipped, leaving the old build (and old icon) in place.
+Write-Host "[install] Stopping any running companion..."
+Get-Process RavynCompanion -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Milliseconds 700  # let the file handle release before overwriting
+
 Write-Host "[install] Downloading RavynCompanion ($arch)..."
 Invoke-WebRequest -Uri $url -OutFile $exe
 
@@ -20,8 +28,7 @@ Write-Host "[install] Registering autostart (per-user Run key)..."
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' `
   -Name 'RavynCompanion' -Value ('"{0}"' -f $exe)
 
-Write-Host "[install] (Re)starting the companion..."
-Get-Process RavynCompanion -ErrorAction SilentlyContinue | Stop-Process -Force
+Write-Host "[install] Starting the companion..."
 Start-Process $exe
 
 Write-Host "[install] Done -> $exe (starts at login, running now)."
