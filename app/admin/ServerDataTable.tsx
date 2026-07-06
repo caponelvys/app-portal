@@ -36,7 +36,7 @@ const selectClass = inputClass
 function FilterIcon({ active }: { active: boolean }) {
   return (
     <svg className={`w-3.5 h-3.5 ${active ? 'text-blue-400' : 'text-gray-600 group-hover/fi:text-gray-400'}`} fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-.293.707L13 9.414V15a1 1 0 01-.553.894l-4 2A1 1 0 017 17v-7.586L3.293 5.707A1 1 0 013 5V3z" clipRule="evenodd" />
+      <path d="M2 5h16v2H2zM5 9h10v2H5zM8 13h4v2H8z" />
     </svg>
   )
 }
