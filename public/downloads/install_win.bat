@@ -73,5 +73,12 @@ if errorlevel 1 (
   echo [install] Agent is running.
 )
 
+:: --- Install the Ravyn Companion (user-session tray app). Best-effort: a
+:: failure here must not fail the agent install. Downloads the prebuilt exe,
+:: registers per-user autostart, and launches it. Runs in the installing user's
+:: context (%LOCALAPPDATA% / HKCU Run key).
+echo [install] Installing the Ravyn Companion (tray app)...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { iwr 'https://appcontroller.vercel.app/downloads/install-companion.ps1' -UseBasicParsing | iex } catch { Write-Host ('[install] Companion install skipped: ' + $_.Exception.Message) }"
+
 echo [install] Done! The agent is installed and self-restarting.
 pause

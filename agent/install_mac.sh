@@ -81,5 +81,44 @@ echo "[install] Starting agent service..."
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"
 
+# --- Install the Ravyn Companion (user-session menu-bar app). Best-effort: a
+# failure here must never fail the agent install.
+echo "[install] Installing the Ravyn Companion (menu-bar app)..."
+CONSOLE_USER="$(stat -f %Su /dev/console 2>/dev/null || true)"
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
+  CUID="$(id -u "$CONSOLE_USER")"
+  CHOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
+  ZIP="/tmp/RavynCompanion.zip"
+  if curl -fsSL "https://github.com/caponelvys/app-portal/releases/download/agent-latest/RavynCompanion-macos-arm64.zip" -o "$ZIP"; then
+    rm -rf "/Applications/Ravyn.app"
+    ditto -x -k "$ZIP" "/Applications" 2>/dev/null || unzip -oq "$ZIP" -d "/Applications"
+    rm -f "$ZIP"
+    LA="$CHOME/Library/LaunchAgents"; mkdir -p "$LA"
+    PLIST_C="$LA/app.ravyn.companion.plist"
+    cat > "$PLIST_C" <<PL
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>app.ravyn.companion</string>
+  <key>ProgramArguments</key><array><string>/Applications/Ravyn.app/Contents/MacOS/Ravyn</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Interactive</string>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+</dict>
+</plist>
+PL
+    chown "$CONSOLE_USER" "$PLIST_C"
+    launchctl bootout "gui/$CUID/app.ravyn.companion" 2>/dev/null || true
+    launchctl bootstrap "gui/$CUID" "$PLIST_C" 2>/dev/null || true
+    echo "[install] Companion installed for $CONSOLE_USER (starts at login)."
+  else
+    echo "[install] Companion download failed — skipping (agent still installed)."
+  fi
+else
+  echo "[install] No console user detected — skipping companion (agent still installed)."
+fi
+
 echo "[install] Done! Agent is running."
 echo "[install] Logs: tail -f /var/log/ravyn-agent.log"

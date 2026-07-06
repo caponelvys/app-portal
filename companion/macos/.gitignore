@@ -1,3 +1,4 @@
 # Local build artifacts — the app is built on-device, not committed.
 Ravyn.app/
 build/
+RavynCompanion-macos-arm64.zip

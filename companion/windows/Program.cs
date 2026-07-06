@@ -5,17 +5,34 @@
 
 using System.Drawing;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace RavynCompanion;
 
 static class Program
 {
+    const string Aumid = "Ravyn.Companion";
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    static extern int SetCurrentProcessExplicitAppUserModelID(string appID);
+
     [STAThread]
     static void Main()
     {
+        // Make toasts read "Ravyn" (not the exe name "RavynCompanion"): give the
+        // process an explicit AppUserModelID and register its display name.
+        try
+        {
+            SetCurrentProcessExplicitAppUserModelID(Aumid);
+            using var key = Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{Aumid}");
+            key?.SetValue("DisplayName", "Ravyn");
+        }
+        catch { }
+
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new TrayContext());
