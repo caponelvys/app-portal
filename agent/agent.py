@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.12"
+AGENT_VERSION = "1.7.13"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -700,33 +700,53 @@ def uninstall_agent(device_id=None):
     """Remove our portal record, then the service + installed files, then stop.
     Best-effort per OS."""
     # Delete our device record so it disappears from the portal automatically.
+    # Don't follow redirects: if middleware ever bounces this to /login we want a
+    # non-2xx, not a 200 login page masquerading as success. Retry a couple times
+    # so a transient blip doesn't strand a ghost device row in the portal.
     if device_id:
-        try:
-            requests.post(f"{PORTAL_URL}/api/devices/{device_id}/self-remove", timeout=10)
-        except Exception:
-            pass
+        for _ in range(3):
+            try:
+                r = requests.post(f"{PORTAL_URL}/api/devices/{device_id}/self-remove",
+                                  timeout=10, allow_redirects=False)
+                if r.status_code < 300:
+                    break
+            except Exception:
+                pass
+            time.sleep(2)
     # Tear down the user-session companion before removing our own footprint, so
     # the tray/menu-bar app + its login autostart don't linger after the agent's gone.
     _teardown_companion()
     try:
         # Remove both the current (Ravyn) and legacy (AppController) service names
         # and data dirs, so uninstall fully cleans up regardless of install vintage.
-        if OS == "Darwin":
-            for label in ("com.ravyn.agent", "com.appcontroller.agent"):
-                try: os.remove(f"/Library/LaunchDaemons/{label}.plist")
-                except Exception: pass
-                subprocess.run(["launchctl", "bootout", f"system/{label}"], capture_output=True)
-        elif OS == "Linux":
-            for svc in ("ravyn-agent", "appcontroller"):
-                subprocess.run(["systemctl", "disable", "--now", svc], capture_output=True)
-                try: os.remove(f"/etc/systemd/system/{svc}.service")
-                except Exception: pass
-            subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
-        elif OS == "Windows":
+        if OS == "Windows":
+            # schtasks /delete doesn't kill the live process, and our own running
+            # RavynAgent.exe locks its dir, so we can't delete it in-process. Remove
+            # the task(s), then hand the dir-delete to a detached cmd that waits for
+            # us to exit and rmdir's the data dirs.
             for tn in ("RavynAgent", "AppControllerAgent"):
                 subprocess.run(["schtasks", "/delete", "/tn", tn, "/f"], capture_output=True)
-        shutil.rmtree(INSTALL_DIR, ignore_errors=True)
-        shutil.rmtree(OLD_DATA_DIR, ignore_errors=True)
+            deleter = (f'timeout /t 3 /nobreak >nul & '
+                       f'rmdir /s /q "{INSTALL_DIR}" & rmdir /s /q "{OLD_DATA_DIR}"')
+            DETACHED = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+            subprocess.Popen(["cmd", "/c", deleter], creationflags=DETACHED, close_fds=True)
+        else:
+            # Unix: delete our files BEFORE unregistering the service. Stopping the
+            # service (launchctl bootout / systemctl --now) kills THIS process, so if
+            # we unregister first the rmtree never finishes and the data dir leaks.
+            shutil.rmtree(INSTALL_DIR, ignore_errors=True)
+            shutil.rmtree(OLD_DATA_DIR, ignore_errors=True)
+            if OS == "Darwin":
+                for label in ("com.ravyn.agent", "com.appcontroller.agent"):
+                    try: os.remove(f"/Library/LaunchDaemons/{label}.plist")
+                    except Exception: pass
+                    subprocess.run(["launchctl", "bootout", f"system/{label}"], capture_output=True)
+            elif OS == "Linux":
+                for svc in ("ravyn-agent", "appcontroller"):
+                    subprocess.run(["systemctl", "disable", "--now", svc], capture_output=True)
+                    try: os.remove(f"/etc/systemd/system/{svc}.service")
+                    except Exception: pass
+                subprocess.run(["systemctl", "daemon-reload"], capture_output=True)
     except Exception as e:
         print(f"[agent] Uninstall error: {e}")
     finally:

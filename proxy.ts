@@ -35,7 +35,14 @@ export async function proxy(request: NextRequest) {
   // Redirect unauthenticated users to /login (except on auth pages, public agent
   // downloads, and device-authenticated APIs the agent/companion call without a session)
   const pub = ['/login', '/signup', '/reset-password', '/downloads', '/api/enroll', '/api/agent', '/api/device-request', '/auth/callback']
-  if (!user && !pub.some(p => path.startsWith(p))) {
+  // The agent also calls /api/devices/<id>/self-remove unauthenticated as the final
+  // act of self-uninstall. Allow that exact sub-path without exposing the rest of
+  // /api/devices (an authenticated admin surface). Without this the request 307s to
+  // /login, the agent's POST follows it, gets a 200 login page, and the device row is
+  // never deleted — leaving a ghost device after every uninstall.
+  const isPublic = pub.some(p => path.startsWith(p)) ||
+    (path.startsWith('/api/devices/') && path.endsWith('/self-remove'))
+  if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

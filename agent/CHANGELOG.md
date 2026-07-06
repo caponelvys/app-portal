@@ -1,5 +1,17 @@
 # Ravyn Agent — Changelog
 
+## v1.7.13 — 2026-07-06
+- Uninstall now fully removes the agent's own footprint. On **macOS/Linux** the
+  data dir (`/usr/local/ravyn`) is deleted *before* the service is stopped —
+  `launchctl bootout` / `systemctl --now` kills this very process, so unregistering
+  first meant `rmtree` never finished and the data dir (incl. `.device_id` + the
+  notify spool) leaked. On **Windows** the running `RavynAgent.exe` locks `C:\Ravyn`,
+  so a detached `cmd` now waits for the agent to exit and removes the dir(s).
+- Self-remove of the portal device record is retried up to 3× and no longer follows
+  redirects, so a transient failure (or an auth redirect) can't leave a ghost device
+  in the portal. (Pairs with the portal middleware fix that stopped bouncing
+  `/api/devices/<id>/self-remove` to `/login`.)
+
 ## v1.7.12 — 2026-07-06
 - Self-uninstall now tears down the user-session Ravyn Companion too, so a
   portal-issued uninstall leaves nothing behind. macOS unloads the

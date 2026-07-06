@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.12'
+export const AGENT_VERSION = '1.7.13'
 
 // True if a reported agent version is older than `latest` (null = never
 // reported → treated as behind). Numeric per-segment compare.
@@ -27,6 +27,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.13',
+    date: '2026-07-06',
+    changes: [
+      'Uninstall now fully removes the agent’s files. On macOS/Linux the data dir is deleted before the service is stopped (stopping the service kills the agent mid-cleanup, which used to leave /usr/local/ravyn behind). On Windows the running .exe locks its own dir, so a detached command removes C:\\Ravyn after the agent exits. Self-remove of the portal device record is retried and no longer follows redirects, so a device can’t linger in the portal after uninstall.',
+    ],
+  },
   {
     version: '1.7.12',
     date: '2026-07-06',
