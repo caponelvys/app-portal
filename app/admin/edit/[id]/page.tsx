@@ -222,7 +222,7 @@ const KNOWN_WINDOWS_INSTALLERS: Record<string, { url: string; args: string }> = 
 
 export default function EditAppPage() {
   const { id } = useParams()
-  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '', mac_install_url: '', mac_install_sha256: '', windows_install_url: '', windows_install_sha256: '', windows_install_args: '' })
+  const [form, setForm] = useState({ name: '', description: '', url: '', icon: '', status: 'allowed', category: '', process_name: '', mac_app_path: '', windows_uninstall: '', linux_package: '', mac_install_url: '', mac_install_sha256: '', windows_install_url: '', windows_install_sha256: '', windows_install_args: '' })
   const [iconUrl, setIconUrl] = useState<string | null>(null)
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
@@ -237,7 +237,7 @@ export default function EditAppPage() {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
-        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? KNOWN_MAC_INSTALLERS[data.name] ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '', windows_install_args: data.windows_install_args ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.args ?? '' })
+        setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, category: data.category ?? '', process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? KNOWN_MAC_INSTALLERS[data.name] ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '', windows_install_args: data.windows_install_args ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.args ?? '' })
         setIconUrl(data.icon_url)
         const domain = KNOWN_APP_LOGOS[data.name]
         if (!data.icon_url && domain) {
@@ -430,6 +430,17 @@ export default function EditAppPage() {
               <option value="allowed">Allowed</option>
               <option value="blocked">Blocked</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+            <input name="category" value={form.category} onChange={handleChange} list="app-categories"
+              placeholder="e.g. Communication, Design, Dev" className={inputClass} />
+            <datalist id="app-categories">
+              <option value="Communication" /><option value="Design" /><option value="Dev" />
+              <option value="Productivity" /><option value="Security" /><option value="Finance" />
+            </datalist>
+            <p className="text-xs text-gray-600 mt-1">Groups the app in the user portal&apos;s Browse &amp; request chips. Blank = Other.</p>
           </div>
 
           <details className="rounded-lg border border-gray-800 bg-gray-800/40 px-4 py-3">

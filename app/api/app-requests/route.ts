@@ -118,6 +118,24 @@ export async function GET() {
   return NextResponse.json({ requests: enriched, isAdmin: role === 'admin' })
 }
 
+// User cancels their own still-pending request for an app (removes it from the
+// admin queue). Only pending requests owned by the caller are affected.
+export async function DELETE(req: NextRequest) {
+  const { user } = await getSession()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { app_id } = await req.json().catch(() => ({}))
+  if (!app_id) return NextResponse.json({ error: 'app_id is required' }, { status: 400 })
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('app_requests')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('app_id', app_id)
+    .eq('status', 'pending')
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ success: true })
+}
+
 // Apply a single approve/deny/revoke decision and notify the requester.
 async function applyDecision(
   admin: ReturnType<typeof createAdminClient>,

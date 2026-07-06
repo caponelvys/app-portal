@@ -1,21 +1,12 @@
 import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import { getAppLogoUrl } from '@/lib/appLogos'
-import { isGrantActive, expiresInLabel } from '@/lib/durations'
-import RequestAccess, { type RequestableApp } from './RequestAccess'
 import BrandLockup from './BrandLockup'
+import PortalView, { type PortalApp, type PendingItem, type ExpiringItem, type ActiveItem } from './PortalView'
 
-type App = {
-  id: string
-  name: string
-  description: string
-  url: string
-  icon: string
-  icon_url: string | null
-  status: string
-}
+// A temporary grant counts as "expiring soon" once it's within this window.
+const EXPIRING_SOON_MS = 3 * 24 * 60 * 60 * 1000
 
-type Grant = { expires_at: string | null }
+type AppRow = { id: string; name: string; description: string; url: string; icon_url: string | null; status: string }
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -23,126 +14,79 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   const isAdmin = profile?.role === 'admin'
 
-  const { data: allowedApps } = await supabase
+  const { data: apps } = await supabase
     .from('apps')
-    .select('id, name, description, url, icon, icon_url, status')
-    .eq('status', 'allowed')
+    .select('id, name, description, url, icon_url, status')
     .order('name')
 
-  const { data: blockedApps } = await supabase
-    .from('apps')
-    .select('id, name, description, url, icon, icon_url, status')
-    .eq('status', 'blocked')
-    .order('name')
+  // Category is best-effort: the column ships in migration 0019, so tolerate its
+  // absence (a null result just groups everything under "Other").
+  const { data: cats } = await supabase.from('apps').select('id, category')
+  const catById = new Map((cats ?? []).map((c: { id: string; category: string | null }) => [c.id, c.category]))
 
   const { data: myRequests } = await supabase
     .from('app_requests')
-    .select('app_id, status, expires_at')
+    .select('app_id, status, expires_at, duration, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   // Most recent request per app (rows are already newest-first).
-  const latestByApp = new Map<string, { status: string; expires_at: string | null }>()
-  for (const r of myRequests ?? []) {
-    if (!latestByApp.has(r.app_id)) latestByApp.set(r.app_id, { status: r.status, expires_at: r.expires_at })
-  }
+  const latestByApp = new Map<string, { status: string; expires_at: string | null; duration: string; created_at: string }>()
+  for (const r of myRequests ?? []) if (!latestByApp.has(r.app_id)) latestByApp.set(r.app_id, r)
 
-  // Blocked apps the user currently has an active grant for show up as usable.
-  const grantedApps: (App & { grant: Grant })[] = []
-  const requestable: RequestableApp[] = []
-  for (const app of (blockedApps ?? []) as App[]) {
-    const req = latestByApp.get(app.id)
-    if (req && isGrantActive(req.status, req.expires_at)) {
-      grantedApps.push({ ...app, grant: { expires_at: req.expires_at } })
+  const pending: PendingItem[] = []
+  const expiring: ExpiringItem[] = []
+  const active: ActiveItem[] = []
+  const catalog: PortalApp[] = []
+  const now = Date.now()
+
+  for (const a of (apps ?? []) as AppRow[]) {
+    const app: PortalApp = {
+      id: a.id, name: a.name, description: a.description, url: a.url,
+      icon_url: a.icon_url, category: catById.get(a.id) ?? null,
+    }
+    const req = latestByApp.get(a.id)
+    const grantActive = !!req && req.status === 'approved' && (!req.expires_at || new Date(req.expires_at).getTime() > now)
+
+    if (a.status === 'allowed') {
+      active.push({ app, expiresAt: null })
+    } else if (a.status !== 'blocked') {
+      continue  // ignore any non allowed/blocked status
+    } else if (grantActive) {
+      if (req!.expires_at && new Date(req!.expires_at).getTime() - now <= EXPIRING_SOON_MS) {
+        expiring.push({ app, expiresAt: req!.expires_at, duration: req!.duration })
+      } else {
+        active.push({ app, expiresAt: req!.expires_at })
+      }
+    } else if (req && req.status === 'pending') {
+      pending.push({ app, duration: req.duration, requestedAt: req.created_at })
     } else {
-      let requestStatus: RequestableApp['requestStatus'] = 'none'
-      if (req?.status === 'pending') requestStatus = 'pending'
-      else if (req?.status === 'denied') requestStatus = 'denied'
-      else if (req?.status === 'expired' || (req?.status === 'approved')) requestStatus = 'expired'
-
-      requestable.push({
-        id: app.id,
-        name: app.name,
-        description: app.description,
-        icon_url: app.icon_url,
-        requestStatus,
-      })
+      catalog.push(app)  // none / denied / expired → requestable
     }
   }
 
-  const yourApps = [
-    ...((allowedApps ?? []) as App[]).map(a => ({ app: a, grant: null as Grant | null })),
-    ...grantedApps.map(a => ({ app: a as App, grant: a.grant })),
-  ]
+  active.sort((x, y) => x.app.name.localeCompare(y.app.name))
+  catalog.sort((x, y) => x.name.localeCompare(y.name))
+  expiring.sort((x, y) => new Date(x.expiresAt).getTime() - new Date(y.expiresAt).getTime())
 
   return (
     <div className="min-h-screen bg-transparent">
-      <header className="bg-gray-900/70 backdrop-blur border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center justify-between">
+      <header className="flex items-center justify-between border-b border-gray-800 bg-gray-900/70 px-4 py-4 backdrop-blur sm:px-6">
         <BrandLockup markSize={26} />
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400 hidden sm:block truncate max-w-[200px]">{user.email}</span>
-          <a href="/devices" className="text-sm text-gray-400 hover:text-gray-200 font-medium whitespace-nowrap">
-            My Devices
-          </a>
-          <a href="/account/security" className="text-sm text-gray-400 hover:text-gray-200 font-medium whitespace-nowrap">
-            Security
-          </a>
-          {isAdmin && (
-            <a href="/admin" className="text-sm text-blue-400 hover:text-blue-300 font-medium whitespace-nowrap">
-              Admin
-            </a>
-          )}
-          <a href="/auth/signout" className="text-sm text-gray-400 hover:text-gray-200 underline whitespace-nowrap">
-            Sign out
-          </a>
+          <span className="hidden max-w-[200px] truncate text-sm text-gray-400 sm:block">{user.email}</span>
+          <a href="/devices" className="whitespace-nowrap text-sm font-medium text-gray-400 hover:text-gray-200">My Devices</a>
+          <a href="/account/security" className="whitespace-nowrap text-sm font-medium text-gray-400 hover:text-gray-200">Security</a>
+          {isAdmin && <a href="/admin" className="whitespace-nowrap text-sm font-medium text-blue-400 hover:text-blue-300">Admin</a>}
+          <a href="/auth/signout" className="whitespace-nowrap text-sm text-gray-400 underline hover:text-gray-200">Sign out</a>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <h2 className="text-xl sm:text-2xl font-semibold text-white mb-4 sm:mb-6">Your Apps</h2>
-
-        {yourApps.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-            {yourApps.map(({ app, grant }) => (
-              <a
-                key={app.id}
-                href={app.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-blue-500 hover:bg-gray-800 transition-all flex flex-col items-center text-center gap-3"
-              >
-                {grant && (
-                  <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-900 text-blue-300 font-medium">
-                    {expiresInLabel(grant.expires_at)}
-                  </span>
-                )}
-                {getAppLogoUrl(app.name, app.icon_url) ? (
-                  <img src={getAppLogoUrl(app.name, app.icon_url)!} alt={app.name} className="w-12 h-12 rounded-xl object-contain bg-white p-1" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-xl font-bold text-gray-400 border border-gray-700">
-                    {app.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div>
-                  <p className="font-semibold text-white">{app.name}</p>
-                  <p className="text-xs text-gray-400 mt-1">{app.description}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No apps have been enabled yet. Check back later.</p>
-        )}
-
-        <RequestAccess apps={requestable} />
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+        <PortalView pending={pending} expiring={expiring} active={active} catalog={catalog} />
       </main>
     </div>
   )
