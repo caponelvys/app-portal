@@ -69,17 +69,12 @@ function LoginForm() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* ── Left: brand / marketing (lg and up) ── */}
-      <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-gray-800 p-12 xl:p-16">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-32 top-8 h-[40rem] w-[40rem] rounded-full"
-          style={{ background: 'radial-gradient(closest-side, rgba(124,92,255,0.20), transparent)' }}
-        />
-        <div className="relative">
+      <aside className="hidden lg:flex flex-col justify-between p-12 xl:p-16">
+        <div>
           <BrandLockup markSize={30} />
         </div>
 
-        <div className="relative max-w-xl">
+        <div className="max-w-xl">
           <h2 style={display} className="text-5xl font-bold leading-[1.05] tracking-tight text-white">
             One control plane for every endpoint.
           </h2>
@@ -88,7 +83,7 @@ function LoginForm() {
           </p>
         </div>
 
-        <div className="relative flex gap-12">
+        <div className="flex gap-12">
           <div>
             <p style={display} className="text-xl font-semibold text-white">Windows · macOS · Linux</p>
             <p className="mt-1 text-sm text-gray-500">one lightweight agent per device</p>
