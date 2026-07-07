@@ -9,6 +9,7 @@ import OwnerSuggestion from './OwnerSuggestion'
 import DeviceActionsMenu from '../DeviceActionsMenu'
 import AppCommand from '@/app/admin/AppCommand'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
+import { cleanPublisher } from '@/lib/software'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
 // username against email local-parts. Exact/starts-with only (no weak
@@ -48,7 +49,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   const { data: device } = await supabase
     .from('devices')
-    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address')
+    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at')
     .eq('device_id', deviceId)
     .single()
   if (!device) notFound()
@@ -86,6 +87,14 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     .eq('device_id', deviceId)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  // Installed-software inventory (agent-written, RLS anon-only) via the
+  // service-role client. Bounded to one device, so read the whole list.
+  const { data: software } = await createAdminClient()
+    .from('device_software')
+    .select('name, version, publisher')
+    .eq('device_id', deviceId)
+    .order('name')
 
   const activity: Activity[] = [
     ...(events ?? []).map(e => ({
@@ -170,6 +179,46 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
                 </div>
               ))}
             </div>
+          )}
+        </section>
+
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-lg font-semibold text-white">
+              Installed software
+              {software && software.length > 0 && (
+                <span className="text-gray-500 text-sm font-normal"> ({software.length})</span>
+              )}
+            </h2>
+            {device.last_inventory_at && (
+              <span className="text-xs text-gray-500">
+                as of {new Date(device.last_inventory_at).toLocaleString()}
+              </span>
+            )}
+          </div>
+          {software && software.length > 0 ? (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 divide-y divide-gray-800 max-h-96 overflow-y-auto">
+              {software.map((s, i) => {
+                const publisher = cleanPublisher(s.publisher)
+                return (
+                <div key={i} className="flex items-baseline justify-between gap-3 px-4 py-2">
+                  <p className="text-sm text-white min-w-0 truncate">
+                    {s.name}
+                    {publisher && <span className="text-gray-500"> — {publisher}</span>}
+                  </p>
+                  <span className="text-xs text-gray-400 font-mono whitespace-nowrap shrink-0">
+                    {s.version || '—'}
+                  </span>
+                </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              {device.last_inventory_at
+                ? 'No software reported.'
+                : 'Inventory not yet reported by this device (needs agent v1.7.17+).'}
+            </p>
           )}
         </section>
 

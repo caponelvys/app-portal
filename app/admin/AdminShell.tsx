@@ -31,6 +31,7 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
   '/admin/monitor': { title: 'Monitor', items: [
     { label: 'App Activity', href: '/admin/monitor' },
     { label: 'Agents',       href: '/admin/monitor/agents' },
+    { label: 'Software',     href: '/admin/monitor/software' },
   ]},
   '/admin/orgs': { title: 'Organizations', items: [
     { label: 'Organizations', href: '/admin/orgs' },
