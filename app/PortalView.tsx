@@ -433,7 +433,7 @@ export default function PortalView({
           {/* Off-catalog request */}
           <button
             onClick={() => setSuggestOpen(true)}
-            className="flex flex-col items-start rounded-xl border border-dashed border-gray-700 p-4 text-left transition-colors hover:border-gray-500 hover:bg-gray-900/40"
+            className="flex flex-col items-start rounded-xl border border-dashed border-[#7C5CFF]/40 p-4 text-left shadow-[0_0_18px_2px_rgba(124,92,255,0.25)] transition-all hover:border-[#7C5CFF]/70 hover:bg-[#7C5CFF]/5 hover:shadow-[0_0_26px_4px_rgba(124,92,255,0.45)]"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-700 text-2xl leading-none text-gray-500">+</span>
             <span className="mt-3 font-semibold text-white">Can&apos;t find it?</span>
