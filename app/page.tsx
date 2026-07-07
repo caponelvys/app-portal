@@ -84,6 +84,7 @@ export default async function DashboardPage() {
           <span className="hidden max-w-[200px] truncate text-sm text-gray-400 sm:block">{user.email}</span>
           <a href="/devices" className="whitespace-nowrap text-sm font-medium text-gray-400 hover:text-gray-200">My Devices</a>
           <a href="/account/security" className="whitespace-nowrap text-sm font-medium text-gray-400 hover:text-gray-200">Security</a>
+          <a href="/roadmap" className="whitespace-nowrap text-sm font-medium text-gray-400 hover:text-gray-200">Roadmap</a>
           {isAdmin && <a href="/admin" className="whitespace-nowrap text-sm font-medium text-blue-400 hover:text-blue-300">Admin</a>}
           <a href="/auth/signout" className="whitespace-nowrap text-sm text-gray-400 underline hover:text-gray-200">Sign out</a>
         </div>

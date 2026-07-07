@@ -213,6 +213,9 @@ function LoginForm() {
           </form>
 
           <p className="mt-8 text-center text-xs text-gray-500">SSO · SAML · one lightweight agent</p>
+          <p className="mt-3 text-center text-xs">
+            <a href="/roadmap" className="text-blue-400 hover:underline">View the product roadmap →</a>
+          </p>
         </div>
       </main>
       </div>
