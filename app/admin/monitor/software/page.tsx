@@ -11,6 +11,7 @@ const PAGE_SIZE = DEFAULT_PAGE_SIZE
 type CountRow = {
   name: string
   publisher: string | null
+  process_name: string | null
   device_count: number
   version_count: number
   managed: boolean
@@ -57,7 +58,7 @@ export default async function FleetSoftwarePage({ searchParams }: { searchParams
       </p>
       <SoftwareTableServer
         rows={rows.map(r => ({
-          name: r.name, publisher: cleanPublisher(r.publisher),
+          name: r.name, publisher: cleanPublisher(r.publisher), process_name: r.process_name,
           device_count: Number(r.device_count), version_count: Number(r.version_count),
           managed: r.managed,
         }))}

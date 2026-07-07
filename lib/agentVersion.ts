@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.18'
+export const AGENT_VERSION = '1.7.19'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.19',
+    date: '2026-07-08',
+    changes: [
+      'Inventory now captures each app’s executable/process name (macOS CFBundleExecutable, Windows best-effort from DisplayIcon) so the portal can turn observed software into an enforceable policy — "block this" on an unmanaged app creates a catalog entry the agent enforces by name. Requires migration 0024.',
+    ],
+  },
   {
     version: '1.7.18',
     date: '2026-07-08',

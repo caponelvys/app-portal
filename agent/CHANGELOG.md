@@ -1,5 +1,13 @@
 # Ravyn Agent — Changelog
 
+## v1.7.19 — 2026-07-08
+- **Inventory now captures the executable/process name** (Discovery M2 CP3):
+  macOS from `CFBundleExecutable` (exactly what `ps` reports), Windows
+  best-effort from the uninstall entry's `DisplayIcon` exe. This is the key
+  that lets the portal turn observed software into an enforceable policy — a
+  "block this" on an unmanaged app materializes a catalog entry the agent can
+  act on by name. Requires migration 0024 (`device_software.process_name`).
+
 ## v1.7.18 — 2026-07-08
 - **Learning mode** (Discovery M2): a device, location, or org can be set to
   `learn` instead of `enforce`. In learn mode the agent observes but never kills

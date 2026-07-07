@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.18"
+AGENT_VERSION = "1.7.19"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -603,19 +603,23 @@ def _installed_macos():
             if not entry.endswith(".app"):
                 continue
             bundle = os.path.join(apps_dir, entry)
-            name, version = entry[:-4], ""
+            name, version, exe = entry[:-4], "", ""
             try:
                 with open(os.path.join(bundle, "Contents", "Info.plist"), "rb") as f:
                     info = plistlib.load(f)
                 name = info.get("CFBundleDisplayName") or info.get("CFBundleName") or name
                 version = str(info.get("CFBundleShortVersionString")
                               or info.get("CFBundleVersion") or "")
+                # CFBundleExecutable is the binary in Contents/MacOS — exactly what
+                # `ps -eo comm` reports, so it's the enforcement match key.
+                exe = str(info.get("CFBundleExecutable") or "")
             except Exception:
                 pass  # unreadable plist — keep folder name, blank version
             rows.append({
                 "name": name, "version": version,
                 "publisher": _mac_bundle_publisher(bundle, version),
                 "source": "apps_dir", "install_path": bundle,
+                "process_name": exe,
             })
     return rows
 
@@ -648,12 +652,22 @@ def _installed_windows():
                         continue  # driver/update stubs have no display name
                     if val("SystemComponent") == 1:
                         continue  # hidden from Add/Remove — hide here too
+                    # Best-effort process name: DisplayIcon usually points at the
+                    # app's main exe ("C:\\...\\app.exe,0"). Take that basename;
+                    # blank when it isn't a real .exe (tasklist reports name.exe).
+                    exe = ""
+                    icon = val("DisplayIcon")
+                    if icon:
+                        cand = str(icon).split(",")[0].strip().strip('"')
+                        if cand.lower().endswith(".exe"):
+                            exe = os.path.basename(cand)
                     rows.append({
                         "name": str(name).strip(),
                         "version": str(val("DisplayVersion") or "").strip(),
                         "publisher": (str(val("Publisher")).strip() or None) if val("Publisher") else None,
                         "source": source,
                         "install_path": (str(val("InstallLocation")).strip() or None) if val("InstallLocation") else None,
+                        "process_name": exe,
                     })
 
     uninstall = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
@@ -725,9 +739,11 @@ def get_installed_software():
         version = (r.get("version") or "").strip()[:100]
         publisher = (r.get("publisher") or "").strip()[:200] or None
         path = (r.get("install_path") or "").strip()[:500] or None
+        process_name = (r.get("process_name") or "").strip()[:200] or None
         deduped[(name.lower(), version)] = {
             "name": name, "version": version, "publisher": publisher,
             "source": r.get("source"), "install_path": path,
+            "process_name": process_name,
         }
     return sorted(deduped.values(), key=lambda r: (r["name"].lower(), r["version"]))
 

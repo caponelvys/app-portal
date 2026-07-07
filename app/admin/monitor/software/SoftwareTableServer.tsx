@@ -1,11 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import ServerDataTable, { ServerColDef } from '@/app/admin/ServerDataTable'
 import { TableState } from '@/lib/tableParams'
+import ManageSoftwareModal, { PromoteTarget } from './ManageSoftwareModal'
 
 type SoftwareRow = {
   name: string
   publisher: string | null
+  process_name: string | null
   device_count: number
   version_count: number
   managed: boolean
@@ -20,6 +23,8 @@ export default function SoftwareTableServer({
   pageSize: number
   userId?: string
 }) {
+  const [manageTarget, setManageTarget] = useState<PromoteTarget | null>(null)
+
   const columns: ServerColDef<SoftwareRow>[] = [
     {
       id: 'name', label: 'Software', defaultWidth: 260, sortable: false,
@@ -56,20 +61,38 @@ export default function SoftwareTableServer({
       id: 'version_count', label: 'Versions', defaultWidth: 100, sortable: false,
       renderCell: r => <span className="text-gray-400 text-sm tabular-nums">{r.version_count.toLocaleString()}</span>,
     },
+    {
+      id: 'actions', label: '', defaultWidth: 96, sortable: false, sticky: true,
+      renderCell: r => r.managed ? (
+        <span className="text-gray-600 text-xs">—</span>
+      ) : (
+        <button
+          onClick={() => setManageTarget({ name: r.name, publisher: r.publisher, process_name: r.process_name })}
+          className="rounded-md border border-gray-700 px-2.5 py-1 text-xs font-medium text-blue-300 hover:border-blue-500/60 hover:bg-blue-600/10 transition-colors"
+        >
+          Manage
+        </button>
+      ),
+    },
   ]
 
   return (
-    <ServerDataTable
-      storageId="fleet-software"
-      userId={userId}
-      basePath="/admin/monitor/software"
-      state={state}
-      columns={columns}
-      rows={rows}
-      total={total}
-      pageSize={pageSize}
-      rowKey={r => r.name}
-      emptyMessage="No software reported yet. Devices report inventory once on agent v1.7.17+."
-    />
+    <>
+      <ServerDataTable
+        storageId="fleet-software"
+        userId={userId}
+        basePath="/admin/monitor/software"
+        state={state}
+        columns={columns}
+        rows={rows}
+        total={total}
+        pageSize={pageSize}
+        rowKey={r => r.name}
+        emptyMessage="No software reported yet. Devices report inventory once on agent v1.7.17+."
+      />
+      {manageTarget && (
+        <ManageSoftwareModal target={manageTarget} onClose={() => setManageTarget(null)} />
+      )}
+    </>
   )
 }
