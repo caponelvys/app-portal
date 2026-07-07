@@ -1,5 +1,18 @@
 # Ravyn Agent — Changelog
 
+## v1.7.17 — 2026-07-08
+- **Installed-software inventory** (Discovery M1): the agent now scans what's
+  installed on the device — name, version, publisher, install path — and
+  reports it to the portal. macOS: app bundles in /Applications +
+  ~/Applications (Info.plist + codesign authority); Windows: HKLM 64/32-bit
+  uninstall registry plus loaded user hives, so per-user installs
+  (Discord-style) are seen from the SYSTEM service; Linux: flatpak + snap.
+  Scans hourly and uploads only when the set changed, then prunes uninstalled
+  rows, so `device_software` mirrors the box. Stamps
+  `devices.last_inventory_at` each scan so the portal can tell fresh from
+  stale. Inventory failures are contained (logged as `inventory_failed`) and
+  never disrupt enforcement. Requires migration 0020.
+
 ## v1.7.16 — 2026-07-06
 - macOS companion updates now run `lsregister -f` on the installed app so macOS
   refreshes its icon — notifications show the current icon instead of a cached

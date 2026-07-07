@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.16"
+AGENT_VERSION = "1.7.17"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -533,6 +533,223 @@ def log_event(device_id, level, event, message=""):
         )
     except Exception:
         pass
+
+# ── Software inventory (M1 Discovery) ───────────────────────────────────────
+# Periodic installed-software scan reported to device_software: what's on the
+# box (name, version, publisher, path). This feeds fleet inventory, learning-
+# mode baselines, and outdated-version detection. Hourly + on-change: the scan
+# runs every INVENTORY_INTERVAL, but rows are only uploaded when the set
+# actually changed (hash compare), so a steady fleet costs one tiny PATCH/hour.
+# Binary hashing (sha256 column) is deferred to M2 with hash-based rules.
+INVENTORY_INTERVAL = 3600  # seconds between installed-software scans
+
+# codesign is ~50ms per bundle; cache per (path, version) so only new/updated
+# apps pay it on later scans within this process lifetime.
+_publisher_cache = {}
+
+def _mac_bundle_publisher(bundle_path, version):
+    """Signing authority for a .app bundle ('Slack Technologies, Inc.'),
+    best-effort via codesign. Cached per (path, version)."""
+    key = (bundle_path, version)
+    if key in _publisher_cache:
+        return _publisher_cache[key]
+    publisher = None
+    try:
+        out = subprocess.run(
+            ["codesign", "-dv", "--verbose=2", bundle_path],
+            capture_output=True, text=True, timeout=10,
+        ).stderr
+        for line in out.splitlines():
+            if line.startswith("Authority="):
+                publisher = line.split("=", 1)[1].strip()
+                # Strip the certificate-type prefix, keep the org name.
+                for prefix in ("Developer ID Application: ", "Apple Distribution: "):
+                    if publisher.startswith(prefix):
+                        publisher = publisher[len(prefix):]
+                break
+    except Exception:
+        pass
+    _publisher_cache[key] = publisher
+    return publisher
+
+def _installed_macos():
+    """App bundles in /Applications and ~/Applications (not system_profiler —
+    it's slow and full of helper noise). Name/version from Info.plist."""
+    import plistlib
+    rows = []
+    for apps_dir in ("/Applications", os.path.expanduser("~/Applications")):
+        if not os.path.isdir(apps_dir):
+            continue
+        for entry in os.listdir(apps_dir):
+            if not entry.endswith(".app"):
+                continue
+            bundle = os.path.join(apps_dir, entry)
+            name, version = entry[:-4], ""
+            try:
+                with open(os.path.join(bundle, "Contents", "Info.plist"), "rb") as f:
+                    info = plistlib.load(f)
+                name = info.get("CFBundleDisplayName") or info.get("CFBundleName") or name
+                version = str(info.get("CFBundleShortVersionString")
+                              or info.get("CFBundleVersion") or "")
+            except Exception:
+                pass  # unreadable plist — keep folder name, blank version
+            rows.append({
+                "name": name, "version": version,
+                "publisher": _mac_bundle_publisher(bundle, version),
+                "source": "apps_dir", "install_path": bundle,
+            })
+    return rows
+
+def _installed_windows():
+    """Uninstall registry keys — the canonical Windows installed list. HKLM in
+    both 64/32-bit views (machine-wide), plus each loaded HKEY_USERS hive so
+    per-user installs (Discord/Slack style) are seen from the SYSTEM service."""
+    import winreg
+    rows = []
+
+    def read_uninstall_key(root, path, source, access_flag=0):
+        try:
+            key = winreg.OpenKey(root, path, 0, winreg.KEY_READ | access_flag)
+        except OSError:
+            return
+        with key:
+            for i in range(winreg.QueryInfoKey(key)[0]):
+                try:
+                    sub = winreg.OpenKey(key, winreg.EnumKey(key, i))
+                except OSError:
+                    continue
+                with sub:
+                    def val(name):
+                        try:
+                            return winreg.QueryValueEx(sub, name)[0]
+                        except OSError:
+                            return None
+                    name = val("DisplayName")
+                    if not name or not str(name).strip():
+                        continue  # driver/update stubs have no display name
+                    if val("SystemComponent") == 1:
+                        continue  # hidden from Add/Remove — hide here too
+                    rows.append({
+                        "name": str(name).strip(),
+                        "version": str(val("DisplayVersion") or "").strip(),
+                        "publisher": (str(val("Publisher")).strip() or None) if val("Publisher") else None,
+                        "source": source,
+                        "install_path": (str(val("InstallLocation")).strip() or None) if val("InstallLocation") else None,
+                    })
+
+    uninstall = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+    read_uninstall_key(winreg.HKEY_LOCAL_MACHINE, uninstall, "registry", winreg.KEY_WOW64_64KEY)
+    read_uninstall_key(winreg.HKEY_LOCAL_MACHINE, uninstall, "registry", winreg.KEY_WOW64_32KEY)
+    # Loaded user hives (the console user's hive is loaded while they're
+    # logged in, so their per-user apps are visible without a session hop).
+    try:
+        i = 0
+        while True:
+            sid = winreg.EnumKey(winreg.HKEY_USERS, i)
+            i += 1
+            if sid in (".DEFAULT",) or sid.endswith("_Classes"):
+                continue
+            read_uninstall_key(winreg.HKEY_USERS, sid + "\\" + uninstall, "registry_user")
+    except OSError:
+        pass  # end of enumeration
+    return rows
+
+def _installed_linux():
+    """Flatpak + snap apps. A full dpkg/rpm dump is thousands of system
+    libraries — noise at fleet scale — so package-manager inventory is
+    deferred until a concrete need (learning mode may revisit in M2)."""
+    rows = []
+    try:
+        out = subprocess.check_output(
+            ["flatpak", "list", "--app", "--columns=name,version,application"],
+            text=True, timeout=30, stderr=subprocess.DEVNULL)
+        for line in out.splitlines():
+            parts = line.split("\t")
+            if parts and parts[0].strip():
+                rows.append({
+                    "name": parts[0].strip(),
+                    "version": parts[1].strip() if len(parts) > 1 else "",
+                    "publisher": None, "source": "flatpak",
+                    "install_path": parts[2].strip() if len(parts) > 2 else None,
+                })
+    except Exception:
+        pass
+    try:
+        out = subprocess.check_output(["snap", "list"], text=True, timeout=30,
+                                      stderr=subprocess.DEVNULL)
+        for line in out.splitlines()[1:]:  # skip header
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] != "core":
+                rows.append({"name": parts[0], "version": parts[1],
+                             "publisher": parts[4] if len(parts) > 4 else None,
+                             "source": "snap", "install_path": None})
+    except Exception:
+        pass
+    return rows
+
+def get_installed_software():
+    """Normalized installed-software rows for this OS, deduped on
+    (name, version) — the upsert key device_software enforces."""
+    if OS == "Darwin":
+        raw = _installed_macos()
+    elif OS == "Windows":
+        raw = _installed_windows()
+    elif OS == "Linux":
+        raw = _installed_linux()
+    else:
+        return []
+    deduped = {}
+    for r in raw:
+        name = (r.get("name") or "").strip()[:200]
+        if not name:
+            continue
+        version = (r.get("version") or "").strip()[:100]
+        publisher = (r.get("publisher") or "").strip()[:200] or None
+        path = (r.get("install_path") or "").strip()[:500] or None
+        deduped[(name.lower(), version)] = {
+            "name": name, "version": version, "publisher": publisher,
+            "source": r.get("source"), "install_path": path,
+        }
+    return sorted(deduped.values(), key=lambda r: (r["name"].lower(), r["version"]))
+
+def report_inventory(device_id, last_hash):
+    """Scan installed software; upload only if the set changed since the last
+    upload. Uploads are an upsert on (device_id, name, version) followed by a
+    stale-row prune, so device_software mirrors the box. Always stamps
+    devices.last_inventory_at so the portal can tell fresh from stale.
+    Returns the new inventory hash (or last_hash when nothing was scanned)."""
+    rows = get_installed_software()
+    if not rows:
+        return last_hash  # scan failed or unsupported OS — leave the DB as-is
+    digest = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+    scan_time = now_iso()
+    if digest != last_hash:
+        payload = [{**r, "device_id": device_id, "last_seen": scan_time} for r in rows]
+        resp = requests.post(
+            f"{SUPABASE_URL}/rest/v1/device_software?on_conflict=device_id,name,version",
+            headers={**HEADERS, "Prefer": "resolution=merge-duplicates"},
+            json=payload, timeout=60,
+        )
+        if resp.status_code not in (200, 201, 204):
+            raise RuntimeError(f"inventory upsert failed: {resp.status_code} {resp.text[:200]}")
+        # Anything this scan didn't touch was uninstalled — remove it. params=
+        # (not an f-string URL) so the '+' in the ISO timestamp is URL-encoded.
+        requests.delete(
+            f"{SUPABASE_URL}/rest/v1/device_software",
+            headers=HEADERS, timeout=30,
+            params={"device_id": f"eq.{device_id}", "last_seen": f"lt.{scan_time}"},
+        )
+        log_event(device_id, "info", "inventory",
+                  f"Reported {len(rows)} installed apps")
+        print(f"[agent] Inventory: reported {len(rows)} installed apps")
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
+            headers=HEADERS, json={"last_inventory_at": scan_time}, timeout=10,
+        )
+    except Exception:
+        pass  # freshness stamp is best-effort
+    return digest
 
 # ── Auto-update ───────────────────────────────────────────────────────────────
 def get_version_info():
@@ -1436,6 +1653,7 @@ def main():
     last_error = {"msg": None, "ts": 0.0}  # throttle repeated error events
     last_update_check = 0.0  # 0 → check for updates on the first iteration
     consecutive_net_fails = 0  # run of back-to-back poll failures (network)
+    last_inventory = {"ts": 0.0, "hash": None}  # 0 → scan on the first iteration
 
     while True:
         try:
@@ -1510,6 +1728,19 @@ def main():
                         if now_n - last_notify.get(app["id"], 0) >= NOTIFY_INTERVAL:
                             notify_user("Ravyn", f"{app['name']} is blocked by your administrator and has been closed.")
                             last_notify[app["id"]] = now_n
+
+            # Installed-software inventory (hourly + on-change). Runs after
+            # enforcement so a slow scan never delays killing a blocked app.
+            # Failures are contained: inventory must never break enforcement.
+            now_inv = time.time()
+            if now_inv - last_inventory["ts"] >= INVENTORY_INTERVAL:
+                last_inventory["ts"] = now_inv  # even on failure, retry next hour
+                try:
+                    last_inventory["hash"] = report_inventory(device_id, last_inventory["hash"])
+                except Exception as e:
+                    print(f"[agent] Inventory scan failed: {e}")
+                    log_event(device_id, "warn", "inventory_failed",
+                              f"Inventory scan failed: {e}")
 
             # Full cycle succeeded — clear any network-failure streak.
             consecutive_net_fails = 0

@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.16'
+export const AGENT_VERSION = '1.7.17'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.17',
+    date: '2026-07-08',
+    changes: [
+      'Installed-software inventory (Discovery M1): the agent scans installed apps — name, version, publisher, install path — and reports them to the portal (device_software table). macOS app bundles, Windows uninstall registry (machine-wide + per-user hives), Linux flatpak/snap. Hourly + on-change with stale-row pruning; stamps devices.last_inventory_at. Inventory failures never disrupt enforcement. Requires migration 0020.',
+    ],
+  },
   {
     version: '1.7.16',
     date: '2026-07-06',
