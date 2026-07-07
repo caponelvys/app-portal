@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import BrandLockup from '../BrandLockup'
+import BrandLockup, { RavynWord } from '../BrandLockup'
 
 export const metadata: Metadata = {
   title: 'Roadmap — Ravyn',
@@ -82,7 +82,7 @@ export default function RoadmapPage() {
             Product Roadmap
           </span>
           <h1 className="mt-5 text-balance font-[family-name:var(--font-display)] text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl">
-            Where Ravyn is headed
+            Where <RavynWord /> is headed
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-gray-400">
             Ravyn gives managed IT teams complete control over the applications running across their fleet — on

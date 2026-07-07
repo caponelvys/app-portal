@@ -1,5 +1,24 @@
 import { useId, type CSSProperties } from 'react'
 
+// The Ravyn violet used for the "yn" in the wordmark. Single source so the
+// lockup and any inline usage stay in lockstep.
+const WORDMARK_VIOLET = '#8b7bff'
+
+/**
+ * The "Ravyn" wordmark for use inline in prose or headings — "Rav" inherits the
+ * surrounding text color, "yn" is the brand violet, matching how the lockup and
+ * portal nav render it. Inherits font size/weight from its context, so it drops
+ * straight into an <h1> or a sentence. Use this instead of typing "Ravyn"
+ * wherever the brand name appears, to keep the two-tone treatment consistent.
+ */
+export function RavynWord({ className = '' }: { className?: string }) {
+  return (
+    <span className={className}>
+      Rav<span style={{ color: WORDMARK_VIOLET }}>yn</span>
+    </span>
+  )
+}
+
 /**
  * Ravyn brand lockup — the glossy violet gradient diamond mark plus the "Ravyn"
  * wordmark. Use `wordmark={false}` for the mark on its own. The mark is the flat
@@ -51,7 +70,7 @@ export default function BrandLockup({
           className="font-semibold tracking-tight"
         >
           <span className="text-white">Rav</span>
-          <span style={{ color: '#8b7bff' }}>yn</span>
+          <span style={{ color: WORDMARK_VIOLET }}>yn</span>
         </span>
       )}
     </span>
