@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.17'
+export const AGENT_VERSION = '1.7.18'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.18',
+    date: '2026-07-08',
+    changes: [
+      'Learning mode (Discovery M2): a device, location, or org can be set to "learn" instead of "enforce". In learn mode the agent observes but never kills — it records a would_block observation when a blocked app is running, so admins can see what enforcement would do before committing. Effective mode resolves device > location > org > enforce, defaulting to enforce on any lookup error. Requires migration 0023.',
+    ],
+  },
   {
     version: '1.7.17',
     date: '2026-07-08',

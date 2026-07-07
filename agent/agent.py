@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.17"
+AGENT_VERSION = "1.7.18"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -368,6 +368,25 @@ def get_device_context(device_id):
     if resp.status_code == 200 and resp.json():
         return resp.json()[0]
     return {}
+
+def get_enforcement_mode(device_id):
+    """Effective mode for this device via the server-side resolver (device >
+    location > org > 'enforce'). 'learn' = observe only: log what would be
+    blocked, don't kill. Defaults to 'enforce' on any error so a failed lookup
+    never silently disables enforcement."""
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/rpc/effective_enforcement_mode"
+            f"?p_device_id={device_id}",
+            headers=HEADERS, timeout=10,
+        )
+        if resp.status_code == 200:
+            mode = resp.json()
+            if mode in ("enforce", "learn"):
+                return mode
+    except Exception:
+        pass
+    return "enforce"
 
 def get_policies(scope_ids):
     """Fetch policy overrides for the given org/location/device scope IDs."""
@@ -1649,6 +1668,7 @@ def main():
     setup_pairing(device_id)
 
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
+    last_would_block = {}  # app_id -> last time we logged a learn-mode "would_block"
     last_notify = {}  # app_id -> last time we notified the user about a block
     last_error = {"msg": None, "ts": 0.0}  # throttle repeated error events
     last_update_check = 0.0  # 0 → check for updates on the first iteration
@@ -1698,6 +1718,11 @@ def main():
 
             running = get_running_processes()
 
+            # Learning mode: when this device's effective scope is 'learn', the
+            # agent observes but never kills — it records what it WOULD block so
+            # an admin can build confidence before switching to 'enforce'.
+            mode = get_enforcement_mode(device_id)
+
             # Audit log: record when a granted app is actually in use (throttled
             # per app so we don't write an event on every 5s poll).
             now_ts = time.time()
@@ -1717,6 +1742,17 @@ def main():
                 match = process_name in running or (OS == "Windows" and process_name_exe in running)
 
                 if match:
+                    if mode == "learn":
+                        # Observe only: record what enforcement would have done,
+                        # don't kill or notify. Throttled per app (agent_events,
+                        # not agent_logs, so it stays out of the compliance audit
+                        # — nothing was actually blocked).
+                        now_wb = time.time()
+                        if now_wb - last_would_block.get(app["id"], 0) >= ACCESS_LOG_INTERVAL:
+                            log_event(device_id, "info", "would_block",
+                                      f"{app['name']} would be blocked (learn mode)")
+                            last_would_block[app["id"]] = now_wb
+                        continue
                     actual_name = process_name_exe if OS == "Windows" else process_name
                     print(f"[agent] Blocking: {app['name']} ({actual_name})")
                     killed = kill_process(actual_name)

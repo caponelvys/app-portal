@@ -7,6 +7,7 @@ import { AGENT_VERSION, isVersionBehind } from '@/lib/agentVersion'
 import CreateForm from '../CreateForm'
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import RenameForm from '@/app/admin/RenameForm'
+import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
 import ActivityChart from '@/app/admin/ActivityChart'
 import AppCommand from '@/app/admin/AppCommand'
 
@@ -22,7 +23,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
   const orgIds = await getAccessibleOrgIds(supabase, profile)
   if (orgIds !== null && !orgIds.includes(orgId)) redirect('/admin/orgs')
 
-  const { data: org } = await supabase.from('orgs').select('id, name').eq('id', orgId).single()
+  const { data: org } = await supabase.from('orgs').select('id, name, enforcement_mode').eq('id', orgId).single()
   if (!org) notFound()
 
   const admin = createAdminClient()
@@ -92,6 +93,27 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
         <Stat label="Devices" value={totalDevices} />
         <Stat label="Healthy" value={tiers.healthy} accent="green" />
         <Stat label="Outdated agents" value={outdated} accent={outdated ? 'yellow' : undefined} />
+      </div>
+
+      {/* Enforcement mode — org-wide default (devices/locations can override) */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+        <div className="flex items-center gap-3 mb-1">
+          <h2 className="text-lg font-semibold text-white">Enforcement mode</h2>
+          {org.enforcement_mode === 'learn' && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              Learn mode
+            </span>
+          )}
+        </div>
+        <p className="text-gray-500 text-sm mb-3">
+          Org-wide default. In <span className="text-amber-300">Learn</span> mode, agents observe and record what would be blocked instead of closing apps. Locations and devices can override this.
+        </p>
+        <EnforcementModeToggle
+          scope="org"
+          scopeId={org.id}
+          current={(org.enforcement_mode as 'enforce' | 'learn' | null) ?? null}
+        />
       </div>
 
       {/* Insight graphs */}

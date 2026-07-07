@@ -15,6 +15,9 @@ export const AGENT_EVENT_LABEL: Record<string, string> = {
   uninstall_failed:  'App uninstall failed',
   install_app:       'App installed',
   install_failed:    'App install failed',
+  inventory:         'Inventory reported',
+  inventory_failed:  'Inventory scan failed',
+  would_block:       'Would block (learn mode)',
   error:             'Agent error',
 }
 

@@ -10,6 +10,7 @@ import DeviceActionsMenu from '../DeviceActionsMenu'
 import AppCommand from '@/app/admin/AppCommand'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 import { cleanPublisher } from '@/lib/software'
+import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
 // username against email local-parts. Exact/starts-with only (no weak
@@ -49,14 +50,14 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   const { data: device } = await supabase
     .from('devices')
-    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at')
+    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at, enforcement_mode')
     .eq('device_id', deviceId)
     .single()
   if (!device) notFound()
 
   const [{ data: org }, { data: location }, { data: owner }, { data: logs }, { data: appCatalog }] = await Promise.all([
-    device.org_id ? supabase.from('orgs').select('id, name').eq('id', device.org_id).single() : Promise.resolve({ data: null }),
-    device.location_id ? supabase.from('locations').select('id, name').eq('id', device.location_id).single() : Promise.resolve({ data: null }),
+    device.org_id ? supabase.from('orgs').select('id, name, enforcement_mode').eq('id', device.org_id).single() : Promise.resolve({ data: null }),
+    device.location_id ? supabase.from('locations').select('id, name, enforcement_mode').eq('id', device.location_id).single() : Promise.resolve({ data: null }),
     device.user_id ? supabase.from('profiles').select('email').eq('id', device.user_id).single() : Promise.resolve({ data: null }),
     supabase.from('agent_logs').select('app_name, action, created_at').eq('device_id', deviceId).order('created_at', { ascending: false }).limit(50),
     supabase.from('apps').select('id, name').order('name'),
@@ -126,6 +127,12 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   const tier = getHealthTier(device.last_seen)
 
+  // Effective enforcement mode mirrors the agent's resolver: device > location
+  // > org > 'enforce'. Used for the inherit hint on the device toggle.
+  const effectiveMode: 'enforce' | 'learn' =
+    (device.enforcement_mode ?? location?.enforcement_mode ?? org?.enforcement_mode ?? 'enforce') === 'learn'
+      ? 'learn' : 'enforce'
+
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-8">
       <Breadcrumbs items={[
@@ -164,6 +171,27 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
           {ownerSuggestion && device.device_user && (
             <OwnerSuggestion deviceId={device.device_id} osUser={device.device_user} suggestion={ownerSuggestion} />
           )}
+        </section>
+
+        <section>
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-lg font-semibold text-white">Enforcement</h2>
+            {effectiveMode === 'learn' && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                Learn mode
+              </span>
+            )}
+          </div>
+          <p className="text-gray-500 text-sm mb-3">
+            In <span className="text-amber-300">Learn</span> mode this device is observed but blocked apps are recorded, not closed.
+          </p>
+          <EnforcementModeToggle
+            scope="device"
+            scopeId={device.device_id}
+            current={(device.enforcement_mode as 'enforce' | 'learn' | null) ?? null}
+            effective={effectiveMode}
+          />
         </section>
 
         <section>

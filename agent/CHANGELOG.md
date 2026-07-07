@@ -1,5 +1,15 @@
 # Ravyn Agent — Changelog
 
+## v1.7.18 — 2026-07-08
+- **Learning mode** (Discovery M2): a device, location, or org can be set to
+  `learn` instead of `enforce`. In learn mode the agent observes but never kills
+  — when a blocked app is running it records a `would_block` observation (to
+  agent_events, throttled per app) so an admin can see what enforcement would do
+  before committing. Effective mode resolves device > location > org > enforce
+  via the `effective_enforcement_mode` RPC, and defaults to `enforce` on any
+  lookup error so enforcement is never silently disabled. Requires migration
+  0023.
+
 ## v1.7.17 — 2026-07-08
 - **Installed-software inventory** (Discovery M1): the agent now scans what's
   installed on the device — name, version, publisher, install path — and
