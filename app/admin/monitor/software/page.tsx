@@ -13,6 +13,7 @@ type CountRow = {
   publisher: string | null
   device_count: number
   version_count: number
+  managed: boolean
   total_count: number
 }
 
@@ -29,9 +30,17 @@ export default async function FleetSoftwarePage({ searchParams }: { searchParams
   const state = parseTableState(await searchParams)
   const from = (state.page - 1) * PAGE_SIZE
 
+  // Catalog names decide "managed" — kept in the app (small catalog) and passed
+  // to the RPC lowercased so filtering/paginating stay correct in SQL.
+  const { data: catalog } = await supabase.from('apps').select('name')
+  const managedNames = (catalog ?? []).map(a => a.name.toLowerCase())
+  const managedFilter = state.filters.managed || null // 'managed' | 'unmanaged'
+
   const { data } = await createAdminClient().rpc('software_install_counts', {
     p_org_ids: orgIds,
     p_search: state.filters.name || null,
+    p_managed_names: managedNames,
+    p_filter: managedFilter,
     p_limit: PAGE_SIZE,
     p_offset: from,
   })
@@ -43,12 +52,14 @@ export default async function FleetSoftwarePage({ searchParams }: { searchParams
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-1">Software inventory</h1>
       <p className="text-gray-500 text-sm mb-6">
-        Installed applications reported across the fleet, most-deployed first. Devices report inventory on agent v1.7.17+.
+        Installed applications reported across the fleet, most-deployed first. Filter to <span className="text-gray-400">Unmanaged</span> to
+        see what is running that isn&apos;t in your app catalog yet. Devices report inventory on agent v1.7.17+.
       </p>
       <SoftwareTableServer
         rows={rows.map(r => ({
           name: r.name, publisher: cleanPublisher(r.publisher),
           device_count: Number(r.device_count), version_count: Number(r.version_count),
+          managed: r.managed,
         }))}
         total={total}
         state={state}
