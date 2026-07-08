@@ -4,38 +4,53 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Org = { id: string; name: string }
+type Scoped = { id: string; name: string; org_id: string }
 type Rule = {
   id: string
   match_type: string
   match_value: string
   action: string
-  org_id: string
-  org_name: string
+  scope_label: string
   matched: number
 }
 
 const MATCH_LABEL: Record<string, string> = { publisher: 'Publisher', path: 'Path', name: 'Name', hash: 'Hash' }
 type MatchKind = 'publisher' | 'path' | 'name' | 'hash'
+type ScopeKind = 'org' | 'location' | 'device'
 
-export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule[] }) {
+export default function RulesManager({ orgs, locations, devices, rules }: {
+  orgs: Org[]; locations: Scoped[]; devices: Scoped[]; rules: Rule[]
+}) {
   const router = useRouter()
   const [orgId, setOrgId] = useState(orgs[0]?.id ?? '')
+  const [scopeKind, setScopeKind] = useState<ScopeKind>('org')
+  const [scopeTarget, setScopeTarget] = useState('') // location_id or device_id when narrower than org
   const [matchType, setMatchType] = useState<MatchKind>('publisher')
   const [matchValue, setMatchValue] = useState('')
   const [action, setAction] = useState<'block' | 'allow'>('block')
+
+  // Targets within the chosen org for the narrower scopes.
+  const orgLocations = locations.filter(l => l.org_id === orgId)
+  const orgDevices = devices.filter(d => d.org_id === orgId)
+
+  // The effective scope for the API: org itself, or the chosen location/device.
+  const scope = scopeKind === 'org'
+    ? { scope_type: 'org' as const, scope_id: orgId }
+    : { scope_type: scopeKind, scope_id: scopeTarget }
+  const scopeReady = scopeKind === 'org' ? !!orgId : !!scopeTarget
   const [preview, setPreview] = useState<{ matched: number; names: string[]; enforceable: number } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const canSubmit = orgId && matchValue.trim() && !busy
+  const canSubmit = scopeReady && matchValue.trim() && !busy
 
   async function runPreview() {
-    if (!orgId || !matchValue.trim()) return
+    if (!scopeReady || !matchValue.trim()) return
     setBusy('preview'); setError(null); setPreview(null)
     try {
       const res = await fetch('/api/policy-rules/preview', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ org_id: orgId, match_type: matchType, match_value: matchValue.trim() }),
+        body: JSON.stringify({ ...scope, match_type: matchType, match_value: matchValue.trim() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Preview failed')
@@ -51,7 +66,7 @@ export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule
     try {
       const res = await fetch('/api/policy-rules', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ org_id: orgId, match_type: matchType, match_value: matchValue.trim(), action }),
+        body: JSON.stringify({ ...scope, match_type: matchType, match_value: matchValue.trim(), action }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to create rule')
@@ -98,10 +113,29 @@ export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <label className="flex flex-col gap-1.5 text-xs text-gray-400">
                 Organization
-                <select value={orgId} onChange={e => { setOrgId(e.target.value); setPreview(null) }} className={inputCls}>
+                <select value={orgId} onChange={e => { setOrgId(e.target.value); setScopeTarget(''); setPreview(null) }} className={inputCls}>
                   {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               </label>
+              <label className="flex flex-col gap-1.5 text-xs text-gray-400">
+                Apply to
+                <select value={scopeKind} onChange={e => { setScopeKind(e.target.value as ScopeKind); setScopeTarget(''); setPreview(null) }} className={inputCls}>
+                  <option value="org">Whole org</option>
+                  <option value="location">A location</option>
+                  <option value="device">A device</option>
+                </select>
+              </label>
+              {scopeKind !== 'org' && (
+                <label className="flex flex-col gap-1.5 text-xs text-gray-400">
+                  {scopeKind === 'location' ? 'Location' : 'Device'}
+                  <select value={scopeTarget} onChange={e => { setScopeTarget(e.target.value); setPreview(null) }} className={inputCls}>
+                    <option value="">Select…</option>
+                    {(scopeKind === 'location' ? orgLocations : orgDevices).map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="flex flex-col gap-1.5 text-xs text-gray-400">
                 Match on
                 <select value={matchType} onChange={e => { setMatchType(e.target.value as MatchKind); setPreview(null) }} className={inputCls}>
@@ -179,7 +213,7 @@ export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule
                     {MATCH_LABEL[r.match_type] ?? r.match_type} contains “<span className="font-medium">{r.match_value}</span>”
                   </p>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    {r.org_name} · matches {r.matched} app{r.matched === 1 ? '' : 's'}
+                    {r.scope_label} · matches {r.matched} app{r.matched === 1 ? '' : 's'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

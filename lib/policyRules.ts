@@ -29,6 +29,21 @@ const MATCH_COLUMN: Record<MatchType, string> = {
   hash: 'sha256',
 }
 
+// The org that owns a scope target — for access checks and for stamping
+// policy_rules.org_id (which scopes the rules list). Returns null if the target
+// doesn't exist.
+export async function resolveScopeOrgId(
+  admin: SupabaseClient,
+  scopeType: ScopeType,
+  scopeId: string,
+): Promise<string | null> {
+  if (scopeType === 'org') return scopeId
+  const table = scopeType === 'location' ? 'locations' : 'devices'
+  const key = scopeType === 'location' ? 'id' : 'device_id'
+  const { data } = await admin.from(table).select('org_id').eq(key, scopeId).maybeSingle()
+  return data?.org_id ?? null
+}
+
 // Distinct software matching a rule within its scope's inventory. Dedupes by
 // name, preferring a row that carries a process_name (the enforcement key).
 export async function resolveRuleMatches(
