@@ -7,7 +7,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type MatchType = 'publisher' | 'path' | 'name'
+export type MatchType = 'publisher' | 'path' | 'name' | 'hash'
 export type RuleAction = 'allow' | 'block'
 export type ScopeType = 'org' | 'location' | 'device'
 
@@ -26,6 +26,7 @@ const MATCH_COLUMN: Record<MatchType, string> = {
   publisher: 'publisher',
   path: 'install_path',
   name: 'name',
+  hash: 'sha256',
 }
 
 // Distinct software matching a rule within its scope's inventory. Dedupes by
@@ -48,7 +49,10 @@ export async function resolveRuleMatches(
     q = q.in('device_id', ids)
   }
 
-  q = q.ilike(MATCH_COLUMN[rule.match_type], `%${rule.match_value}%`)
+  // Hash is an exact identity match; the rest are substring (contains).
+  q = rule.match_type === 'hash'
+    ? q.eq('sha256', rule.match_value.trim().toLowerCase())
+    : q.ilike(MATCH_COLUMN[rule.match_type], `%${rule.match_value}%`)
   const { data } = await q
 
   const byName = new Map<string, SoftwareMatch>()

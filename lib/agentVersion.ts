@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.19'
+export const AGENT_VERSION = '1.7.20'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.20',
+    date: '2026-07-08',
+    changes: [
+      'Executable hashing (Discovery M2 CP4): inventory reports the sha256 of each app’s main executable, cached per (path, version) so only new or updated apps re-hash. This is the identity hash-based policy rules pin against — e.g. block one specific bad build while newer builds keep running.',
+    ],
+  },
   {
     version: '1.7.19',
     date: '2026-07-08',

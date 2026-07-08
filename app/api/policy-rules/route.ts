@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import { materializeRule, resolveRuleMatches, type PolicyRule, type MatchType, type RuleAction } from '@/lib/policyRules'
 
-const MATCH_TYPES = ['publisher', 'path', 'name']
+const MATCH_TYPES = ['publisher', 'path', 'name', 'hash']
 const ACTIONS = ['allow', 'block']
 
 async function caller() {

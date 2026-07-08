@@ -93,7 +93,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
   // service-role client. Bounded to one device, so read the whole list.
   const { data: software } = await createAdminClient()
     .from('device_software')
-    .select('name, version, publisher')
+    .select('name, version, publisher, sha256')
     .eq('device_id', deviceId)
     .order('name')
 
@@ -234,9 +234,14 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
                     {s.name}
                     {publisher && <span className="text-gray-500"> — {publisher}</span>}
                   </p>
-                  <span className="text-xs text-gray-400 font-mono whitespace-nowrap shrink-0">
-                    {s.version || '—'}
-                  </span>
+                  <div className="flex items-baseline gap-3 shrink-0">
+                    {s.sha256 && (
+                      <span className="text-[11px] text-gray-600 font-mono" title={s.sha256}>{s.sha256.slice(0, 12)}</span>
+                    )}
+                    <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
+                      {s.version || '—'}
+                    </span>
+                  </div>
                 </div>
                 )
               })}

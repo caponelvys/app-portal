@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase-admin'
 import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import { resolveRuleMatches, type PolicyRule, type MatchType } from '@/lib/policyRules'
 
-const MATCH_TYPES = ['publisher', 'path', 'name']
+const MATCH_TYPES = ['publisher', 'path', 'name', 'hash']
 
 // Dry-run: how many apps would a prospective rule match right now? Used to show
 // the impact before the admin commits.

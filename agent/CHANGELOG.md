@@ -1,5 +1,13 @@
 # Ravyn Agent — Changelog
 
+## v1.7.20 — 2026-07-08
+- **Executable hashing** (Discovery M2 CP4): inventory now reports the sha256 of
+  each app's main executable (macOS `Contents/MacOS/<exe>`, Windows the
+  `DisplayIcon` exe). Cached per (path, version) so only new/updated apps re-hash
+  — a steady fleet pays ~nothing. This is the identity hash-based policy rules
+  pin against (e.g. block one bad build while newer builds still run). No
+  migration — the `sha256` column shipped unused in 0020.
+
 ## v1.7.19 — 2026-07-08
 - **Inventory now captures the executable/process name** (Discovery M2 CP3):
   macOS from `CFBundleExecutable` (exactly what `ps` reports), Windows

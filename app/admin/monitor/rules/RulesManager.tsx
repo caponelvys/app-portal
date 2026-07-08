@@ -14,12 +14,13 @@ type Rule = {
   matched: number
 }
 
-const MATCH_LABEL: Record<string, string> = { publisher: 'Publisher', path: 'Path', name: 'Name' }
+const MATCH_LABEL: Record<string, string> = { publisher: 'Publisher', path: 'Path', name: 'Name', hash: 'Hash' }
+type MatchKind = 'publisher' | 'path' | 'name' | 'hash'
 
 export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule[] }) {
   const router = useRouter()
   const [orgId, setOrgId] = useState(orgs[0]?.id ?? '')
-  const [matchType, setMatchType] = useState<'publisher' | 'path' | 'name'>('publisher')
+  const [matchType, setMatchType] = useState<MatchKind>('publisher')
   const [matchValue, setMatchValue] = useState('')
   const [action, setAction] = useState<'block' | 'allow'>('block')
   const [preview, setPreview] = useState<{ matched: number; names: string[]; enforceable: number } | null>(null)
@@ -103,16 +104,17 @@ export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule
               </label>
               <label className="flex flex-col gap-1.5 text-xs text-gray-400">
                 Match on
-                <select value={matchType} onChange={e => { setMatchType(e.target.value as 'publisher' | 'path' | 'name'); setPreview(null) }} className={inputCls}>
+                <select value={matchType} onChange={e => { setMatchType(e.target.value as MatchKind); setPreview(null) }} className={inputCls}>
                   <option value="publisher">Publisher</option>
                   <option value="path">Path</option>
                   <option value="name">Name</option>
+                  <option value="hash">Hash (build)</option>
                 </select>
               </label>
               <label className="flex flex-col gap-1.5 text-xs text-gray-400 lg:col-span-1">
-                Value contains
+                {matchType === 'hash' ? 'Value equals' : 'Value contains'}
                 <input value={matchValue} onChange={e => { setMatchValue(e.target.value); setPreview(null) }}
-                  placeholder={matchType === 'publisher' ? 'e.g. BitTorrent' : matchType === 'path' ? 'e.g. /Applications/Games' : 'e.g. Torrent'}
+                  placeholder={matchType === 'publisher' ? 'e.g. BitTorrent' : matchType === 'path' ? 'e.g. /Applications/Games' : matchType === 'hash' ? 'paste a sha256 build hash' : 'e.g. Torrent'}
                   className={inputCls} />
               </label>
               <label className="flex flex-col gap-1.5 text-xs text-gray-400">
@@ -123,6 +125,12 @@ export default function RulesManager({ orgs, rules }: { orgs: Org[]; rules: Rule
                 </select>
               </label>
             </div>
+
+            {matchType === 'hash' && (
+              <p className="mt-3 text-xs text-gray-500">
+                Matches the exact build (sha256 of the main executable, reported by agent v1.7.20+). Enforcement is per app, so a block affects all builds of the matched app, not just this one.
+              </p>
+            )}
 
             {preview && (
               <div className="mt-4 rounded-lg border border-gray-800 bg-gray-950 p-3 text-sm">

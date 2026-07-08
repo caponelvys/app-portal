@@ -28,7 +28,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.19"
+AGENT_VERSION = "1.7.20"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -559,12 +559,36 @@ def log_event(device_id, level, event, message=""):
 # mode baselines, and outdated-version detection. Hourly + on-change: the scan
 # runs every INVENTORY_INTERVAL, but rows are only uploaded when the set
 # actually changed (hash compare), so a steady fleet costs one tiny PATCH/hour.
-# Binary hashing (sha256 column) is deferred to M2 with hash-based rules.
+# The sha256 column carries the main executable's hash (M2 CP4), the identity
+# hash-based rules pin against — not the whole bundle, just the launcher binary.
 INVENTORY_INTERVAL = 3600  # seconds between installed-software scans
 
 # codesign is ~50ms per bundle; cache per (path, version) so only new/updated
 # apps pay it on later scans within this process lifetime.
 _publisher_cache = {}
+# sha256 of the main executable, cached per (path, version) — hashing a binary is
+# far pricier than codesign, so only new/updated apps re-hash within a run.
+_hash_cache = {}
+
+def _sha256_file(path, version):
+    """sha256 of a file, streamed and cached per (path, version). None on any
+    error (missing/unreadable binary) — a hash is best-effort metadata."""
+    if not path:
+        return None
+    key = (path, version)
+    if key in _hash_cache:
+        return _hash_cache[key]
+    digest = None
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        digest = h.hexdigest()
+    except Exception:
+        pass
+    _hash_cache[key] = digest
+    return digest
 
 def _mac_bundle_publisher(bundle_path, version):
     """Signing authority for a .app bundle ('Slack Technologies, Inc.'),
@@ -615,11 +639,13 @@ def _installed_macos():
                 exe = str(info.get("CFBundleExecutable") or "")
             except Exception:
                 pass  # unreadable plist — keep folder name, blank version
+            exe_path = os.path.join(bundle, "Contents", "MacOS", exe) if exe else None
             rows.append({
                 "name": name, "version": version,
                 "publisher": _mac_bundle_publisher(bundle, version),
                 "source": "apps_dir", "install_path": bundle,
                 "process_name": exe,
+                "sha256": _sha256_file(exe_path, version),
             })
     return rows
 
@@ -655,19 +681,22 @@ def _installed_windows():
                     # Best-effort process name: DisplayIcon usually points at the
                     # app's main exe ("C:\\...\\app.exe,0"). Take that basename;
                     # blank when it isn't a real .exe (tasklist reports name.exe).
-                    exe = ""
+                    exe, exe_path = "", None
                     icon = val("DisplayIcon")
                     if icon:
                         cand = str(icon).split(",")[0].strip().strip('"')
                         if cand.lower().endswith(".exe"):
                             exe = os.path.basename(cand)
+                            exe_path = cand
+                    ver = str(val("DisplayVersion") or "").strip()
                     rows.append({
                         "name": str(name).strip(),
-                        "version": str(val("DisplayVersion") or "").strip(),
+                        "version": ver,
                         "publisher": (str(val("Publisher")).strip() or None) if val("Publisher") else None,
                         "source": source,
                         "install_path": (str(val("InstallLocation")).strip() or None) if val("InstallLocation") else None,
                         "process_name": exe,
+                        "sha256": _sha256_file(exe_path, ver),
                     })
 
     uninstall = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
@@ -743,7 +772,7 @@ def get_installed_software():
         deduped[(name.lower(), version)] = {
             "name": name, "version": version, "publisher": publisher,
             "source": r.get("source"), "install_path": path,
-            "process_name": process_name,
+            "process_name": process_name, "sha256": r.get("sha256"),
         }
     return sorted(deduped.values(), key=lambda r: (r["name"].lower(), r["version"]))
 
