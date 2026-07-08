@@ -6,8 +6,9 @@ import { captureSnapshots, periodOf } from '@/lib/metering'
 // month's billable counts. Self-authorizes via CRON_SECRET when set (like
 // expire-grants); /api/cron is allowlisted in proxy.ts.
 export async function GET(req: NextRequest) {
+  // Fail closed: requires CRON_SECRET to be set and matched (set it in Vercel).
   const secret = process.env.CRON_SECRET
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const now = new Date()

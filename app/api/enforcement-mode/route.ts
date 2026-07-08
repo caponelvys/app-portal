@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-
-async function requireAdmin() {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
-  return { admin: createAdminClient() }
-}
+import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
+import { scopeOrgId } from '@/lib/policyHistory'
 
 // Which table/key each scope maps to. Device is keyed on device_id (text).
 const TARGET: Record<string, { table: string; key: string }> = {
@@ -21,13 +14,23 @@ const TARGET: Record<string, { table: string; key: string }> = {
 // Set a scope's enforcement mode. mode 'inherit' clears the override (NULL), so
 // the scope falls back to its parent (device → location → org → enforce).
 export async function POST(req: NextRequest) {
-  const { admin, error } = await requireAdmin()
-  if (error) return error
+  const supabase = await createServerClient()
+  const profile = await getCallerProfile(supabase)
+  if (!profile || !isMspStaff(profile)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { scope, scopeId, mode } = await req.json()
   const target = TARGET[scope]
   if (!target || !scopeId || !['enforce', 'learn', 'inherit'].includes(mode)) {
     return NextResponse.json({ error: 'valid scope, scopeId and mode (enforce|learn|inherit) are required' }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+  // Resolve the scope's owning org and enforce the caller's access to it.
+  const org = await scopeOrgId(admin, scope, scopeId)
+  if (!org) return NextResponse.json({ error: 'Scope target not found' }, { status: 404 })
+  const orgIds = await getAccessibleOrgIds(supabase, profile)
+  if (orgIds !== null && !orgIds.includes(org)) {
+    return NextResponse.json({ error: 'No access to that scope' }, { status: 403 })
   }
 
   const value = mode === 'inherit' ? null : mode

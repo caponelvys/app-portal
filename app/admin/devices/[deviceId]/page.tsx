@@ -10,6 +10,7 @@ import DeviceActionsMenu from '../DeviceActionsMenu'
 import AppCommand from '@/app/admin/AppCommand'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 import { cleanPublisher } from '@/lib/software'
+import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
 import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
 import RemovableStorageToggle from '@/app/admin/RemovableStorageToggle'
 import RingSelector from './RingSelector'
@@ -46,10 +47,10 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
   const { deviceId } = await params
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') redirect('/')
+  const profile = await getCallerProfile(supabase)
+  if (!profile) redirect('/login')
+  if (!isMspStaff(profile)) redirect('/')
+  const orgIds = await getAccessibleOrgIds(supabase, profile)
 
   const { data: device } = await supabase
     .from('devices')
@@ -57,6 +58,8 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     .eq('device_id', deviceId)
     .single()
   if (!device) notFound()
+  // Tenant isolation: a scoped tech may only view devices in their orgs.
+  if (orgIds !== null && (!device.org_id || !orgIds.includes(device.org_id))) redirect('/admin/devices')
 
   const [{ data: org }, { data: location }, { data: owner }, { data: logs }, { data: appCatalog }] = await Promise.all([
     device.org_id ? supabase.from('orgs').select('id, name, enforcement_mode, removable_storage').eq('id', device.org_id).single() : Promise.resolve({ data: null }),
@@ -129,10 +132,11 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
   // it to a portal account and suggest it as the owner.
   let ownerSuggestion: { id: string; email: string } | null = null
   if (!device.user_id && device.device_user) {
-    const { data: candidates } = await createAdminClient()
-      .from('profiles')
-      .select('id, email, org_id')
-      .limit(1000)
+    // Only suggest owners from the device's own org — never surface other
+    // tenants' user emails.
+    let cq = createAdminClient().from('profiles').select('id, email, org_id').limit(1000)
+    if (device.org_id) cq = cq.eq('org_id', device.org_id)
+    const { data: candidates } = await cq
     ownerSuggestion = suggestOwner(device.device_user, candidates ?? [], device.org_id)
   }
 

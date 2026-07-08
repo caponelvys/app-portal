@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase-server'
 import { createAdminClient } from '@/lib/supabase-admin'
-
-async function requireAdmin() {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
-  return { admin: createAdminClient() }
-}
+import { getCallerProfile, getAccessibleOrgIds, isMspStaff } from '@/lib/rbac'
+import { scopeOrgId } from '@/lib/policyHistory'
 
 const TARGET: Record<string, { table: string; key: string }> = {
   org:      { table: 'orgs',      key: 'id' },
@@ -21,13 +14,22 @@ const TARGET: Record<string, { table: string; key: string }> = {
 // Set a scope's removable-storage policy. mode 'inherit' clears the override
 // (NULL) so the scope falls back to its parent (device > ring > location > org).
 export async function POST(req: NextRequest) {
-  const { admin, error } = await requireAdmin()
-  if (error) return error
+  const supabase = await createServerClient()
+  const profile = await getCallerProfile(supabase)
+  if (!profile || !isMspStaff(profile)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { scope, scopeId, mode } = await req.json()
   const target = TARGET[scope]
   if (!target || !scopeId || !['allow', 'block', 'inherit'].includes(mode)) {
     return NextResponse.json({ error: 'valid scope, scopeId and mode (allow|block|inherit) are required' }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+  const org = await scopeOrgId(admin, scope, scopeId)
+  if (!org) return NextResponse.json({ error: 'Scope target not found' }, { status: 404 })
+  const orgIds = await getAccessibleOrgIds(supabase, profile)
+  if (orgIds !== null && !orgIds.includes(org)) {
+    return NextResponse.json({ error: 'No access to that scope' }, { status: 403 })
   }
 
   const value = mode === 'inherit' ? null : mode
