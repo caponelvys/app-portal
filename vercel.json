@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/expire-grants",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/webhooks/flush",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
