@@ -59,8 +59,22 @@ export async function forwardEndpoint(admin: SupabaseClient, ep: Endpoint): Prom
   const res = await post(ep.url, ep.secret, { type: 'audit', delivered_at: new Date().toISOString(), events })
   const status = res.ok ? `ok ${res.status}` : (res.status ? `http ${res.status}` : 'unreachable')
   if (res.ok) {
+    // audit_timeline has no tiebreaker column, so advancing straight to the last
+    // event's timestamp would permanently skip any co-timestamped rows that fell
+    // beyond this batch (e.g. a bulk approve/revoke stamps N rows at one time).
+    // On a FULL batch, only advance to the newest DISTINCT-earlier timestamp and
+    // let the boundary tie-group re-deliver next run (delivery is already at-
+    // least-once). A non-full batch is fully drained → safe to advance to last.
+    const lastTime = events[events.length - 1].time
+    let advanceTo = lastTime
+    if (events.length === BATCH) {
+      const earlier = [...events].reverse().find(e => e.time < lastTime)
+      if (earlier) advanceTo = earlier.time
+      // else: >BATCH rows share one timestamp — advance past it to avoid a stuck
+      // cursor (astronomically rare; accepts a tiny tail-loss over a hard stall).
+    }
     await admin.from('webhook_endpoints').update({
-      cursor: events[events.length - 1].time, last_status: status, last_delivered_at: new Date().toISOString(),
+      cursor: advanceTo, last_status: status, last_delivered_at: new Date().toISOString(),
     }).eq('id', ep.id)
     return { delivered: events.length, status }
   }

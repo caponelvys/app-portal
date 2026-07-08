@@ -29,7 +29,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.24"
+AGENT_VERSION = "1.7.25"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -757,16 +757,23 @@ INVENTORY_INTERVAL = 3600  # seconds between installed-software scans
 # codesign is ~50ms per bundle; cache per (path, version) so only new/updated
 # apps pay it on later scans within this process lifetime.
 _publisher_cache = {}
-# sha256 of the main executable, cached per (path, version) — hashing a binary is
-# far pricier than codesign, so only new/updated apps re-hash within a run.
+# sha256 of the main executable, cached per (path, mtime) — hashing a binary is
+# far pricier than codesign, so only new/changed files re-hash within a run.
+# Keyed on mtime (not version) so an in-place update that keeps the same version
+# string is still re-hashed; otherwise inventory would report a stale hash forever
+# and the change-gate in report_inventory would never correct it.
 _hash_cache = {}
 
-def _sha256_file(path, version):
-    """sha256 of a file, streamed and cached per (path, version). None on any
+def _sha256_file(path):
+    """sha256 of a file, streamed and cached per (path, mtime). None on any
     error (missing/unreadable binary) — a hash is best-effort metadata."""
     if not path:
         return None
-    key = (path, version)
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    key = (path, mtime)
     if key in _hash_cache:
         return _hash_cache[key]
     digest = None
@@ -836,7 +843,7 @@ def _installed_macos():
                 "publisher": _mac_bundle_publisher(bundle, version),
                 "source": "apps_dir", "install_path": bundle,
                 "process_name": exe,
-                "sha256": _sha256_file(exe_path, version),
+                "sha256": _sha256_file(exe_path),
             })
     return rows
 
@@ -887,7 +894,7 @@ def _installed_windows():
                         "source": source,
                         "install_path": (str(val("InstallLocation")).strip() or None) if val("InstallLocation") else None,
                         "process_name": exe,
-                        "sha256": _sha256_file(exe_path, ver),
+                        "sha256": _sha256_file(exe_path),
                     })
 
     uninstall = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"

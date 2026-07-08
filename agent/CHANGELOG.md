@@ -1,5 +1,12 @@
 # Ravyn Agent — Changelog
 
+## v1.7.25 — 2026-07-08
+- **Fix: inventory sha256 now re-hashes on in-place updates.** The executable
+  hash cache was keyed on (path, version); an app updated in place while keeping
+  the same version string would report a stale hash forever (and the on-change
+  upload gate would never correct it, so hash-block rules could silently miss).
+  Now keyed on (path, mtime), matching the enforcement-side hash cache.
+
 ## v1.7.24 — 2026-07-08
 - **Elevation control** (enforcement extension): a new `elevate_app` device
   command launches an elevation-eligible app (apps.allow_elevation) with elevated

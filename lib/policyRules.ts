@@ -64,10 +64,13 @@ export async function resolveRuleMatches(
     q = q.in('device_id', ids)
   }
 
-  // Hash is an exact identity match; the rest are substring (contains).
+  // Hash is an exact identity match; the rest are substring (contains). Escape
+  // LIKE metacharacters so a value with % or _ can't act as a wildcard (a rule
+  // is an enforcement decision — "a_b" must not match "axb").
+  const escapeLike = (s: string) => s.replace(/[\\%_]/g, m => '\\' + m)
   q = rule.match_type === 'hash'
     ? q.eq('sha256', rule.match_value.trim().toLowerCase())
-    : q.ilike(MATCH_COLUMN[rule.match_type], `%${rule.match_value}%`)
+    : q.ilike(MATCH_COLUMN[rule.match_type], `%${escapeLike(rule.match_value)}%`)
   const { data } = await q
 
   const byName = new Map<string, SoftwareMatch>()
