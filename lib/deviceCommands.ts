@@ -7,7 +7,7 @@ const CHUNK = 500
 
 export const COMMAND_SCOPES = ['device', 'location', 'org', 'fleet'] as const
 export type CommandScope = (typeof COMMAND_SCOPES)[number]
-export type CommandType = 'install_app' | 'uninstall_app'
+export type CommandType = 'install_app' | 'uninstall_app' | 'elevate_app'
 
 type Result =
   | { ok: true; queued: number; app: string }

@@ -1,5 +1,15 @@
 # Ravyn Agent — Changelog
 
+## v1.7.24 — 2026-07-08
+- **Elevation control** (enforcement extension): a new `elevate_app` device
+  command launches an elevation-eligible app (apps.allow_elevation) with elevated
+  privileges in the logged-in user's session, without granting local admin.
+  macOS runs the app bundle's executable as root via `launchctl asuser` (the
+  agent is root); Windows uses a one-shot highest-run-level scheduled task
+  (best-effort, UNTESTED on real hardware — a standard user has no higher token,
+  so true elevation for them needs a SYSTEM/admin principal; to be validated on
+  the Windows VM). Requires migration 0032.
+
 ## v1.7.23 — 2026-07-08
 - **Removable-storage (USB) control** (enforcement extension): a scope can block
   removable storage. The agent (root/SYSTEM) ejects unauthorized external USB

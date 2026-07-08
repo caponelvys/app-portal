@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.23'
+export const AGENT_VERSION = '1.7.24'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.24',
+    date: '2026-07-08',
+    changes: [
+      'Elevation control (enforcement extension): an elevate_app command launches an elevation-eligible app (marked allow_elevation) with elevated privileges in the user session, without granting local admin. macOS runs the app as root via launchctl asuser; Windows uses a highest-run-level scheduled task (best-effort, to be validated on the Windows VM). Requires migration 0032.',
+    ],
+  },
   {
     version: '1.7.23',
     date: '2026-07-08',

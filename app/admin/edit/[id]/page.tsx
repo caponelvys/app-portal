@@ -232,12 +232,14 @@ export default function EditAppPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [allowElevation, setAllowElevation] = useState(false)
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase.from('apps').select('*').eq('id', id).single()
       if (data) {
         setForm({ name: data.name, description: data.description, url: data.url, icon: data.icon, status: data.status, category: data.category ?? '', process_name: data.process_name ?? '', mac_app_path: data.mac_app_path ?? '', windows_uninstall: data.windows_uninstall ?? '', linux_package: data.linux_package ?? '', mac_install_url: data.mac_install_url ?? KNOWN_MAC_INSTALLERS[data.name] ?? '', mac_install_sha256: data.mac_install_sha256 ?? '', windows_install_url: data.windows_install_url ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.url ?? '', windows_install_sha256: data.windows_install_sha256 ?? '', windows_install_args: data.windows_install_args ?? KNOWN_WINDOWS_INSTALLERS[data.name]?.args ?? '' })
+        setAllowElevation(!!data.allow_elevation)
         setIconUrl(data.icon_url)
         const domain = KNOWN_APP_LOGOS[data.name]
         if (!data.icon_url && domain) {
@@ -331,6 +333,7 @@ export default function EditAppPage() {
       windows_install_url: form.windows_install_url.trim() || null,
       windows_install_sha256: form.windows_install_sha256.trim() || null,
       windows_install_args: form.windows_install_args.trim() || null,
+      allow_elevation: allowElevation,
     }
     const { error } = await supabase.from('apps').update({ ...form, ...overrides, icon_url }).eq('id', id)
 
@@ -422,6 +425,14 @@ export default function EditAppPage() {
             <input name="process_name" value={form.process_name} onChange={handleChange}
               placeholder="e.g. Figma or Figma.exe" className={inputClass} />
             <p className="text-xs text-gray-500 mt-1">The exact process name the agent will watch for on enrolled devices.</p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+              <input type="checkbox" checked={allowElevation} onChange={e => setAllowElevation(e.target.checked)} className="accent-blue-600" />
+              Allow elevated run
+            </label>
+            <p className="text-xs text-gray-500 mt-1">Lets staff launch this app with elevated privileges on a device (via the device page) without granting the user local admin.</p>
           </div>
 
           <div>

@@ -13,6 +13,7 @@ import { cleanPublisher } from '@/lib/software'
 import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
 import RemovableStorageToggle from '@/app/admin/RemovableStorageToggle'
 import RingSelector from './RingSelector'
+import ElevateApp from './ElevateApp'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
 // username against email local-parts. Exact/starts-with only (no weak
@@ -64,6 +65,9 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     supabase.from('agent_logs').select('app_name, action, created_at').eq('device_id', deviceId).order('created_at', { ascending: false }).limit(50),
     supabase.from('apps').select('id, name').order('name'),
   ])
+
+  const { data: elevatableApps } = await supabase
+    .from('apps').select('id, name').eq('allow_elevation', true).order('name')
 
   // Active grants belong to the device's owner (per-user model).
   let grants: { app_name: string; expires_at: string | null }[] = []
@@ -293,6 +297,12 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
             <AppCommand apps={appCatalog ?? []} action="install" scope="device" scopeId={device.device_id} targetLabel={cleanHostname(device.hostname) || device.device_id} />
             <AppCommand apps={appCatalog ?? []} action="uninstall" scope="device" scopeId={device.device_id} targetLabel={cleanHostname(device.hostname) || device.device_id} />
           </div>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-white mb-1">Run elevated</h2>
+          <p className="text-gray-500 text-sm mb-3">Launch an elevation-approved app with elevated privileges on this device, without granting the user local admin.</p>
+          <ElevateApp deviceId={device.device_id} apps={elevatableApps ?? []} />
         </section>
 
         <section>

@@ -20,6 +20,8 @@ export const AGENT_EVENT_LABEL: Record<string, string> = {
   would_block:       'Would block (learn mode)',
   usb_blocked:       'Removable drive ejected',
   usb_policy:        'USB storage policy applied',
+  elevate_app:       'App launched elevated',
+  elevate_failed:    'Elevated launch failed',
   error:             'Agent error',
 }
 

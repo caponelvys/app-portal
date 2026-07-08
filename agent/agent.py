@@ -29,7 +29,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.23"
+AGENT_VERSION = "1.7.24"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -1377,7 +1377,7 @@ def get_app_detail(app_id):
     try:
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/apps?id=eq.{app_id}"
-            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,"
+            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,allow_elevation,"
             "mac_install_url,mac_install_sha256,windows_install_url,windows_install_sha256,windows_install_args",
             headers=HEADERS, timeout=10)
         if resp.status_code == 200 and resp.json():
@@ -1842,9 +1842,74 @@ def install_app(app):
     except Exception as e:
         return False, f"Install error: {e}"
 
+def _macos_app_exec(bundle):
+    """Path to a .app bundle's main executable (Contents/MacOS/<CFBundleExecutable>)."""
+    import plistlib
+    try:
+        with open(os.path.join(bundle, "Contents", "Info.plist"), "rb") as f:
+            exe = plistlib.load(f).get("CFBundleExecutable")
+        if exe:
+            return os.path.join(bundle, "Contents", "MacOS", exe)
+    except Exception:
+        pass
+    return None
+
+def elevate_app(app):
+    """Launch an elevation-eligible app with elevated privileges in the logged-in
+    user's session — without making the user a local admin. Guarded by
+    allow_elevation. macOS is verified; Windows is best-effort pending on-device
+    validation (a standard user has no higher token, so true elevation for them
+    needs a SYSTEM/admin principal — documented limitation)."""
+    if not app.get("allow_elevation"):
+        return False, "App is not approved for elevated run"
+    user = get_device_user()
+    if not user:
+        return False, "No interactive user logged in"
+    name = app.get("name", "App")
+
+    if OS == "Darwin":
+        bundle = app.get("mac_app_path") or f"/Applications/{name}.app"
+        if not os.path.isdir(bundle):
+            return False, f"App bundle not found: {bundle}"
+        exe = _macos_app_exec(bundle)
+        if not exe or not os.path.exists(exe):
+            return False, "Could not locate the app executable"
+        try:
+            uid = subprocess.check_output(["id", "-u", user], text=True).strip()
+        except Exception:
+            return False, "Could not resolve the user id"
+        # Agent runs as root; launchctl asuser places the process in the user's
+        # GUI session while it keeps root's (elevated) privileges. Fire-and-forget
+        # — the launched app is the long-running process.
+        try:
+            subprocess.Popen(["launchctl", "asuser", uid, exe],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            return False, f"Launch failed: {e}"
+        return True, f"Launched {name} with elevated privileges"
+
+    if OS == "Windows":
+        exe = app.get("process_name") or ""
+        if not exe:
+            return False, "No launch target for Windows elevation"
+        task = "Ravyn_Elevate"
+        try:
+            subprocess.run(["schtasks", "/create", "/tn", task, "/f", "/sc", "ONCE", "/st", "00:00",
+                            "/ru", user, "/rl", "HIGHEST", "/tr", f'cmd /c start "" "{exe}"'],
+                           capture_output=True, text=True, timeout=30)
+            run = subprocess.run(["schtasks", "/run", "/tn", task], capture_output=True, text=True, timeout=30)
+            subprocess.run(["schtasks", "/delete", "/tn", task, "/f"], capture_output=True, timeout=15)
+            if run.returncode == 0:
+                return True, f"Launched {name} elevated"
+            return False, f"Could not launch elevated: {((run.stdout or '') + (run.stderr or ''))[-160:].strip()}"
+        except Exception as e:
+            return False, f"Windows elevation error: {e}"
+
+    return False, "Elevation is not supported on this OS"
+
 def process_app_commands(device_id):
-    """Run any pending portal-issued app commands (install/uninstall) for this
-    device, writing the result back. Best-effort — never disrupts enforcement."""
+    """Run any pending portal-issued app commands (install/uninstall/elevate) for
+    this device, writing the result back. Best-effort — never disrupts enforcement."""
     try:
         resp = requests.get(
             f"{SUPABASE_URL}/rest/v1/device_commands"
@@ -1858,7 +1923,7 @@ def process_app_commands(device_id):
     for cmd in commands:
         cid = cmd.get("id")
         ctype = cmd.get("type")
-        if ctype not in ("uninstall_app", "install_app"):
+        if ctype not in ("uninstall_app", "install_app", "elevate_app"):
             update_command(cid, "failed", f"Unknown command type: {ctype}")
             continue
         app = get_app_detail(cmd.get("app_id")) if cmd.get("app_id") else None
@@ -1869,6 +1934,9 @@ def process_app_commands(device_id):
         if ctype == "install_app":
             ok, detail = install_app(app)
             ev_ok, ev_fail, verb = "install_app", "install_failed", "installed"
+        elif ctype == "elevate_app":
+            ok, detail = elevate_app(app)
+            ev_ok, ev_fail, verb = "elevate_app", "elevate_failed", "launched with elevated privileges"
         else:
             ok, detail = uninstall_app(app)
             ev_ok, ev_fail, verb = "uninstall_app", "uninstall_failed", "uninstalled"
