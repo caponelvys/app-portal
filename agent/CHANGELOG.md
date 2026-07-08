@@ -1,5 +1,14 @@
 # Ravyn Agent — Changelog
 
+## v1.7.21 — 2026-07-08
+- **Per-build hash blocking**: hash BLOCK policy rules now enforce per build.
+  The agent hashes running app binaries (system paths skipped, cached per
+  path+mtime) and kills only processes whose sha256 matches a pinned build — so
+  a bad build is closed while newer builds keep running. Skipped entirely when
+  no hash rules exist, so there's no steady-state cost. Learn mode observes
+  (would_block) instead of killing. Requires migration 0027
+  (`blocked_hashes_for_device`).
+
 ## v1.7.20 — 2026-07-08
 - **Executable hashing** (Discovery M2 CP4): inventory now reports the sha256 of
   each app's main executable (macOS `Contents/MacOS/<exe>`, Windows the

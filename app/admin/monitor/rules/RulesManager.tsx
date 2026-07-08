@@ -162,7 +162,7 @@ export default function RulesManager({ orgs, locations, devices, rules }: {
 
             {matchType === 'hash' && (
               <p className="mt-3 text-xs text-gray-500">
-                Matches the exact build (sha256 of the main executable, reported by agent v1.7.20+). Enforcement is per app, so a block affects all builds of the matched app, not just this one.
+                Matches an exact build (sha256 of the main executable, from a device&apos;s Installed software list). A block enforces per build (agent v1.7.21+): the agent closes only that build, so newer builds keep running.
               </p>
             )}
 

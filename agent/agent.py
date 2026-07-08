@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import uuid
+import signal
 import shutil
 import socket
 import string
@@ -28,7 +29,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.20"
+AGENT_VERSION = "1.7.21"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -480,6 +481,104 @@ def kill_process(process_name):
     except Exception as e:
         print(f"[error] Could not kill {process_name}: {e}")
         return False
+
+def kill_pid(pid):
+    """Kill a single process by PID (used for per-build hash blocking)."""
+    try:
+        if OS == "Windows":
+            subprocess.run(["taskkill", "/f", "/pid", str(pid)], capture_output=True)
+        else:
+            os.kill(int(pid), signal.SIGKILL)
+        return True
+    except Exception:
+        return False
+
+# ── Per-build hash enforcement (hash policy rules) ──────────────────────────
+# A hash BLOCK rule pins a specific build (sha256 of its main executable). The
+# agent hashes running app binaries and kills only matching builds, so a bad
+# build is blocked while newer builds keep running. Skip entirely when there are
+# no hash rules (the common case) so there's zero steady-state cost.
+_proc_hash_cache = {}  # (path, mtime) -> sha256
+
+# App binaries live here; system binaries never match a pinned app build, so we
+# skip them to keep hashing cheap.
+def _is_app_binary(path):
+    if OS == "Darwin":
+        # Inventory only scans /Applications and ~/Applications, so a pinned build
+        # always lives under an "/Applications/" path — which excludes /System
+        # and /Library helper apps, keeping the hash set small.
+        return "/Applications/" in path
+    if OS == "Windows":
+        low = path.lower()
+        return ("\\program files" in low or "\\appdata\\" in low or "\\users\\" in low) \
+            and "\\windows\\" not in low
+    return path.startswith("/opt") or path.startswith("/usr/local") or "/home/" in path
+
+def get_blocked_hashes(device_id):
+    """The set of blocked build hashes for this device (org/location/device
+    scope), via the server resolver. Empty on any error."""
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/rpc/blocked_hashes_for_device?p_device_id={device_id}",
+            headers=HEADERS, timeout=10,
+        )
+        if resp.status_code == 200:
+            return {h.lower() for h in resp.json() if h}
+    except Exception:
+        pass
+    return set()
+
+def get_running_process_paths():
+    """(pid, exe_path) for running processes whose binary looks like an app —
+    system binaries are skipped. macOS `ps -o comm=` gives the full exe path."""
+    out = []
+    try:
+        if OS in ("Darwin", "Linux"):
+            raw = subprocess.check_output(["ps", "-axo", "pid=,comm="], text=True)
+            for line in raw.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                pid, _, path = line.partition(" ")
+                path = path.strip()
+                if path.startswith("/") and _is_app_binary(path):
+                    out.append((pid, path))
+        elif OS == "Windows":
+            raw = subprocess.check_output(
+                ["powershell", "-NoProfile", "-Command",
+                 "Get-CimInstance Win32_Process | "
+                 "Where-Object { $_.ExecutablePath } | "
+                 "ForEach-Object { \"$($_.ProcessId)`t$($_.ExecutablePath)\" }"],
+                text=True, timeout=20)
+            for line in raw.splitlines():
+                pid, _, path = line.strip().partition("\t")
+                path = path.strip()
+                if path and _is_app_binary(path):
+                    out.append((pid, path))
+    except Exception:
+        pass
+    return out
+
+def _proc_sha256(path):
+    """sha256 of a running binary, cached per (path, mtime)."""
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    key = (path, mtime)
+    if key in _proc_hash_cache:
+        return _proc_hash_cache[key]
+    digest = None
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        digest = h.hexdigest()
+    except Exception:
+        pass
+    _proc_hash_cache[key] = digest
+    return digest
 
 def notify_user(title, message):
     """Show a native notification banner to the logged-in user explaining why an
@@ -1809,6 +1908,31 @@ def main():
                         if now_n - last_notify.get(app["id"], 0) >= NOTIFY_INTERVAL:
                             notify_user("Ravyn", f"{app['name']} is blocked by your administrator and has been closed.")
                             last_notify[app["id"]] = now_n
+
+            # Per-build hash blocking: kill running app binaries whose sha256 is
+            # pinned by a hash BLOCK rule. Skipped entirely when there are no hash
+            # rules, so there's no steady-state cost. Learn mode observes only.
+            blocked_hashes = get_blocked_hashes(device_id)
+            if blocked_hashes:
+                for pid, path in get_running_process_paths():
+                    digest = _proc_sha256(path)
+                    if not digest or digest not in blocked_hashes:
+                        continue
+                    exe = os.path.basename(path)
+                    if mode == "learn":
+                        nowh = time.time()
+                        if nowh - last_would_block.get(digest, 0) >= ACCESS_LOG_INTERVAL:
+                            log_event(device_id, "info", "would_block",
+                                      f"{exe} build {digest[:12]} would be blocked (learn mode)")
+                            last_would_block[digest] = nowh
+                        continue
+                    print(f"[agent] Blocking build: {exe} ({digest[:12]})")
+                    if kill_pid(pid):
+                        log_action(device_id, exe, "killed")
+                        nowh = time.time()
+                        if nowh - last_notify.get(digest, 0) >= NOTIFY_INTERVAL:
+                            notify_user("Ravyn", f"{exe} is a blocked build and has been closed.")
+                            last_notify[digest] = nowh
 
             # Installed-software inventory (hourly + on-change). Runs after
             # enforcement so a slow scan never delays killing a blocked app.

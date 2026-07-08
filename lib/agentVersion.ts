@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.20'
+export const AGENT_VERSION = '1.7.21'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.21',
+    date: '2026-07-08',
+    changes: [
+      'Per-build hash blocking: hash BLOCK policy rules now enforce per build — the agent hashes running app binaries (cached, system paths skipped) and kills only processes matching a pinned sha256, so a bad build is closed while newer builds keep running. No cost when no hash rules exist; learn mode observes instead of killing. Requires migration 0027.',
+    ],
+  },
   {
     version: '1.7.20',
     date: '2026-07-08',

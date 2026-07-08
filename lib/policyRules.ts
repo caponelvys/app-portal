@@ -86,6 +86,15 @@ export async function materializeRule(
   rule: PolicyRule,
 ): Promise<{ matched: number; enforceable: number }> {
   const matches = await resolveRuleMatches(admin, rule)
+
+  // Hash rules enforce per-build agent-side (the agent hashes running binaries
+  // and kills matching builds), so they don't materialize into app-level
+  // policies — that would block every build of the app. `matched` still reports
+  // how many installed apps carry the hash, for the preview.
+  if (rule.match_type === 'hash') {
+    return { matched: matches.length, enforceable: rule.action === 'block' ? matches.length : 0 }
+  }
+
   const status = rule.action === 'block' ? 'blocked' : 'allowed'
   let enforceable = 0
 
