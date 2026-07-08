@@ -7,6 +7,10 @@
     {
       "path": "/api/webhooks/flush",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/usage-snapshot",
+      "schedule": "0 2 1 * *"
     }
   ]
 }

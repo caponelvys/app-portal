@@ -58,16 +58,25 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
     { label: 'Activity Report', href: '/admin/audit' },
     { label: 'Compliance', href: '/admin/compliance' },
     { label: 'Integrations', href: '/admin/integrations' },
+    { label: 'Usage & Billing', href: '/admin/usage' },
   ]},
   '/admin/compliance': { title: 'Reports', items: [
     { label: 'Activity Report', href: '/admin/audit' },
     { label: 'Compliance', href: '/admin/compliance' },
     { label: 'Integrations', href: '/admin/integrations' },
+    { label: 'Usage & Billing', href: '/admin/usage' },
   ]},
   '/admin/integrations': { title: 'Reports', items: [
     { label: 'Activity Report', href: '/admin/audit' },
     { label: 'Compliance', href: '/admin/compliance' },
     { label: 'Integrations', href: '/admin/integrations' },
+    { label: 'Usage & Billing', href: '/admin/usage' },
+  ]},
+  '/admin/usage': { title: 'Reports', items: [
+    { label: 'Activity Report', href: '/admin/audit' },
+    { label: 'Compliance', href: '/admin/compliance' },
+    { label: 'Integrations', href: '/admin/integrations' },
+    { label: 'Usage & Billing', href: '/admin/usage' },
   ]},
   '/admin/users': { title: 'Users', items: [
     { label: 'All Users',   href: '/admin/users' },
