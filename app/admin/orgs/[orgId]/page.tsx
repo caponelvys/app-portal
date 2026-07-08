@@ -8,6 +8,7 @@ import CreateForm from '../CreateForm'
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import RenameForm from '@/app/admin/RenameForm'
 import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
+import RingsManager from './RingsManager'
 import ActivityChart from '@/app/admin/ActivityChart'
 import AppCommand from '@/app/admin/AppCommand'
 
@@ -28,7 +29,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
 
   const admin = createAdminClient()
   const scope = [orgId]
-  const [{ data: locations }, { data: healthRows }, { data: versionRows }, { data: locCountRows }, { data: idRows }, { data: appCatalog }] = await Promise.all([
+  const [{ data: locations }, { data: healthRows }, { data: versionRows }, { data: locCountRows }, { data: idRows }, { data: appCatalog }, { data: ringRows }, { data: ringDeviceRows }] = await Promise.all([
     supabase.from('locations').select('id, name').eq('org_id', orgId).order('name'),
     admin.rpc('device_health_counts', { org_ids: scope }),
     admin.rpc('device_version_counts', { org_ids: scope }),
@@ -36,7 +37,13 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
     // device_ids for scoping the activity chart's agent_logs query (ids only)
     admin.from('devices').select('device_id').eq('org_id', orgId).limit(5000),
     supabase.from('apps').select('id, name').order('name'),
+    admin.from('rings').select('id, name, position').eq('org_id', orgId).order('position'),
+    admin.from('devices').select('ring_id').eq('org_id', orgId).not('ring_id', 'is', null).limit(5000),
   ])
+
+  const ringDeviceCount = new Map<string, number>()
+  for (const d of ringDeviceRows ?? []) ringDeviceCount.set(d.ring_id, (ringDeviceCount.get(d.ring_id) ?? 0) + 1)
+  const rings = (ringRows ?? []).map(r => ({ id: r.id, name: r.name, position: r.position, deviceCount: ringDeviceCount.get(r.id) ?? 0 }))
 
   const tiers: Record<HealthTier, number> = { healthy: 0, inactive: 0, warning: 0, stale: 0, lost: 0, never: 0 }
   for (const r of (healthRows ?? []) as { tier: HealthTier; count: number }[]) tiers[r.tier] = Number(r.count)
@@ -115,6 +122,8 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
           current={(org.enforcement_mode as 'enforce' | 'learn' | null) ?? null}
         />
       </div>
+
+      <RingsManager orgId={org.id} rings={rings} />
 
       {/* Insight graphs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

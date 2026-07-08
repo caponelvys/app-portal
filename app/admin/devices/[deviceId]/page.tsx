@@ -11,6 +11,7 @@ import AppCommand from '@/app/admin/AppCommand'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 import { cleanPublisher } from '@/lib/software'
 import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
+import RingSelector from './RingSelector'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
 // username against email local-parts. Exact/starts-with only (no weak
@@ -50,7 +51,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   const { data: device } = await supabase
     .from('devices')
-    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at, enforcement_mode')
+    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at, enforcement_mode, ring_id')
     .eq('device_id', deviceId)
     .single()
   if (!device) notFound()
@@ -96,6 +97,11 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
     .select('name, version, publisher, sha256')
     .eq('device_id', deviceId)
     .order('name')
+
+  // Rollout rings available for this device's org (for the ring selector).
+  const { data: orgRings } = device.org_id
+    ? await createAdminClient().from('rings').select('id, name').eq('org_id', device.org_id).order('position')
+    : { data: [] }
 
   const activity: Activity[] = [
     ...(events ?? []).map(e => ({
@@ -192,6 +198,14 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
             current={(device.enforcement_mode as 'enforce' | 'learn' | null) ?? null}
             effective={effectiveMode}
           />
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-gray-300 mb-1.5">Rollout ring</h3>
+            <RingSelector
+              deviceId={device.device_id}
+              current={(device.ring_id as string | null) ?? null}
+              rings={orgRings ?? []}
+            />
+          </div>
         </section>
 
         <section>
