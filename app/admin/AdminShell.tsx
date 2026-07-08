@@ -56,6 +56,11 @@ const SIDEBARS: Record<string, { title: string; items: { label: string; href: st
   ]},
   '/admin/audit': { title: 'Reports', items: [
     { label: 'Activity Report', href: '/admin/audit' },
+    { label: 'Compliance', href: '/admin/compliance' },
+  ]},
+  '/admin/compliance': { title: 'Reports', items: [
+    { label: 'Activity Report', href: '/admin/audit' },
+    { label: 'Compliance', href: '/admin/compliance' },
   ]},
   '/admin/users': { title: 'Users', items: [
     { label: 'All Users',   href: '/admin/users' },
