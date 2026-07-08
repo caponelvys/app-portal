@@ -8,6 +8,7 @@ import CreateForm from '../CreateForm'
 import Breadcrumbs from '@/app/admin/Breadcrumbs'
 import RenameForm from '@/app/admin/RenameForm'
 import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
+import RemovableStorageToggle from '@/app/admin/RemovableStorageToggle'
 import RingsManager from './RingsManager'
 import ActivityChart from '@/app/admin/ActivityChart'
 import AppCommand from '@/app/admin/AppCommand'
@@ -24,7 +25,7 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
   const orgIds = await getAccessibleOrgIds(supabase, profile)
   if (orgIds !== null && !orgIds.includes(orgId)) redirect('/admin/orgs')
 
-  const { data: org } = await supabase.from('orgs').select('id, name, enforcement_mode').eq('id', orgId).single()
+  const { data: org } = await supabase.from('orgs').select('id, name, enforcement_mode, removable_storage').eq('id', orgId).single()
   if (!org) notFound()
 
   const admin = createAdminClient()
@@ -121,6 +122,14 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ orgI
           scopeId={org.id}
           current={(org.enforcement_mode as 'enforce' | 'learn' | null) ?? null}
         />
+        <div className="mt-4 border-t border-gray-800 pt-4">
+          <h3 className="text-sm font-medium text-gray-300 mb-1.5">Removable storage</h3>
+          <RemovableStorageToggle
+            scope="org"
+            scopeId={org.id}
+            current={(org.removable_storage as 'allow' | 'block' | null) ?? null}
+          />
+        </div>
       </div>
 
       <RingsManager orgId={org.id} rings={rings} />

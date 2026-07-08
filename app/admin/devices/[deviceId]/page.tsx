@@ -11,6 +11,7 @@ import AppCommand from '@/app/admin/AppCommand'
 import { agentEventLabel, LEVEL_DOT } from '@/lib/agentEvents'
 import { cleanPublisher } from '@/lib/software'
 import EnforcementModeToggle from '@/app/admin/EnforcementModeToggle'
+import RemovableStorageToggle from '@/app/admin/RemovableStorageToggle'
 import RingSelector from './RingSelector'
 
 // Suggest a portal account for an unclaimed device by matching the reported OS
@@ -51,14 +52,14 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   const { data: device } = await supabase
     .from('devices')
-    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at, enforcement_mode, ring_id')
+    .select('device_id, hostname, os, last_seen, user_id, org_id, location_id, pairing_code, device_user, agent_version, ip_address, last_inventory_at, enforcement_mode, ring_id, removable_storage')
     .eq('device_id', deviceId)
     .single()
   if (!device) notFound()
 
   const [{ data: org }, { data: location }, { data: owner }, { data: logs }, { data: appCatalog }] = await Promise.all([
-    device.org_id ? supabase.from('orgs').select('id, name, enforcement_mode').eq('id', device.org_id).single() : Promise.resolve({ data: null }),
-    device.location_id ? supabase.from('locations').select('id, name, enforcement_mode').eq('id', device.location_id).single() : Promise.resolve({ data: null }),
+    device.org_id ? supabase.from('orgs').select('id, name, enforcement_mode, removable_storage').eq('id', device.org_id).single() : Promise.resolve({ data: null }),
+    device.location_id ? supabase.from('locations').select('id, name, enforcement_mode, removable_storage').eq('id', device.location_id).single() : Promise.resolve({ data: null }),
     device.user_id ? supabase.from('profiles').select('email').eq('id', device.user_id).single() : Promise.resolve({ data: null }),
     supabase.from('agent_logs').select('app_name, action, created_at').eq('device_id', deviceId).order('created_at', { ascending: false }).limit(50),
     supabase.from('apps').select('id, name').order('name'),
@@ -100,7 +101,7 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
 
   // Rollout rings available for this device's org (for the ring selector).
   const { data: orgRings } = device.org_id
-    ? await createAdminClient().from('rings').select('id, name').eq('org_id', device.org_id).order('position')
+    ? await createAdminClient().from('rings').select('id, name, removable_storage').eq('org_id', device.org_id).order('position')
     : { data: [] }
 
   const activity: Activity[] = [
@@ -138,6 +139,13 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
   const effectiveMode: 'enforce' | 'learn' =
     (device.enforcement_mode ?? location?.enforcement_mode ?? org?.enforcement_mode ?? 'enforce') === 'learn'
       ? 'learn' : 'enforce'
+
+  // Effective removable-storage policy mirrors the agent resolver:
+  // device > ring > location > org > allow.
+  const deviceRing = (orgRings ?? []).find(r => r.id === device.ring_id)
+  const effectiveUsb: 'allow' | 'block' =
+    (device.removable_storage ?? deviceRing?.removable_storage ?? location?.removable_storage ?? org?.removable_storage ?? 'allow') === 'block'
+      ? 'block' : 'allow'
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-8">
@@ -203,7 +211,16 @@ export default async function DeviceDetailPage({ params }: { params: Promise<{ d
             <RingSelector
               deviceId={device.device_id}
               current={(device.ring_id as string | null) ?? null}
-              rings={orgRings ?? []}
+              rings={(orgRings ?? []).map(r => ({ id: r.id, name: r.name }))}
+            />
+          </div>
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-gray-300 mb-1.5">Removable storage</h3>
+            <RemovableStorageToggle
+              scope="device"
+              scopeId={device.device_id}
+              current={(device.removable_storage as 'allow' | 'block' | null) ?? null}
+              effective={effectiveUsb}
             />
           </div>
         </section>

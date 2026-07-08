@@ -1,5 +1,14 @@
 # Ravyn Agent — Changelog
 
+## v1.7.23 — 2026-07-08
+- **Removable-storage (USB) control** (enforcement extension): a scope can block
+  removable storage. The agent (root/SYSTEM) ejects unauthorized external USB
+  volumes on macOS, disables the USBSTOR service on Windows (and restores it
+  when the policy returns to 'allow'), and unmounts removable media on Linux.
+  Effective policy resolves device > ring > location > org > allow via the
+  `effective_removable_storage` RPC; defaults to 'allow' on any error. Requires
+  migration 0031.
+
 ## v1.7.22 — 2026-07-08
 - **Ring-scoped policies** (M3 CP2): the agent reads its `ring_id` and factors
   ring-targeted policies into resolution, precedence device > ring > location >

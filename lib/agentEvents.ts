@@ -18,6 +18,8 @@ export const AGENT_EVENT_LABEL: Record<string, string> = {
   inventory:         'Inventory reported',
   inventory_failed:  'Inventory scan failed',
   would_block:       'Would block (learn mode)',
+  usb_blocked:       'Removable drive ejected',
+  usb_policy:        'USB storage policy applied',
   error:             'Agent error',
 }
 

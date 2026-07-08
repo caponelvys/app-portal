@@ -29,7 +29,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.22"
+AGENT_VERSION = "1.7.23"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -389,8 +389,96 @@ def get_enforcement_mode(device_id):
         pass
     return "enforce"
 
+# ── Removable-storage (USB) control ─────────────────────────────────────────
+# When a scope blocks removable storage, the agent (root/SYSTEM) enforces it:
+# ejects unauthorized USB volumes on macOS, disables the USBSTOR service on
+# Windows (and restores it when the policy is 'allow'). Defaults to 'allow' on
+# any lookup error so a hiccup never disables a user's drives unexpectedly.
+_last_usb_notify = {}  # volume -> last notify time
+
+def get_removable_storage_policy(device_id):
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/rpc/effective_removable_storage?p_device_id={device_id}",
+            headers=HEADERS, timeout=10,
+        )
+        if resp.status_code == 200 and resp.json() in ("allow", "block"):
+            return resp.json()
+    except Exception:
+        pass
+    return "allow"
+
+def _removable_volumes_macos():
+    """External + ejectable volumes (USB drives) — never the internal boot disk.
+    Network mounts fail `diskutil info` and are skipped."""
+    import plistlib
+    vols = []
+    try:
+        for name in os.listdir("/Volumes"):
+            path = os.path.join("/Volumes", name)
+            if not os.path.ismount(path):
+                continue
+            try:
+                info = plistlib.loads(subprocess.check_output(
+                    ["diskutil", "info", "-plist", path], timeout=10, stderr=subprocess.DEVNULL))
+                # External + ejectable physical media only. Exclude disk images
+                # (DMGs: BusProtocol "Disk Image") — those aren't removable storage
+                # and ejecting them would break app installers / mounted images.
+                if (info.get("Internal") is False and info.get("Ejectable") is True
+                        and info.get("BusProtocol") != "Disk Image"):
+                    vols.append((path, name))
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return vols
+
+def _set_windows_usbstor(policy):
+    """USBSTOR Start: 4 disables USB mass storage, 3 enables it. Only writes on a
+    change. Returns True if it changed."""
+    import winreg
+    want = 4 if policy == "block" else 3
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                            r"SYSTEM\CurrentControlSet\Services\USBSTOR", 0,
+                            winreg.KEY_READ | winreg.KEY_SET_VALUE) as k:
+            cur = winreg.QueryValueEx(k, "Start")[0]
+            if cur != want:
+                winreg.SetValueEx(k, "Start", 0, winreg.REG_DWORD, want)
+                return True
+    except Exception:
+        pass
+    return False
+
+def enforce_removable_storage(device_id, policy):
+    """Apply the removable-storage policy for this cycle. No-op on macOS/Linux
+    when 'allow'; Windows always reconciles USBSTOR so 'allow' re-enables it."""
+    try:
+        if OS == "Darwin":
+            if policy != "block":
+                return
+            for path, name in _removable_volumes_macos():
+                subprocess.run(["diskutil", "eject", path], capture_output=True, timeout=30)
+                now = time.time()
+                if now - _last_usb_notify.get(name, 0) >= NOTIFY_INTERVAL:
+                    log_event(device_id, "warn", "usb_blocked", f"Ejected removable drive '{name}' (blocked)")
+                    notify_user("Ravyn", f"Removable storage is blocked. '{name}' has been ejected.")
+                    _last_usb_notify[name] = now
+        elif OS == "Windows":
+            if _set_windows_usbstor(policy):
+                log_event(device_id, "info", "usb_policy",
+                          f"USB mass storage {'disabled' if policy == 'block' else 'enabled'}")
+        elif OS == "Linux" and policy == "block":
+            out = subprocess.check_output(["lsblk", "-rno", "RM,MOUNTPOINT"], text=True, stderr=subprocess.DEVNULL)
+            for line in out.splitlines():
+                parts = line.split(None, 1)
+                if len(parts) == 2 and parts[0] == "1" and parts[1].strip():
+                    subprocess.run(["umount", parts[1].strip()], capture_output=True, timeout=15)
+    except Exception as e:
+        print(f"[error] removable-storage enforcement: {e}")
+
 def get_policies(scope_ids):
-    """Fetch policy overrides for the given org/location/device scope IDs."""
+    """Fetch policy overrides for the given org/location/device SCOPE IDs."""
     ids = [s for s in scope_ids if s]
     if not ids:
         return []
@@ -1937,6 +2025,10 @@ def main():
                         if nowh - last_notify.get(digest, 0) >= NOTIFY_INTERVAL:
                             notify_user("Ravyn", f"{exe} is a blocked build and has been closed.")
                             last_notify[digest] = nowh
+
+            # Removable-storage (USB) control: eject unauthorized drives (macOS)
+            # / reconcile USBSTOR (Windows) per the effective scope policy.
+            enforce_removable_storage(device_id, get_removable_storage_policy(device_id))
 
             # Installed-software inventory (hourly + on-change). Runs after
             # enforcement so a slow scan never delays killing a blocked app.
