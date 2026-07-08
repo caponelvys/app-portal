@@ -34,7 +34,9 @@ export async function proxy(request: NextRequest) {
 
   // Redirect unauthenticated users to /login (except on auth pages, public agent
   // downloads, and device-authenticated APIs the agent/companion call without a session)
-  const pub = ['/login', '/signup', '/reset-password', '/roadmap', '/downloads', '/api/enroll', '/api/agent', '/api/device-request', '/auth/callback']
+  // '/api/cron' and '/api/webhooks/flush' are scheduled (Vercel Cron) endpoints
+  // with no user session; they self-authorize via CRON_SECRET (see each route).
+  const pub = ['/login', '/signup', '/reset-password', '/roadmap', '/downloads', '/api/enroll', '/api/agent', '/api/device-request', '/api/cron', '/api/webhooks/flush', '/auth/callback']
   // The agent also calls /api/devices/<id>/self-remove unauthenticated as the final
   // act of self-uninstall. Allow that exact sub-path without exposing the rest of
   // /api/devices (an authenticated admin surface). Without this the request 307s to
