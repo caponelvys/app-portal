@@ -11,7 +11,7 @@ async function requireAdmin() {
   return { admin: createAdminClient() }
 }
 
-const SCOPES = ['org', 'location', 'device']
+const SCOPES = ['org', 'location', 'device', 'ring']
 
 // Set (or update) a policy override at a scope.
 export async function POST(req: NextRequest) {

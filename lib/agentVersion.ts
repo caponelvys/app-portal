@@ -4,7 +4,7 @@
 //   2. Add an entry to agent/CHANGELOG.md
 //   3. Copy agent/* → public/downloads/ (agent.py, install_*, update_*)
 
-export const AGENT_VERSION = '1.7.21'
+export const AGENT_VERSION = '1.7.22'
 
 // Current companion (tray/menu-bar app) version. The agent polls this alongside
 // the agent version and re-installs the companion when it changes, so companion
@@ -33,6 +33,13 @@ export type ChangelogEntry = {
 }
 
 export const AGENT_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.22',
+    date: '2026-07-08',
+    changes: [
+      'Ring-scoped policies (M3 CP2): the agent reads its rollout ring and factors ring-targeted policies into resolution (device > ring > location > org > global), so a policy staged on a ring applies to its devices regardless of location — enabling test → pilot → prod rollout. Requires migration 0028.',
+    ],
+  },
   {
     version: '1.7.21',
     date: '2026-07-08',

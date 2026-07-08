@@ -29,7 +29,7 @@ ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 m
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.21"
+AGENT_VERSION = "1.7.22"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -361,9 +361,9 @@ def get_all_apps():
     return []
 
 def get_device_context(device_id):
-    """Return {user_id, org_id, location_id, pending_command} for this device."""
+    """Return {user_id, org_id, location_id, ring_id, pending_command} for this device."""
     resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id,org_id,location_id,pending_command",
+        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id,org_id,location_id,ring_id,pending_command",
         headers=HEADERS,
     )
     if resp.status_code == 200 and resp.json():
@@ -404,12 +404,16 @@ def get_policies(scope_ids):
 
 def resolve_effective_blocked(apps, policies, ctx, device_id):
     """Resolve effective status per app and return those effectively blocked.
-    Most specific override wins: device > location > org > global default."""
-    dev, loc, org = {}, {}, {}
+    Most specific override wins: device > ring > location > org > global default.
+    Rings (staged rollout) sit above location/org so a ring-targeted change
+    applies regardless of a device's location."""
+    dev, ring, loc, org = {}, {}, {}, {}
     for p in policies:
         sid = p.get("scope_id")
         if sid == device_id:
             dev[p["app_id"]] = p["status"]
+        elif sid == ctx.get("ring_id"):
+            ring[p["app_id"]] = p["status"]
         elif sid == ctx.get("location_id"):
             loc[p["app_id"]] = p["status"]
         elif sid == ctx.get("org_id"):
@@ -417,7 +421,7 @@ def resolve_effective_blocked(apps, policies, ctx, device_id):
 
     blocked = []
     for app in apps:
-        status = dev.get(app["id"]) or loc.get(app["id"]) or org.get(app["id"]) or app.get("status")
+        status = dev.get(app["id"]) or ring.get(app["id"]) or loc.get(app["id"]) or org.get(app["id"]) or app.get("status")
         if status == "blocked":
             blocked.append(app)
     return blocked
@@ -1851,7 +1855,7 @@ def main():
 
             owner_id = ctx.get("user_id")
             all_apps = get_all_apps()
-            policies = get_policies([ctx.get("org_id"), ctx.get("location_id"), device_id])
+            policies = get_policies([ctx.get("org_id"), ctx.get("location_id"), ctx.get("ring_id"), device_id])
             effective_blocked = resolve_effective_blocked(all_apps, policies, ctx, device_id)
 
             # Per-user temporary access: if this device has been claimed by a

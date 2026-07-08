@@ -1,5 +1,12 @@
 # Ravyn Agent — Changelog
 
+## v1.7.22 — 2026-07-08
+- **Ring-scoped policies** (M3 CP2): the agent reads its `ring_id` and factors
+  ring-targeted policies into resolution, precedence device > ring > location >
+  org > global. A policy staged on a rollout ring applies to its devices
+  regardless of location, enabling test → pilot → prod rollout. Requires
+  migration 0028 (`ring` added to app_policies scope types).
+
 ## v1.7.21 — 2026-07-08
 - **Per-build hash blocking**: hash BLOCK policy rules now enforce per build.
   The agent hashes running app binaries (system paths skipped, cached per

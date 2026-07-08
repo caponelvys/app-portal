@@ -60,7 +60,7 @@ export default function RingsManager({ orgId, rings }: { orgId: string; rings: R
             <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5">
               <div className="flex items-center gap-3 min-w-0">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-800 text-xs font-mono text-gray-400 shrink-0">{i + 1}</span>
-                <span className="font-medium text-white truncate">{r.name}</span>
+                <a href={`/admin/rings/${r.id}`} className="font-medium text-blue-400 hover:text-blue-300 truncate">{r.name}</a>
                 <span className="text-xs text-gray-500 shrink-0">{r.deviceCount} device{r.deviceCount === 1 ? '' : 's'}</span>
               </div>
               <button

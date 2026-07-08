@@ -1,5 +1,5 @@
 export type PolicyStatus = 'allowed' | 'blocked'
-export type ScopeType = 'org' | 'location' | 'device'
+export type ScopeType = 'org' | 'location' | 'device' | 'ring'
 
 // An app row prepared for the policy editor at a given scope.
 export type PolicyApp = {
