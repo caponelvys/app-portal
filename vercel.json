@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/webhooks/flush",
-      "schedule": "*/10 * * * *"
+      "schedule": "15 3 * * *"
     }
   ]
 }
