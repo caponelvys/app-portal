@@ -17,52 +17,25 @@ const LOOP = [
 
 const AVAILABLE = [
   { title: 'Cross-platform app control', body: 'Allow or block any application across macOS, Windows, and Linux endpoints.' },
-  { title: 'Remote install & uninstall', body: 'Deploy or remove software across a device, a site, or the entire fleet — right from the portal.' },
-  { title: 'Self-service access requests', body: 'Users request a blocked app; admins approve or deny in one click, with email notifications on every step.' },
-  { title: 'Time-boxed access grants', body: 'Grant access for an hour, a day, or permanently. Expiry is automatic — no cleanup required.' },
-  { title: 'Immutable audit trail', body: 'Every block, install, and approval is logged and exportable to CSV or PDF for client reporting.' },
-  { title: 'Built for MSPs', body: 'True multi-tenant isolation per client, with role-based access for your technicians.' },
+  { title: 'Fleet software inventory', body: 'See exactly what is installed across every endpoint — with versions, publishers, and build hashes.' },
+  { title: 'Learning mode', body: 'Let Ravyn observe first and propose a baseline policy, instead of hand-building allowlists.' },
+  { title: 'Smarter policy rules', body: 'Allow or block by publisher, path, name, or exact build hash — so a routine update never breaks a rule.' },
+  { title: 'Safe rollout rings', body: 'Stage a policy from test to pilot to production, so a bad push never hits the whole fleet at once.' },
+  { title: 'Templates, history & rollback', body: 'Reusable policy templates, a full change history, and one-click rollback.' },
+  { title: 'Remote install & uninstall', body: 'Deploy or remove software across a device, a site, or the entire fleet from the portal.' },
+  { title: 'Elevation control', body: 'Run approved apps with admin rights without granting the user local admin.' },
+  { title: 'USB & removable storage', body: 'Block or allow removable storage per organization, location, ring, or device.' },
+  { title: 'Self-service access requests', body: 'Users request a blocked app; admins approve or deny in a click, with time-boxed grants that expire automatically.' },
+  { title: 'Compliance reporting', body: 'SOC 2, HIPAA, and CJIS control mapping over an immutable audit trail — exportable to CSV and PDF.' },
+  { title: 'Integrations & metering', body: 'Stream audit events to your SIEM or PSA via signed webhooks, with per-endpoint usage tracking for billing.' },
 ]
 
-const UPCOMING: { phase: string; tone: 'now' | 'next' | 'later'; blurb: string; items: { title: string; body: string }[] }[] = [
-  {
-    phase: 'Now',
-    tone: 'now',
-    blurb: 'In active development.',
-    items: [
-      { title: 'Fleet software inventory', body: 'See exactly what is installed across every endpoint, with versions and publishers.' },
-      { title: 'Learning mode', body: 'Let Ravyn observe for a couple of weeks and propose a baseline policy automatically — no hand-built allowlists.' },
-      { title: 'Smarter policy rules', body: 'Allow by publisher, certificate, or hash, so a routine app update never breaks your rules.' },
-    ],
-  },
-  {
-    phase: 'Next',
-    tone: 'next',
-    blurb: 'Designed and queued.',
-    items: [
-      { title: 'Safe rollout rings', body: 'Promote a policy from test to pilot to production, so a change never hits the whole fleet at once.' },
-      { title: 'Templates & rollback', body: 'Reusable policy templates, full version history, and one-click rollback.' },
-      { title: 'Third-party patching', body: 'Spot outdated apps automatically and push updates through the agent you already run.' },
-    ],
-  },
-  {
-    phase: 'Later',
-    tone: 'later',
-    blurb: 'On the horizon.',
-    items: [
-      { title: 'Ringfencing', body: 'Control what an allowed app can touch — network, files, and other processes.' },
-      { title: 'Elevation control', body: 'Run approved apps with admin rights without handing out local admin.' },
-      { title: 'Removable storage control', body: 'Manage USB and external storage access per policy.' },
-      { title: 'Compliance & integrations', body: 'SOC 2, HIPAA, and CJIS reporting; SIEM and syslog export; PSA integrations for Autotask and ConnectWise.' },
-    ],
-  },
+// Genuinely still ahead — most of the original roadmap has shipped.
+const HORIZON = [
+  { title: 'Third-party patching', body: 'Detect outdated apps from inventory and push updates through the agent you already run.' },
+  { title: 'Ringfencing', body: 'Control what an allowed app can touch — network, files, registry, and other processes.' },
+  { title: 'Native PSA sync', body: 'Direct ticket and asset sync with Autotask and ConnectWise, beyond today’s webhook export.' },
 ]
-
-const PHASE_PILL: Record<'now' | 'next' | 'later', string> = {
-  now: 'bg-blue-600/20 text-blue-300 border border-blue-500/30',
-  next: 'bg-gray-700/60 text-gray-300 border border-gray-600/50',
-  later: 'bg-transparent text-gray-500 border border-gray-700',
-}
 
 export default function RoadmapPage() {
   return (
@@ -85,8 +58,9 @@ export default function RoadmapPage() {
             Where <RavynWord /> is headed
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-gray-400">
-            Ravyn gives managed IT teams complete control over the applications running across their fleet — on
-            macOS, Windows, and Linux. Here is what is live today, and what we are building next.
+            Ravyn gives managed IT teams complete, multi-tenant control over the applications running across their
+            fleet — on macOS, Windows, and Linux. The full discover → decide → enforce → respond → report loop is
+            live today. Here is everything that ships now, and the few things still ahead.
           </p>
         </div>
 
@@ -135,28 +109,17 @@ export default function RoadmapPage() {
           </div>
         </section>
 
-        {/* Now / Next / Later */}
+        {/* On the horizon */}
         <section className="mt-16">
           <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-white">
-            What we are building
+            On the horizon
           </h2>
-          <div className="mt-6 flex flex-col gap-4">
-            {UPCOMING.map(group => (
-              <div key={group.phase} className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 sm:p-6">
-                <div className="flex flex-wrap items-baseline gap-3">
-                  <span className={`rounded-full px-3 py-1 font-[family-name:var(--font-mono-plex)] text-xs ${PHASE_PILL[group.tone]}`}>
-                    {group.phase}
-                  </span>
-                  <span className="text-sm text-gray-500">{group.blurb}</span>
-                </div>
-                <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {group.items.map(item => (
-                    <div key={item.title}>
-                      <h3 className="font-semibold text-white">{item.title}</h3>
-                      <p className="mt-1 text-sm leading-relaxed text-gray-400">{item.body}</p>
-                    </div>
-                  ))}
-                </div>
+          <p className="mt-2 text-sm text-gray-500">The few capabilities still ahead.</p>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {HORIZON.map(item => (
+              <div key={item.title} className="rounded-xl border border-dashed border-gray-800 bg-gray-900/40 p-5">
+                <h3 className="font-semibold text-white">{item.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-gray-400">{item.body}</p>
               </div>
             ))}
           </div>
@@ -168,10 +131,16 @@ export default function RoadmapPage() {
             This roadmap reflects our current direction and priorities. It is not a delivery commitment, and plans
             may change as we learn from the teams who use Ravyn.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <a href="/" className="text-sm font-medium text-blue-400 hover:text-blue-300">
               Back to portal →
             </a>
+            <p className="font-[family-name:var(--font-mono-plex)] text-xs text-gray-600">
+              Designed &amp; built by{' '}
+              <span className="font-[family-name:var(--font-display)] font-semibold">
+                <span className="text-white">Elv</span><span style={{ color: '#8b7bff' }}>ys</span>
+              </span>
+            </p>
           </div>
         </footer>
       </main>
