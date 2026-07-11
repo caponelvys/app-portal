@@ -21,21 +21,17 @@ import requests
 from datetime import datetime, timezone
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SUPABASE_URL = "https://fdnqjwezvkcpwckyqmbg.supabase.co"
+# The agent no longer calls Supabase/PostgREST directly. All data flows through
+# the portal's authenticated /api/agent/* endpoints using this device's per-device
+# bearer token (see the per-device credential section). The old shared anon key is
+# gone — it was public and let anyone write any device's rows cross-tenant.
 PORTAL_URL   = "https://appcontroller.vercel.app"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbnFqd2V6dmtjcHdja3lxbWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NzkxMjQsImV4cCI6MjA5ODI1NTEyNH0.NgcjU6gT9pdhteRK18QYcwYZE-iaiFmCYqwDgD2ow-8"
 POLL_INTERVAL = 5  # seconds between checks
 ACCESS_LOG_INTERVAL = 1800  # seconds; throttle "accessed" logging per app (30 min)
 UPDATE_CHECK_INTERVAL = 300  # seconds between auto-update checks (5 min)
 NET_FAIL_ESCALATE = 3  # consecutive failed polls before a network issue is logged as an error
 NOTIFY_INTERVAL = 60  # seconds; throttle "app blocked" notifications per app so retries don't spam
-AGENT_VERSION = "1.7.25"
-
-HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-}
+AGENT_VERSION = "1.8.0"
 
 OS = platform.system()  # "Darwin" (Mac), "Windows", or "Linux"
 
@@ -106,6 +102,11 @@ _migrate_state_dir()
 DEVICE_ID_FILE = os.path.join(DATA_DIR, ".device_id")
 PAIRING_CODE_FILE = os.path.join(DATA_DIR, ".pairing_code")
 ENROLLMENT_TOKEN_FILE = os.path.join(DATA_DIR, ".enrollment_token")
+# Per-device bearer token, minted by the portal at enroll time. It's how the
+# agent proves it's THIS device — every /api/agent call carries it, and the
+# server scopes all reads/writes to the device the token belongs to. Stored 0600;
+# the anon key is no longer used for data (see v1.8.0 changelog).
+DEVICE_TOKEN_FILE = os.path.join(DATA_DIR, ".device_token")
 
 # The Ravyn Companion (user-session app) can't be reached across the session
 # boundary directly, so we hand it notifications via a world-writable spool dir.
@@ -171,6 +172,50 @@ COMPANION_PLIST    = (
 # Characters used for pairing codes — omit visually ambiguous ones (0/O, 1/I).
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
+# ── Per-device credential + sync state ──────────────────────────────────────────
+# The agent no longer talks to PostgREST with the shared anon key. Instead every
+# cycle makes ONE authenticated POST to /api/agent/sync carrying this device's
+# bearer token: it sends buffered writes (heartbeat, logs, events, inventory,
+# command results) up and receives the resolved policy/enforcement state down.
+# The server derives the device from the token, so an agent can only touch its own
+# rows. These module globals hold the token, the latest "down" payload, and the
+# outbound buffers drained on each successful sync.
+_device_token = None          # loaded/minted at enroll; None until we have one
+_sync = {}                    # latest /api/agent/sync response ("down" payload)
+_events_buf = []              # pending agent_events   -> flushed via sync "up"
+_logs_buf = []               # pending agent_logs     -> flushed via sync "up"
+_cmd_results_buf = []        # pending device_command results
+_inventory_buf = None         # {scan_time, rows} when inventory changed; else None
+
+def load_device_token():
+    global _device_token
+    if _device_token:
+        return _device_token
+    try:
+        if os.path.exists(DEVICE_TOKEN_FILE):
+            with open(DEVICE_TOKEN_FILE, "r") as f:
+                tok = f.read().strip()
+                _device_token = tok or None
+    except Exception:
+        _device_token = None
+    return _device_token
+
+def save_device_token(token):
+    global _device_token
+    _device_token = token
+    try:
+        with open(DEVICE_TOKEN_FILE, "w") as f:
+            f.write(token)
+        if OS != "Windows":
+            os.chmod(DEVICE_TOKEN_FILE, 0o600)  # readable only by root/SYSTEM
+    except Exception as e:
+        print(f"[agent] Warning: could not persist device token: {e}")
+
+def auth_headers():
+    """Headers for authenticated /api/agent/* calls."""
+    return {"Content-Type": "application/json",
+            "Authorization": f"Bearer {_device_token}"}
+
 # ── Device identity ────────────────────────────────────────────────────────────
 def get_device_id():
     """Get or create a stable unique ID for this machine."""
@@ -204,31 +249,46 @@ def get_enrollment_token():
 
 def register_device(device_id):
     """Register/update this device via the portal enroll API.
-    The portal validates the enrollment token server-side so the token
-    never needs to be readable by the anon key."""
+    The portal validates the enrollment token server-side, and mints this device's
+    bearer token on first enroll (or backfill), returning it once — we persist it.
+    Returns the enroll response dict (incl. user_id/location_id) or {}."""
     payload = {
         "device_id": device_id,
         "hostname":  get_hostname(),
         "os":        OS_LABEL,
+        # Publish our pairing code so an unclaimed device is claimable from the
+        # portal; the server only sets it while the device is unclaimed.
+        "pairing_code": generate_pairing_code(),
     }
     token = get_enrollment_token()
     if token:
         payload["token"] = token
 
+    headers = {"Content-Type": "application/json"}
+    # If we somehow still have a token, present it so the server can recognise us
+    # (bare enroll won't re-mint for an already-tokenised device).
+    if _device_token:
+        headers["Authorization"] = f"Bearer {_device_token}"
+
     resp = requests.post(
         f"{PORTAL_URL}/api/enroll",
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         json=payload,
         timeout=10,
     )
     if resp.status_code == 200:
         data = resp.json()
+        if data.get("device_token"):
+            save_device_token(data["device_token"])
+            print("[agent] Received device credential")
         if token and data.get("location_id"):
             print(f"[agent] Enrolled into location {data['location_id']}")
             log_event(device_id, "info", "enrolled", f"Enrolled into location {data['location_id']}")
+        return data
     else:
         print(f"[agent] Enroll failed: {resp.status_code} {resp.text}")
         log_event(device_id, "error", "enroll_failed", f"{resp.status_code} {resp.text[:200]}")
+        return {}
 
 def get_device_user():
     """Detect the console/logged-in OS username. The agent runs as root/SYSTEM,
@@ -277,27 +337,83 @@ def get_local_ip():
         except Exception:
             return None
 
-def heartbeat(device_id):
-    """Update last_seen, agent version, and IP so the portal has current info."""
+def heartbeat_fields():
+    """Build the heartbeat block sent up in each sync (last_seen is stamped
+    server-side). Best-effort — a probe failure just omits that field."""
+    fields = {"agent_version": AGENT_VERSION}
     try:
-        payload = {
-            "last_seen":     now_iso(),
-            "agent_version": AGENT_VERSION,
-        }
         ip = get_local_ip()
         if ip:
-            payload["ip_address"] = ip
-        device_user = get_device_user()
-        if device_user:
-            payload["device_user"] = device_user
-        requests.patch(
-            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
-            headers=HEADERS,
-            json=payload,
-            timeout=5,
-        )
+            fields["ip_address"] = ip
     except Exception:
-        pass  # transient network error — next heartbeat will catch up
+        pass
+    try:
+        du = get_device_user()
+        if du:
+            fields["device_user"] = du
+    except Exception:
+        pass
+    return fields
+
+def _local_pairing_code():
+    """The locally-stored pairing code if the device is still unclaimed (the file
+    is removed once claimed), else None — so we only re-publish while unclaimed."""
+    try:
+        if os.path.exists(PAIRING_CODE_FILE):
+            with open(PAIRING_CODE_FILE, "r") as f:
+                return f.read().strip() or None
+    except Exception:
+        pass
+    return None
+
+def sync(device_id):
+    """One authenticated round-trip per cycle. Sends buffered writes (heartbeat,
+    events, logs, inventory, command results) up and stores the resolved
+    policy/enforcement state (_sync) the accessors read. Buffers are drained only
+    on success, so a transient failure retries them next cycle. Network errors
+    propagate to the main loop's net-fail handling."""
+    global _sync, _inventory_buf
+    if not _device_token:
+        # No credential yet (first run before enroll succeeded, or after a reset).
+        register_device(device_id)
+        if not _device_token:
+            return  # still none — nothing we can do this cycle
+
+    payload = {
+        "heartbeat":       heartbeat_fields(),
+        "pairing_code":    _local_pairing_code(),
+        "events":          _events_buf,
+        "logs":            _logs_buf,
+        "command_results": _cmd_results_buf,
+    }
+    if _inventory_buf:
+        payload["inventory"] = _inventory_buf
+
+    resp = requests.post(f"{PORTAL_URL}/api/agent/sync",
+                         headers=auth_headers(), json=payload, timeout=15)
+
+    if resp.status_code == 401:
+        # Token missing/rotated/reset — re-enroll for a fresh one, then retry once.
+        print("[agent] Sync unauthorized — re-enrolling for a new device token")
+        register_device(device_id)
+        if not _device_token:
+            return
+        resp = requests.post(f"{PORTAL_URL}/api/agent/sync",
+                             headers=auth_headers(), json=payload, timeout=15)
+
+    if resp.status_code != 200:
+        print(f"[agent] Sync failed: {resp.status_code} {resp.text[:200]}")
+        return  # keep buffers; retry next cycle
+
+    try:
+        _sync = resp.json() or {}
+    except Exception:
+        return
+    # Flushed successfully — clear the buffers we just sent.
+    _events_buf.clear()
+    _logs_buf.clear()
+    _cmd_results_buf.clear()
+    _inventory_buf = None
 
 # ── Device pairing ──────────────────────────────────────────────────────────────
 def generate_pairing_code():
@@ -312,19 +428,11 @@ def generate_pairing_code():
         f.write(code)
     return code
 
-def setup_pairing(device_id):
-    """If this device hasn't been claimed yet, publish a pairing code and show
-    the user how to claim it. Once claimed, the code is removed locally."""
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id",
-            headers=HEADERS,
-            timeout=10,
-        )
-        claimed = resp.status_code == 200 and resp.json() and resp.json()[0].get("user_id")
-    except Exception as e:
-        print(f"[agent] Warning: pairing check failed ({e}), assuming unclaimed")
-        claimed = False
+def setup_pairing(device_id, enroll_data):
+    """Report claim state to the user. `enroll_data` is the /api/enroll response;
+    the pairing code was already published there (server-side, while unclaimed).
+    Once claimed, the local code file is removed."""
+    claimed = bool((enroll_data or {}).get("user_id"))
 
     if claimed:
         if os.path.exists(PAIRING_CODE_FILE):
@@ -334,15 +442,6 @@ def setup_pairing(device_id):
         return
 
     code = generate_pairing_code()
-    try:
-        requests.patch(
-            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
-            headers=HEADERS,
-            json={"pairing_code": code},
-            timeout=10,
-        )
-    except Exception:
-        pass
     print("\n" + "=" * 44)
     print("  This device is not yet linked to a user.")
     print(f"  Pairing code:  {code}")
@@ -351,43 +450,22 @@ def setup_pairing(device_id):
 
 # ── App enforcement ────────────────────────────────────────────────────────────
 def get_all_apps():
-    """Fetch the app catalog. `status` is the global default policy."""
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/apps?process_name=not.is.null&select=id,name,process_name,status",
-        headers=HEADERS,
-    )
-    if resp.status_code == 200:
-        return resp.json()
-    return []
+    """App catalog from the latest sync. `status` is the global default policy."""
+    return _sync.get("apps", [])
 
 def get_device_context(device_id):
-    """Return {user_id, org_id, location_id, ring_id, pending_command} for this device."""
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}&select=user_id,org_id,location_id,ring_id,pending_command",
-        headers=HEADERS,
-    )
-    if resp.status_code == 200 and resp.json():
-        return resp.json()[0]
-    return {}
+    """{user_id, org_id, location_id, ring_id, pending_command} from the latest
+    sync (pending_command is delivered once by the server, then cleared)."""
+    ctx = dict(_sync.get("context", {}))
+    ctx["pending_command"] = _sync.get("pending_command")
+    return ctx
 
 def get_enforcement_mode(device_id):
-    """Effective mode for this device via the server-side resolver (device >
-    location > org > 'enforce'). 'learn' = observe only: log what would be
-    blocked, don't kill. Defaults to 'enforce' on any error so a failed lookup
-    never silently disables enforcement."""
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/rpc/effective_enforcement_mode"
-            f"?p_device_id={device_id}",
-            headers=HEADERS, timeout=10,
-        )
-        if resp.status_code == 200:
-            mode = resp.json()
-            if mode in ("enforce", "learn"):
-                return mode
-    except Exception:
-        pass
-    return "enforce"
+    """Effective mode (device > location > org > 'enforce') from the latest sync.
+    'learn' = observe only. Defaults to 'enforce' so a missing value never
+    silently disables enforcement."""
+    mode = _sync.get("enforcement_mode")
+    return mode if mode in ("enforce", "learn") else "enforce"
 
 # ── Removable-storage (USB) control ─────────────────────────────────────────
 # When a scope blocks removable storage, the agent (root/SYSTEM) enforces it:
@@ -397,16 +475,8 @@ def get_enforcement_mode(device_id):
 _last_usb_notify = {}  # volume -> last notify time
 
 def get_removable_storage_policy(device_id):
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/rpc/effective_removable_storage?p_device_id={device_id}",
-            headers=HEADERS, timeout=10,
-        )
-        if resp.status_code == 200 and resp.json() in ("allow", "block"):
-            return resp.json()
-    except Exception:
-        pass
-    return "allow"
+    pol = _sync.get("removable_storage")
+    return pol if pol in ("allow", "block") else "allow"
 
 def _removable_volumes_macos():
     """External + ejectable volumes (USB drives) — never the internal boot disk.
@@ -478,17 +548,9 @@ def enforce_removable_storage(device_id, policy):
         print(f"[error] removable-storage enforcement: {e}")
 
 def get_policies(scope_ids):
-    """Fetch policy overrides for the given org/location/device SCOPE IDs."""
-    ids = [s for s in scope_ids if s]
-    if not ids:
-        return []
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/app_policies?scope_id=in.({','.join(ids)})&select=app_id,scope_id,status",
-        headers=HEADERS,
-    )
-    if resp.status_code == 200:
-        return resp.json()
-    return []
+    """Policy overrides (app_id/scope_id/status) from the latest sync; the server
+    already scoped them to this device's org/location/ring/device."""
+    return _sync.get("policies", [])
 
 def resolve_effective_blocked(apps, policies, ctx, device_id):
     """Resolve effective status per app and return those effectively blocked.
@@ -515,36 +577,9 @@ def resolve_effective_blocked(apps, policies, ctx, device_id):
     return blocked
 
 def get_granted_app_ids(user_id):
-    """Return the set of app IDs this user has an active approved grant for.
-
-    A grant is active when status is 'approved' and it either never expires
-    (expires_at is null) or its expiry is still in the future.
-    """
-    if not user_id:
-        return set()
-    resp = requests.get(
-        f"{SUPABASE_URL}/rest/v1/app_requests"
-        f"?user_id=eq.{user_id}&status=eq.approved&select=app_id,expires_at",
-        headers=HEADERS,
-    )
-    if resp.status_code != 200:
-        return set()
-
-    granted = set()
-    now = datetime.now(timezone.utc)
-    for row in resp.json():
-        expires_at = row.get("expires_at")
-        if not expires_at:
-            granted.add(row["app_id"])
-            continue
-        try:
-            expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-            if expiry > now:
-                granted.add(row["app_id"])
-        except (ValueError, AttributeError):
-            # Unparseable expiry — fail safe by NOT granting access.
-            pass
-    return granted
+    """Set of app IDs the device owner has an active approved grant for. The
+    server resolves active-vs-expired and returns the list in each sync."""
+    return set(_sync.get("granted_app_ids", []))
 
 def get_running_processes():
     """Return a set of currently running process names (lowercase)."""
@@ -607,18 +642,9 @@ def _is_app_binary(path):
     return path.startswith("/opt") or path.startswith("/usr/local") or "/home/" in path
 
 def get_blocked_hashes(device_id):
-    """The set of blocked build hashes for this device (org/location/device
-    scope), via the server resolver. Empty on any error."""
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/rpc/blocked_hashes_for_device?p_device_id={device_id}",
-            headers=HEADERS, timeout=10,
-        )
-        if resp.status_code == 200:
-            return {h.lower() for h in resp.json() if h}
-    except Exception:
-        pass
-    return set()
+    """Set of blocked build hashes for this device (org/location/device scope),
+    resolved server-side and delivered in each sync. Empty when none."""
+    return {h.lower() for h in _sync.get("blocked_hashes", []) if h}
 
 def get_running_process_paths():
     """(pid, exe_path) for running processes whose binary looks like an app —
@@ -718,31 +744,16 @@ def notify_user(title, message):
         print(f"[agent] Could not notify user: {e}")
 
 def log_action(device_id, app_name, action):
-    """Write a log entry to Supabase."""
-    requests.post(
-        f"{SUPABASE_URL}/rest/v1/agent_logs",
-        headers=HEADERS,
-        json={"device_id": device_id, "app_name": app_name, "action": action},
-    )
+    """Buffer an enforcement log entry (agent_logs); flushed up on the next sync.
+    Bounded so a sustained sync outage can't grow it without limit."""
+    if len(_logs_buf) < 500:
+        _logs_buf.append({"app_name": app_name, "action": action})
 
 def log_event(device_id, level, event, message=""):
-    """Best-effort structured activity event for the portal's per-device log.
-    level: 'info' | 'warn' | 'error'. Failures are swallowed — logging must
-    never disrupt the agent."""
-    try:
-        requests.post(
-            f"{SUPABASE_URL}/rest/v1/agent_events",
-            headers=HEADERS,
-            json={
-                "device_id": device_id,
-                "level": level,
-                "event": event,
-                "message": (message or "")[:500],
-            },
-            timeout=5,
-        )
-    except Exception:
-        pass
+    """Buffer a structured activity event (agent_events) for the portal's per-device
+    log; flushed up on the next sync. level: 'info' | 'warn' | 'error'."""
+    if len(_events_buf) < 500:
+        _events_buf.append({"level": level, "event": event, "message": (message or "")[:500]})
 
 # ── Software inventory (M1 Discovery) ───────────────────────────────────────
 # Periodic installed-software scan reported to device_software: what's on the
@@ -979,38 +990,18 @@ def report_inventory(device_id, last_hash):
     upload. Uploads are an upsert on (device_id, name, version) followed by a
     stale-row prune, so device_software mirrors the box. Always stamps
     devices.last_inventory_at so the portal can tell fresh from stale.
-    Returns the new inventory hash (or last_hash when nothing was scanned)."""
+    Returns the new inventory hash (or last_hash when nothing was scanned).
+    The actual upsert + stale-prune + freshness stamp happen server-side in the
+    sync handler; here we just stage the changed set for the next sync 'up'."""
+    global _inventory_buf
     rows = get_installed_software()
     if not rows:
         return last_hash  # scan failed or unsupported OS — leave the DB as-is
     digest = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
-    scan_time = now_iso()
     if digest != last_hash:
-        payload = [{**r, "device_id": device_id, "last_seen": scan_time} for r in rows]
-        resp = requests.post(
-            f"{SUPABASE_URL}/rest/v1/device_software?on_conflict=device_id,name,version",
-            headers={**HEADERS, "Prefer": "resolution=merge-duplicates"},
-            json=payload, timeout=60,
-        )
-        if resp.status_code not in (200, 201, 204):
-            raise RuntimeError(f"inventory upsert failed: {resp.status_code} {resp.text[:200]}")
-        # Anything this scan didn't touch was uninstalled — remove it. params=
-        # (not an f-string URL) so the '+' in the ISO timestamp is URL-encoded.
-        requests.delete(
-            f"{SUPABASE_URL}/rest/v1/device_software",
-            headers=HEADERS, timeout=30,
-            params={"device_id": f"eq.{device_id}", "last_seen": f"lt.{scan_time}"},
-        )
-        log_event(device_id, "info", "inventory",
-                  f"Reported {len(rows)} installed apps")
-        print(f"[agent] Inventory: reported {len(rows)} installed apps")
-    try:
-        requests.patch(
-            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
-            headers=HEADERS, json={"last_inventory_at": scan_time}, timeout=10,
-        )
-    except Exception:
-        pass  # freshness stamp is best-effort
+        _inventory_buf = {"scan_time": now_iso(), "rows": rows}
+        log_event(device_id, "info", "inventory", f"Reported {len(rows)} installed apps")
+        print(f"[agent] Inventory: staged {len(rows)} installed apps")
     return digest
 
 # ── Auto-update ───────────────────────────────────────────────────────────────
@@ -1221,17 +1212,6 @@ def self_update(device_id, latest):
 # ── Remote commands ───────────────────────────────────────────────────────────
 INSTALL_DIR = DATA_DIR
 
-def clear_command(device_id):
-    """Clear the device's pending_command. Returns True on success."""
-    try:
-        r = requests.patch(
-            f"{SUPABASE_URL}/rest/v1/devices?device_id=eq.{device_id}",
-            headers=HEADERS, json={"pending_command": None}, timeout=5,
-        )
-        return r.status_code < 300
-    except Exception:
-        return False
-
 def _teardown_companion():
     """Remove the per-user Ravyn Companion (menu-bar/tray app + login autostart)
     that the agent installed into the console user's session. The companion lives
@@ -1308,10 +1288,13 @@ def uninstall_agent(device_id=None):
     # non-2xx, not a 200 login page masquerading as success. Retry a couple times
     # so a transient blip doesn't strand a ghost device row in the portal.
     if device_id:
+        # Authenticated with this device's own bearer token so only it can remove
+        # its record.
+        headers = {"Authorization": f"Bearer {_device_token}"} if _device_token else {}
         for _ in range(3):
             try:
                 r = requests.post(f"{PORTAL_URL}/api/devices/{device_id}/self-remove",
-                                  timeout=10, allow_redirects=False)
+                                  headers=headers, timeout=10, allow_redirects=False)
                 if r.status_code < 300:
                     break
             except Exception:
@@ -1357,13 +1340,10 @@ def uninstall_agent(device_id=None):
         os._exit(0)
 
 def handle_command(device_id, cmd):
-    """Execute a portal-issued command. Clears it first so it runs at most once."""
+    """Execute a portal-issued command. The server delivers pending_command exactly
+    once (it clears the row as it hands it down in sync), so we just act on it."""
     cmd = (cmd or "").strip().lower()
     if cmd not in ("restart", "update", "uninstall"):
-        clear_command(device_id)
-        return
-    # Only act once we've cleared it, so a failed clear can't loop the command.
-    if not clear_command(device_id):
         return
     if cmd == "restart":
         log_event(device_id, "info", "command_restart", "Restart requested from portal")
@@ -1378,32 +1358,16 @@ def handle_command(device_id, cmd):
         uninstall_agent(device_id)  # terminal
 
 # ── Remote app uninstall (device_commands queue) ──────────────────────────────
-def get_app_detail(app_id):
-    """Fetch one app with its install/uninstall metadata (not in the hot loop's
-    lean app fetch)."""
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/apps?id=eq.{app_id}"
-            "&select=id,name,process_name,mac_app_path,windows_uninstall,linux_package,allow_elevation,"
-            "mac_install_url,mac_install_sha256,windows_install_url,windows_install_sha256,windows_install_args",
-            headers=HEADERS, timeout=10)
-        if resp.status_code == 200 and resp.json():
-            return resp.json()[0]
-    except Exception:
-        pass
-    return None
-
 def update_command(cmd_id, status, result=None):
-    """Write a command's status/result back to the portal. Best-effort."""
-    try:
-        requests.patch(
-            f"{SUPABASE_URL}/rest/v1/device_commands?id=eq.{cmd_id}",
-            headers=HEADERS,
-            json={"status": status, "result": (result or "")[:500],
-                  "updated_at": datetime.now(timezone.utc).isoformat()},
-            timeout=10)
-    except Exception:
-        pass
+    """Buffer a command's status/result; flushed up on the next sync. The app
+    metadata the agent needs is already joined into each delivered command, so no
+    separate per-app fetch is required."""
+    # Only terminal states matter to the portal now (delivery already marked the
+    # command 'running' server-side); skip the redundant intermediate 'running'.
+    if status == "running":
+        return
+    if len(_cmd_results_buf) < 100:
+        _cmd_results_buf.append({"id": cmd_id, "status": status, "result": (result or "")[:500]})
 
 def _uninstall_macos(app):
     # Prefer an explicit catalog path; else guess the bundle from the name.
@@ -1915,29 +1879,21 @@ def elevate_app(app):
     return False, "Elevation is not supported on this OS"
 
 def process_app_commands(device_id):
-    """Run any pending portal-issued app commands (install/uninstall/elevate) for
-    this device, writing the result back. Best-effort — never disrupts enforcement."""
-    try:
-        resp = requests.get(
-            f"{SUPABASE_URL}/rest/v1/device_commands"
-            f"?device_id=eq.{device_id}&status=eq.pending&order=created_at.asc&select=id,type,app_id",
-            headers=HEADERS, timeout=10)
-        if resp.status_code != 200:
-            return
-        commands = resp.json()
-    except Exception:
-        return
+    """Run any pending portal-issued app commands (install/uninstall/elevate)
+    delivered in the latest sync, buffering the result back. The server has already
+    marked each delivered command 'running' and joined its app metadata. Best-effort
+    — never disrupts enforcement."""
+    commands = _sync.get("commands", [])
     for cmd in commands:
         cid = cmd.get("id")
         ctype = cmd.get("type")
         if ctype not in ("uninstall_app", "install_app", "elevate_app"):
             update_command(cid, "failed", f"Unknown command type: {ctype}")
             continue
-        app = get_app_detail(cmd.get("app_id")) if cmd.get("app_id") else None
+        app = cmd.get("app")
         if not app:
             update_command(cid, "failed", "App not found in catalog")
             continue
-        update_command(cid, "running")
         if ctype == "install_app":
             ok, detail = install_app(app)
             ev_ok, ev_fail, verb = "install_app", "install_failed", "installed"
@@ -1971,12 +1927,16 @@ def main():
         except Exception:
             pass
 
+    # Load any existing device credential so enroll recognises us (and won't
+    # re-mint). A tokenless device gets one minted on this first enroll.
+    load_device_token()
+    enroll_data = {}
     try:
-        register_device(device_id)
+        enroll_data = register_device(device_id) or {}
     except Exception as e:
         print(f"[agent] Warning: registration failed ({e}), continuing anyway")
         log_event(device_id, "error", "enroll_failed", f"Registration error: {e}")
-    setup_pairing(device_id)
+    setup_pairing(device_id, enroll_data)
 
     last_access_log = {}  # app_id -> last time we logged an "accessed" event
     last_would_block = {}  # app_id -> last time we logged a learn-mode "would_block"
@@ -2002,7 +1962,11 @@ def main():
                 # itself didn't re-exec above). No-op when already at the latest.
                 check_companion_update(device_id, info.get("companion_version"))
 
-            heartbeat(device_id)
+            # One authenticated round-trip: flush buffered writes up, pull the
+            # resolved policy/enforcement state down. All the accessors below read
+            # from this. A network failure raises to the handler and skips the
+            # cycle (recovers next), rather than acting on stale data.
+            sync(device_id)
 
             # Resolve the effective blocked set for THIS device using policy
             # inheritance (device > location > org > global default).

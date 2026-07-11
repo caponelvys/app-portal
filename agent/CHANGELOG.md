@@ -1,5 +1,28 @@
 # Ravyn Agent — Changelog
 
+## v1.8.0 — 2026-07-11
+- **Per-device authentication (security).** The agent no longer talks to Supabase
+  PostgREST directly with the shared, public anon key. That key shipped in the
+  browser bundle and hardcoded here, and every agent table was gated only by
+  `auth.role()='anon'` with no per-device binding — so anyone holding it could
+  write (or wipe) any device's rows across tenants, and the resolver RPCs took an
+  arbitrary `p_device_id` so anyone could read any device's policy posture.
+- On enrollment the portal now mints a **per-device bearer token** (only its
+  sha256 is stored, in `devices.token_hash`; the secret is written `0600` to
+  `.device_token`). Every cycle the agent makes ONE authenticated call to
+  `POST /api/agent/sync`, which carries heartbeat / enforcement logs / lifecycle
+  events / inventory / command results **up** and the resolved enforcement mode,
+  app policies, blocked-hash set, USB policy, grants, and pending commands
+  **down**. The server derives the device from the token and scopes every
+  read/write to it, so an agent can only ever touch its own rows. This also
+  replaces ~8 direct round-trips per cycle with a single one.
+- Existing devices are **backfilled** a token automatically on their next enroll;
+  a device that loses its local token can be recovered with an admin token reset
+  (`POST /api/devices/[id]/reset-token`) followed by re-enroll.
+- Requires **migration 0036** (adds `devices.token_hash` + removes all anon access
+  to the agent surface). `/api/agent/version` stays unauthenticated so an outdated
+  field agent can still self-update to this build.
+
 ## v1.7.25 — 2026-07-08
 - **Fix: inventory sha256 now re-hashes on in-place updates.** The executable
   hash cache was keyed on (path, version); an app updated in place while keeping
